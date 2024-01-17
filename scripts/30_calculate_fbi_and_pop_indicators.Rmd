@@ -1,0 +1,408 @@
+---
+title: "Trends in Fish-based Index in French rivers"
+subtitle: "Calculation of population and FBI-related indicators"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+#  bookdown::word_document2
+always_allow_html: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Setup
+
+## Load packages and functions
+
+```{r}
+# if necessary
+# devtools::install_github("pascalirz/aspe")
+library(aspe)
+library(tidyverse)
+
+# install custom functions
+source("../../ipr_trends/R/functions.R")
+```
+
+## Load data
+
+```{r}
+# retrieve most recent data file from repo 
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+# load it
+load(rdata_tables)
+
+load(file = "../processed_data/20_selected_data.RData")
+```
+
+Data file : `r str_replace(rdata_tables, "../../../../projets/ASPE/raw_data/rdata/", "")`
+
+> NB The analysis is carried out considering the REFNET starts in `r params$refnet_start`.
+
+# Fish-based Index
+
+## Aggregated index
+
+Here we add a color palette to use as background in plots. A distinction in the quality classes threshold has recently been introduced depending on site altitude, but here we stick to the genuine thresholds, ie we remove the thresholds corresponding to the sites over 500m in altitude.
+
+```{r}
+fbi_classes <- classe_ipr %>%
+  aspe::ip_completer_classes_couleur() %>% 
+  filter(cli_altitude_min != 500 | is.na(cli_altitude_min))
+```
+
+Assembly of the dataset
+
+```{r}
+fbi <- surveys %>% 
+  mef_ajouter_ipr() %>% # add FBI score
+  mef_ajouter_metriques() %>% # add FBI metrics scores
+  # add hydrographic districts
+  left_join(y = point_prelevement %>% 
+              select(pop_id, unh_id = pop_unh_id)) %>% 
+  left_join(y = ref_unite_hydrographique %>% 
+              select(unh_id, unh_libelle)) %>% 
+  select(-unh_id)
+```
+
+Add the reference and/or non-reference status of the survey
+
+> NB this duplicates the surveys contributing to more than one
+
+```{r}
+# fbi <- fbi %>% 
+#   left_join(points_ref_status_2_cats %>% 
+#               select(-n_ope))
+
+# remove the surveys on "reference sites" before REFNET was set up
+# fbi <- fbi %>% 
+#   filter(!(network == "REFNET" & annee < params$refnet_start))
+```
+
+Calculation of quantiles for the `geom_ribbon()` plot.
+
+```{r}
+# fbi_quartiles <- fbi %>% 
+#   group_by(annee, network) %>% 
+#   summarise(p25 = quantile(ipr, 0.25, na.rm = TRUE),
+#             p50 = quantile(ipr, 0.50, na.rm = TRUE),
+#             p75 = quantile(ipr, 0.75, na.rm = TRUE)) %>% 
+#   ungroup()
+# 
+# fbi_pc_quality_class <- fbi %>% 
+#   group_by(annee, network) %>% 
+#   summarise(pc_very_good = sum(ipr < 5) / n(),
+#             pc_good_or_better = sum(ipr < 16) / n(),
+#             pc_mediocre_or_better = sum(ipr < 25) / n(),
+#             pc_bad_or_better = sum(ipr < 36) / n()) %>% 
+#   ungroup()
+# 
+# fbi_quartiles <- fbi_quartiles %>% 
+#   left_join(y = fbi_pc_quality_class)
+```
+
+## FBI metrics
+
+Build a dataframe with the FBI metrics, organised in 'long' format.
+
+```{r, eval=TRUE}
+# fbi_metrics <- fbi %>% 
+#   select(sta_id:annee, ner:dti, unh_libelle, network) %>% 
+#   # put into "long format" for the faceted plot
+#   pivot_longer(cols = ner:dti,
+#                names_to = "metric",
+#                values_to = "value") %>% 
+#   # translate metrics abbreviations into ENG labels
+#   mutate(metric = fct_recode(metric,
+#     "dens_invertivorous_indiv" = "dii",
+#     "dens_omnivorous_indiv" = "dio",
+#     "dens_tolerant_indiv" = "dit",
+#     "dens_total_indiv" = "dti",
+#     "nb_lithophilic_sp" = "nel",
+#     "nb_rheophilic_sp" = "ner",
+#     "nb_total_sp" = "nte"),
+#          # for a nicer plot
+#          metric = fct_rev(metric))
+# 
+# fbi_metrics %>% 
+#   head() %>% 
+#   mutate(across(c(sta_id:ope_id, annee), as.character)) %>% 
+#   flextable::flextable()
+```
+
+Calculate the annual median of each metric across sites
+
+```{r}
+# fbi_metrics_median <- fbi_metrics %>% 
+#   group_by(annee, metric, network) %>% 
+#   summarise(p50 = median(value, na.rm = TRUE)) %>% 
+#   ungroup()
+```
+
+# Populations trends
+
+## Species occurrence probability
+
+This information is in the Aspe database and obtained using the function `aspe::mef_ajouter_proba_presence_ipr()`.
+
+The surveys carried out before `r params$refnet_start` and tagged "REFNET" are removed from the dataset.
+
+```{r}
+# Assembly of a temp dataframe
+sp_proba_init <- fbi %>% 
+  select(sta_id:annee) %>% 
+  distinct() %>% 
+#  filter(!(network == "REFNET" & annee < params$refnet_start)) %>% 
+  # add probabilities of occurrence from dataframe "probabilite_presence_ipr"
+  mef_ajouter_proba_presence_ipr() %>% 
+  rename(sp_proba_occur = ppi_valeur_probabilite, # proba occurrence
+         obs_nb_indiv = ppi_param_effectif # observed catches
+  ) %>% 
+  # add species scientific name
+  left_join(y = ref_espece %>% 
+              select(esp_id, # species id
+                     esp_nom_latin # species scientific name
+              )) %>% 
+  # recode some inacurate species names
+  latin_recoding(var_latin_name = esp_nom_latin)
+```
+
+The species are considered as predicted present if, and only if, their modeled probability of occurrence exceeds 0.5 (cf. Oberdorff et al. (2002) Development and validation of a fish‐based index for the assessment of 'river health' in France. Freshwater Biology, 47(9), 1720-1734).
+
+```{r}
+sp_proba <- sp_proba_init %>%
+  mutate(sp_pred_presence = sp_proba_occur >= 0.5, # threshold between pres and abs
+         sp_obs_presence = obs_nb_indiv > 0) %>%
+  select(ope_id,
+         annee,
+      #   network,
+         esp_nom_latin,
+         sp_pred_presence,
+         sp_obs_presence)
+```
+
+Here we distinguish the cases as in a confusion matrix (good model prediction, false positive and false negative).
+
+```{r}
+confusion1 <- sp_proba %>%
+  mutate(
+    case = case_when(
+      sp_pred_presence & sp_obs_presence ~ "pred_pres_obs_pres",
+      !sp_pred_presence & sp_obs_presence ~ "pred_abs_obs_pres",
+      sp_pred_presence & !sp_obs_presence ~ "pred_pres_obs_abs",
+      !sp_pred_presence & !sp_obs_presence ~ "pred_abs_obs_abs"
+    )
+  )
+
+# nb surveys by year
+n_surveys_by_year <- sp_proba %>%
+  group_by(annee) %>%
+  summarise(n_surveys = n_distinct(ope_id))
+
+# count of confusion cases
+confusion <- confusion1 %>%
+  group_by(esp_nom_latin, annee, case) %>%
+  tally() %>%
+  ungroup()
+
+# completing missing combinations
+confusion <- confusion %>%
+  select(esp_nom_latin, annee, case, n) %>%
+  complete(esp_nom_latin, annee, case, fill = list(n = 0)) %>%
+  left_join(y = n_surveys_by_year) %>%
+  pivot_wider(names_from = case,
+              values_from = n) %>%
+  # calculation of percentages
+  mutate(
+    pc_pred_abs_obs_pres = pred_abs_obs_pres / n_surveys,
+    pc_pred_pres_obs_abs = pred_pres_obs_abs / n_surveys,
+    pc_pred_pres_obs_pres = pred_pres_obs_pres / n_surveys
+  )
+
+confusion %>% 
+  sample_n(10) %>% 
+  mutate(across(annee, as.character)) %>% 
+  flextable::flextable()
+```
+
+## Species densities
+
+For each species, the densities (in number of individuals per 1000 m²) are first calculated for each survey, then averaged by year.
+
+```{r}
+my_species <- c(
+"Abramis brama",
+"Alburnus alburnus",
+"Barbatula barbatula",
+"Cottus perifretum",
+"Cyprinus carpio",
+"Esox lucius",
+"Gasterosteus aculeatus",
+"Gobio gobio",
+"Gymnocephalus cernuus",
+"Lampetra planeri",
+"Leuciscus burdigalensis",
+"Perca fluviatilis",
+"Phoxinus phoxinus",
+"Pungitus pungitus",
+"Rutilus rutilus",
+"Salmo trutta",
+"Scardinius erythrophthalmus",
+"Squalius cephalus",
+"Tinca tinca"
+)
+
+sp_densities <- densities %>% 
+  group_by(annee, esp_code_alternatif) %>% 
+  summarise(density = mean(density)) %>% 
+  mef_ajouter_esp() %>% 
+  filter(esp_nom_latin %in% my_species)
+  
+
+fbi_taxa_densities <- sp_proba_init %>% 
+  mef_ajouter_surf_calc() %>% 
+  mutate(density = 1000 * obs_nb_indiv / ope_surface_calculee) %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(density = mean(density))
+```
+
+## Species occurency rate across sites
+
+For each species and each year, this indicator is the ratio of the number of sites where the species was observed by the number of sites surveyed.
+
+```{r}
+sp_occupancy <- sp_proba_init %>% 
+  filter(obs_nb_indiv > 0) %>% 
+  group_by(annee, esp_nom_latin, network) %>% 
+  summarise(n_occur = n_distinct(ope_id)) %>% 
+  ungroup() %>% 
+  left_join(n_surveys_by_year) %>% 
+  mutate(occurency_rate = n_occur / n_surveys)
+```
+
+## Assembly of population indicators
+
+```{r}
+sp_occ <- sp_occupancy %>% 
+  select(-n_occur, -n_surveys) %>% 
+  rename(value = occurency_rate) %>% 
+  mutate(indicator = "occurency_rate")
+  
+names(sp_occupancy)
+names(sp_densities)
+```
+
+
+# Environment
+
+The database includes variables describing the environmental conditions at stations.
+
+## Sampling sites characteristics
+
+Here we check that there is no "drift" in the environmental conditions at sampling sites across years.
+
+```{r}
+# retrieve env data and pivot to long format
+env_surveys <- fbi %>% 
+  select(sta_id:annee, network) %>% 
+  distinct() %>% 
+  filter(!(network == "REFNET" & annee < params$refnet_start)) %>% 
+  mef_ajouter_ope_env() %>% 
+  select(-distance_mer) %>% # not a FBI env variable
+  pivot_longer(cols = altitude:temp_janvier,
+               names_to = "variable",
+               values_to = "value")
+
+# missing values (mostly dist to sea)
+n_missing_env_values_init <- env_surveys %>% 
+  filter(is.na(value)) %>% 
+  group_by(variable) %>% 
+  tally()
+
+# if some env var missing some years, replaced by the mean at station
+replacement <- env_surveys %>% 
+  group_by(pop_id, variable, network) %>% 
+  summarise(replacement_value = median(value, na.rm = TRUE)) %>% 
+  ungroup()
+
+# englishisize env variables factor levels
+env_surveys <- env_surveys %>% 
+  left_join(replacement) %>% 
+  mutate(value = ifelse(is.na(value),
+                        yes = replacement_value,
+                        no = value),
+         variable = case_when(
+           variable == "surface_bv" ~ "drainage_area",
+           variable == "largeur" ~ "width",
+           variable == "pente" ~ "slope",
+           variable == "profondeur" ~ "depth",
+           variable == "temp_juillet" ~ "temp_july",
+           variable == "temp_janvier" ~ "temp_january",
+           TRUE ~ variable),
+         variable = as.factor(variable)) %>% 
+  select(-replacement_value)
+```
+
+Doubts on the depth with suspicion of mix between cm and m =\> warned the regional correspondents; the chunk below may have to be removed when the suspicious data are either confirmed or corrected.
+
+```{r}
+# deep <- env_surveys %>% 
+#   filter(variable == "profondeur" & value > 10) %>% 
+#   select(1:4) %>% 
+#   distinct() %>% 
+#   left_join(y = env_surveys) %>% 
+#   left_join(y = station) %>% 
+#   select(1:5, 7:10) %>% 
+#   filter(variable == "profondeur") %>% 
+#   distinct() %>% 
+#   mef_ajouter_intervenants() %>% 
+#   select(1:9, validation_technique)
+
+env_surveys <- env_surveys %>% 
+  mutate(value = ifelse(value > 10 & variable == "depth",
+                        value / 100,
+                        value))
+```
+
+## Species environmental realised niche
+
+The environmental realised niche of the species is characterised by the mean values of the environmental features of the sites where the species is detected. This value is calculated each year in order to assess potential distribution shifts (e.g. an increase of the mean altitude of the sites where a species occurs could reflect an adjustment to water warming).
+
+```{r}
+sp_env_niche <- sp_proba_init %>% 
+  left_join(y = env_surveys) %>% 
+  filter(obs_nb_indiv > 0) %>% 
+  group_by(esp_nom_latin, annee, variable, network) %>% 
+  summarise(mean_value = mean(value, na.rm = TRUE)) %>% 
+  ungroup()
+```
+
+# Saving
+
+```{r}
+save(fbi,
+     fbi_quartiles,
+     fbi_metrics,
+     points_ref_status_2_cats,
+     fbi_metrics_median,
+     fbi_classes,
+     points_geo,
+     points,
+     sp_proba,
+     confusion1,
+     confusion,
+     classe_ipr,
+     sp_occupancy,
+     sp_densities,
+     env_surveys,
+     sp_env_niche,
+     ref_espece,
+     ref_unite_hydrographique,
+     file = "../processed_data/30_indicators.RData")
+```
