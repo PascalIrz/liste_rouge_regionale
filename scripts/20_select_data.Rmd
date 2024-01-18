@@ -1,5 +1,5 @@
 ---
-title: "Trends in Fish-based Index in French rivers"
+title: "Fish population trends the rivers of Britanny"
 subtitle: "Data preparation"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -190,7 +190,7 @@ surveys %>%
   flextable::flextable()
 ```
 
-How many sites simpled by year?
+How many sites sampled by year?
 
 ```{r}
 surveys %>% 
@@ -212,7 +212,7 @@ elementary_samples <- elementary_samples %>%
 ## Catches by species
 
 ```{r}
-densities <- elementary_samples %>% 
+densities_ope <- elementary_samples %>% 
   select(-(obj_id:dept)) %>% 
   mef_ajouter_lots()
 ```
@@ -220,7 +220,7 @@ densities <- elementary_samples %>%
 Recode some species names.
 
 ```{r}
-densities <- densities %>% 
+densities_ope <- densities_ope %>% 
   mutate(esp_code_alternatif = case_when(
     esp_code_alternatif == "VAN" ~ "VAR",
     esp_code_alternatif == "CHA" ~ "CHF",
@@ -231,8 +231,10 @@ densities <- densities %>%
 Aggregate by survey.
 
 ```{r}
-densities <- densities %>% 
-  group_by(across(c(-lop_effectif))) %>% 
+densities_ope <- densities_ope %>% 
+  select(esp_code_alternatif, everything()) %>% 
+  select(-pre_id) %>% 
+  group_by(across(esp_code_alternatif:annee)) %>% 
   summarise(n_indiv = sum(lop_effectif)) %>% 
   ungroup() %>% 
   mef_ajouter_surf_calc() %>% 
@@ -291,7 +293,7 @@ points_geo %>%
 ```{r}
 save(elementary_samples,
      surveys,
-     densities,
+     densities_ope,
      my_pops,
      points,
      points_geo,

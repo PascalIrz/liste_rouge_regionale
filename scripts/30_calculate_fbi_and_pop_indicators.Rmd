@@ -1,6 +1,6 @@
 ---
-title: "Trends in Fish-based Index in French rivers"
-subtitle: "Calculation of population and FBI-related indicators"
+title: "Fish population trends the rivers of Britanny"
+subtitle: "Calculation of population indicators"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
   bookdown::html_document2:
@@ -41,9 +41,6 @@ load(rdata_tables)
 load(file = "../processed_data/20_selected_data.RData")
 ```
 
-Data file : `r str_replace(rdata_tables, "../../../../projets/ASPE/raw_data/rdata/", "")`
-
-> NB The analysis is carried out considering the REFNET starts in `r params$refnet_start`.
 
 # Fish-based Index
 
@@ -151,14 +148,11 @@ Calculate the annual median of each metric across sites
 
 This information is in the Aspe database and obtained using the function `aspe::mef_ajouter_proba_presence_ipr()`.
 
-The surveys carried out before `r params$refnet_start` and tagged "REFNET" are removed from the dataset.
-
 ```{r}
 # Assembly of a temp dataframe
 sp_proba_init <- fbi %>% 
   select(sta_id:annee) %>% 
   distinct() %>% 
-#  filter(!(network == "REFNET" & annee < params$refnet_start)) %>% 
   # add probabilities of occurrence from dataframe "probabilite_presence_ipr"
   mef_ajouter_proba_presence_ipr() %>% 
   rename(sp_proba_occur = ppi_valeur_probabilite, # proba occurrence
@@ -228,7 +222,10 @@ confusion <- confusion %>%
 confusion %>% 
   sample_n(10) %>% 
   mutate(across(annee, as.character)) %>% 
-  flextable::flextable()
+  flextable::flextable() %>% 
+  flextable::color(j = c(4, 7), color = "green", part = "body", source = j) %>% 
+  flextable::color(j = c(5, 6), color = "red", part = "body")
+  
 ```
 
 ## Species densities
@@ -236,40 +233,58 @@ confusion %>%
 For each species, the densities (in number of individuals per 1000 m²) are first calculated for each survey, then averaged by year.
 
 ```{r}
-my_species <- c(
-"Abramis brama",
-"Alburnus alburnus",
-"Barbatula barbatula",
-"Cottus perifretum",
-"Cyprinus carpio",
-"Esox lucius",
-"Gasterosteus aculeatus",
-"Gobio gobio",
-"Gymnocephalus cernuus",
-"Lampetra planeri",
-"Leuciscus burdigalensis",
-"Perca fluviatilis",
-"Phoxinus phoxinus",
-"Pungitus pungitus",
-"Rutilus rutilus",
-"Salmo trutta",
-"Scardinius erythrophthalmus",
-"Squalius cephalus",
-"Tinca tinca"
-)
+# my_species <- c(
+# "Abramis brama",
+# "Alburnus alburnus",
+# "Barbatula barbatula",
+# "Cottus perifretum",
+# "Cyprinus carpio",
+# "Esox lucius",
+# "Gasterosteus aculeatus",
+# "Gobio gobio",
+# "Gymnocephalus cernuus",
+# "Lampetra planeri",
+# "Leuciscus burdigalensis",
+# "Perca fluviatilis",
+# "Phoxinus phoxinus",
+# "Pungitus pungitus",
+# "Rutilus rutilus",
+# "Salmo trutta",
+# "Scardinius erythrophthalmus",
+# "Squalius cephalus",
+# "Tinca tinca"
+# )
 
-sp_densities <- densities %>% 
-  group_by(annee, esp_code_alternatif) %>% 
-  summarise(density = mean(density)) %>% 
-  mef_ajouter_esp() %>% 
-  filter(esp_nom_latin %in% my_species)
-  
+breams <- c("BRB", "BRE")
 
-fbi_taxa_densities <- sp_proba_init %>% 
-  mef_ajouter_surf_calc() %>% 
-  mutate(density = 1000 * obs_nb_indiv / ope_surface_calculee) %>% 
+bream_densities_ope <- densities_ope %>% 
+  filter(esp_code_alternatif %in% breams) %>% 
+  mutate(esp_nom_latin = ifelse(esp_code_alternatif == "BRE", "Abramis brama", "Blicca bjoerkna"))
+
+bream_densities <- bream_densities_ope %>% 
   group_by(annee, esp_nom_latin) %>% 
-  summarise(density = mean(density))
+  summarise(density = mean(density)) %>% 
+  select(year = annee,
+         esp_nom_latin,
+         density)
+  
+fbi_taxa_densities_ope <- sp_proba_init %>% 
+  mef_ajouter_surf_calc() %>% 
+  mutate(density = 1000 * obs_nb_indiv / ope_surface_calculee)
+
+fbi_taxa_densities <- fbi_taxa_densities_ope %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(density = mean(density)) %>% 
+  filter(esp_nom_latin != "Abramis brama") %>% 
+  rename(year = annee)
+
+densities_ope <- rbind(fbi_taxa_densities_ope %>% 
+                         select(sta_id:annee, esp_nom_latin, density),
+                       bream_densities_ope%>% 
+                         select(sta_id:annee, esp_nom_latin, density))
+
+densities <- rbind(fbi_taxa_densities,
+                   bream_densities)
 ```
 
 ## Species occurency rate across sites
@@ -277,132 +292,141 @@ fbi_taxa_densities <- sp_proba_init %>%
 For each species and each year, this indicator is the ratio of the number of sites where the species was observed by the number of sites surveyed.
 
 ```{r}
-sp_occupancy <- sp_proba_init %>% 
-  filter(obs_nb_indiv > 0) %>% 
-  group_by(annee, esp_nom_latin, network) %>% 
-  summarise(n_occur = n_distinct(ope_id)) %>% 
-  ungroup() %>% 
-  left_join(n_surveys_by_year) %>% 
-  mutate(occurency_rate = n_occur / n_surveys)
+# fbi_taxa_occupancy <- sp_proba_init %>% 
+#   filter(obs_nb_indiv > 0) %>% 
+#   group_by(annee, esp_nom_latin) %>% 
+#   summarise(n_occur = n_distinct(ope_id)) %>% 
+#   ungroup() %>% 
+#   left_join(n_surveys_by_year) %>% 
+#   mutate(occurency_rate = n_occur / n_surveys)
+
+occupancy <- densities_ope %>% 
+  filter(density > 0) %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(n_occur = n()) %>% 
+  left_join(y = n_surveys_by_year) %>% 
+  mutate(pc_occur = n_occur / n_surveys)
+  
 ```
 
 ## Assembly of population indicators
 
 ```{r}
-sp_occ <- sp_occupancy %>% 
+sp_occ <- occupancy %>% 
   select(-n_occur, -n_surveys) %>% 
-  rename(value = occurency_rate) %>% 
+  rename(value = pc_occur) %>% 
   mutate(indicator = "occurency_rate")
+
+sp_densities <- densities %>% 
+#  left_join(y = ref_espece %>%  select(esp_code_alternatif, esp_nom_latin)) %>% 
+  mutate(indicator = "density") %>% 
+  select(annee = year,
+         esp_nom_latin,
+         value = density,
+         indicator)
   
-names(sp_occupancy)
+  
+names(sp_occ)
 names(sp_densities)
+
+sp_indicators <- rbind(sp_occ, sp_densities)
+names(sp_indicators)
+
+names(confusion)
+
+sp_models <- confusion %>% 
+  select(esp_nom_latin,
+         annee,
+         false_abs = pc_pred_abs_obs_pres,
+         false_pres = pc_pred_pres_obs_abs,
+         true_pres = pc_pred_pres_obs_pres) %>% 
+  pivot_longer(cols = false_abs:true_pres,
+               names_to = "indicator",
+               values_to = "value") %>% 
+  left_join(y = ref_espece %>% 
+              select(esp_code_alternatif, esp_nom_latin)) %>% 
+  select(names(sp_indicators))
+
+sp_indicators <- sp_indicators %>% 
+  rbind(sp_models)
 ```
 
+## The breams
 
-# Environment
-
-The database includes variables describing the environmental conditions at stations.
-
-## Sampling sites characteristics
-
-Here we check that there is no "drift" in the environmental conditions at sampling sites across years.
+In the models underlying the FBI, the common bream and the white bream are pooled together, so they can not be used at the species-level. Therefore, we choose to exclude the population indicators derived from these models for these two species. They are replaced by zeros in order to keep the data structure constant for graphical display.
 
 ```{r}
-# retrieve env data and pivot to long format
-env_surveys <- fbi %>% 
-  select(sta_id:annee, network) %>% 
-  distinct() %>% 
-  filter(!(network == "REFNET" & annee < params$refnet_start)) %>% 
-  mef_ajouter_ope_env() %>% 
-  select(-distance_mer) %>% # not a FBI env variable
-  pivot_longer(cols = altitude:temp_janvier,
-               names_to = "variable",
-               values_to = "value")
-
-# missing values (mostly dist to sea)
-n_missing_env_values_init <- env_surveys %>% 
-  filter(is.na(value)) %>% 
-  group_by(variable) %>% 
-  tally()
-
-# if some env var missing some years, replaced by the mean at station
-replacement <- env_surveys %>% 
-  group_by(pop_id, variable, network) %>% 
-  summarise(replacement_value = median(value, na.rm = TRUE)) %>% 
-  ungroup()
-
-# englishisize env variables factor levels
-env_surveys <- env_surveys %>% 
-  left_join(replacement) %>% 
-  mutate(value = ifelse(is.na(value),
-                        yes = replacement_value,
-                        no = value),
-         variable = case_when(
-           variable == "surface_bv" ~ "drainage_area",
-           variable == "largeur" ~ "width",
-           variable == "pente" ~ "slope",
-           variable == "profondeur" ~ "depth",
-           variable == "temp_juillet" ~ "temp_july",
-           variable == "temp_janvier" ~ "temp_january",
-           TRUE ~ variable),
-         variable = as.factor(variable)) %>% 
-  select(-replacement_value)
-```
-
-Doubts on the depth with suspicion of mix between cm and m =\> warned the regional correspondents; the chunk below may have to be removed when the suspicious data are either confirmed or corrected.
-
-```{r}
-# deep <- env_surveys %>% 
-#   filter(variable == "profondeur" & value > 10) %>% 
-#   select(1:4) %>% 
-#   distinct() %>% 
-#   left_join(y = env_surveys) %>% 
-#   left_join(y = station) %>% 
-#   select(1:5, 7:10) %>% 
-#   filter(variable == "profondeur") %>% 
-#   distinct() %>% 
-#   mef_ajouter_intervenants() %>% 
-#   select(1:9, validation_technique)
-
-env_surveys <- env_surveys %>% 
-  mutate(value = ifelse(value > 10 & variable == "depth",
-                        value / 100,
+sp_indicators <- sp_indicators %>% 
+  mutate(value = ifelse(esp_nom_latin == "Abramis brama" &
+                          indicator %in% c("false_abs", "false_pres", "true_pres"),
+                        0,
                         value))
+
+white_bream1 <- sp_indicators %>% 
+  filter(esp_nom_latin == "Blicca bjoerkna" & indicator == "density") %>% 
+  mutate(value = 0,
+         indicator = "false_abs")
+
+white_bream2 <- white_bream1 %>% 
+    mutate(indicator = "false_pres")
+
+white_bream3 <- white_bream1 %>% 
+    mutate(indicator = "true_pres")
+
+white_bream <- rbind(white_bream1, white_bream2, white_bream3)
 ```
 
-## Species environmental realised niche
-
-The environmental realised niche of the species is characterised by the mean values of the environmental features of the sites where the species is detected. This value is calculated each year in order to assess potential distribution shifts (e.g. an increase of the mean altitude of the sites where a species occurs could reflect an adjustment to water warming).
+Add the white bream indicators to the main dataframe.
 
 ```{r}
-sp_env_niche <- sp_proba_init %>% 
-  left_join(y = env_surveys) %>% 
-  filter(obs_nb_indiv > 0) %>% 
-  group_by(esp_nom_latin, annee, variable, network) %>% 
-  summarise(mean_value = mean(value, na.rm = TRUE)) %>% 
-  ungroup()
+sp_indicators <- sp_indicators %>% 
+  rbind(white_bream)
 ```
+
+## Restriction to the appropriate nb of years by species
+
+The Red List method is to assess population trends in a time lapse defined as the maximum between 10 years and 3 times the species generation time. The dataset, so far, starts in 2007 and ends in 2023 (17 annual data, allowing the study of trends on 16 annual intervals). Hence, for the species with a generation time 5 years (lapse 3 x 5y = 15y) or less, the dataset has to be filtered to exclude the oldest data.
+
+```{r}
+sp_generation_time <- readxl::read_xlsx("../raw_data/Temps de génération.xlsx")
+
+sp_start_date <- sp_generation_time %>% 
+  mutate(sp_start_year = 2023 - `Période étude`) %>% 
+  select(esp_nom_latin = Espèce,
+         sp_start_year)
+
+sp_indicators <- sp_indicators %>% 
+  left_join(sp_start_date) %>% 
+  filter(!is.na(sp_start_year),
+         annee >= sp_start_year) %>% 
+  select(-sp_start_year)
+```
+
+
+
+
 
 # Saving
 
 ```{r}
-save(fbi,
-     fbi_quartiles,
-     fbi_metrics,
-     points_ref_status_2_cats,
-     fbi_metrics_median,
-     fbi_classes,
+save(#fbi,
+     # fbi_quartiles,
+     # fbi_metrics,
+     # points_ref_status_2_cats,
+     # fbi_metrics_median,
+     # fbi_classes,
      points_geo,
      points,
-     sp_proba,
-     confusion1,
-     confusion,
-     classe_ipr,
-     sp_occupancy,
-     sp_densities,
-     env_surveys,
-     sp_env_niche,
+     # sp_proba,
+     # confusion1,
+     # confusion,
+     # classe_ipr,
+     # sp_occupancy,
+     # sp_densities,
+     # env_surveys,
+     # sp_env_niche,
      ref_espece,
-     ref_unite_hydrographique,
+     densities_ope,
+     sp_indicators,
      file = "../processed_data/30_indicators.RData")
 ```
