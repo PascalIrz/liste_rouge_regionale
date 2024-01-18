@@ -1,5 +1,5 @@
 ---
-title: "Fish population trends the rivers of Britanny"
+title: "Fish population trends in the rivers of Britanny"
 subtitle: "Calculation of population indicators"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -393,6 +393,7 @@ sp_generation_time <- readxl::read_xlsx("../raw_data/Temps de génération.xls
 sp_start_date <- sp_generation_time %>% 
   mutate(sp_start_year = 2023 - `Période étude`) %>% 
   select(esp_nom_latin = Espèce,
+         generation_time = `Temps génération`,
          sp_start_year)
 
 sp_indicators <- sp_indicators %>% 
@@ -424,7 +425,7 @@ save(#fbi,
      # sp_occupancy,
      # sp_densities,
      # env_surveys,
-     # sp_env_niche,
+     sp_start_date,
      ref_espece,
      densities_ope,
      sp_indicators,

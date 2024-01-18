@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/1139143/eab6bf024f644779b32c69485c6c87c0
+bundleId: https://api.rpubs.com/api/v1/document/1139143/eab6bf024f644779b32c69485c6c87c0
+url: http://rpubs.com/kamoke/1139143
+version: 1

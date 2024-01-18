@@ -1,5 +1,5 @@
 ---
-title: "Fish population trends the rivers of Britanny"
+title: "Fish population trends in the rivers of Britanny"
 subtitle: "Data preparation"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
