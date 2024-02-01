@@ -39,6 +39,7 @@ rdata_tables <- misc_nom_dernier_fichier(
   pattern = "^tables")
 # load it
 load(rdata_tables)
+# test
 ```
 
 Data file : `r str_replace(rdata_tables, "../../../../projets/ASPE/raw_data/rdata/", "")`
