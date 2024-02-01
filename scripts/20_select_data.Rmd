@@ -27,7 +27,7 @@ library(aspe)
 library(tidyverse)
 
 # install custom functions
-source("../../ipr_trends/R/functions.R")
+# source("../../ipr_trends/R/functions.R")
 ```
 
 ## Load data
