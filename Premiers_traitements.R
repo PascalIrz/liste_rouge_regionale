@@ -14,9 +14,18 @@ rdata_tables <- misc_nom_dernier_fichier(
 # load it
 load(rdata_tables)
 
-# PARAMETRES
-# Le nombre minimum danneee pour mon traitrement de donnee
+##############################  PARAMETRES #####################################
+
+# Le nombre minimum d'années d'échantillonnage pour mon traitement de données
 n_mini_annee <- 9 
+
+# Le nombre de d'années "trou" minimum et maximum dans les données
+
+n_max_manquant <- 2
+
+
+################################################################################
+
 
 passerelle <- mef_creer_passerelle()
 
@@ -208,21 +217,46 @@ annee_de_donnee %>%
 
 annee_de_donnee %>% 
   filter(pop_id %in% mes_pop_id) %>% 
-  ggplot(aes(x = as.character(pop_id),
+  mef_ajouter_libelle_site() %>% 
+  ggplot(aes(x = as.character(pop_libelle),
              y = annee, 
              fill= pro_libelle)) + 
   geom_tile() + coord_flip()
 
 
 
-# On cherche maitenant à définir un nouveau paramètre : le nombre d'années de trou maximum consécutif
+# On cherche maitenant à définir un nouveau paramètre : le nombre d'années sans données maximum consécutif
 # sur une série pour une station
 
 
 test <- annee_de_donnee %>% 
   group_by (pop_id) %>% 
   arrange (annee, .by_group = TRUE) %>% 
-  mutate(annee_precedente = lag(annee))
+  mutate(annee_precedente = lag(annee),
+         annees_manquantes = annee - annee_precedente - 1)%>% 
+  filter(annees_manquantes > n_max_manquant)
+
+
+# Je visualise dans mon jeu de donnée, de manière globale, ce qu'il en est  :
+
+test %>% 
+  filter (pop_id %in% mes_pop_id) %>% 
+  mef_ajouter_libelle_site() %>% 
+  ggplot(aes(x = as.character(pop_libelle), 
+             y = annee,
+             fill = pro_libelle)) + 
+  geom_tile() + coord_flip()
+
+
+
+
+aer <- annee_de_donnee %>% 
+  filter (pop_id == 45254)
+
+test_aer <- aer %>% 
+  arrange (annee, .by_group = TRUE) %>% 
+  mutate(annee_precedente = lag(annee),
+         annees_manquantes = annee - annee_precedente - 1) 
 
 
 
