@@ -5,10 +5,12 @@
 library(aspe)
 library(tidyverse)
 
+source(file = "R/borner_series.R")
+
 # retrieve most recent data file from repo 
 
 rdata_tables <- misc_nom_dernier_fichier(
-  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 
 # load it
@@ -248,15 +250,21 @@ test %>%
   geom_tile() + coord_flip()
 
 
+##################################
+
+# Identification des séries d'opérations séparées maxi de 2 ans
+
+# cas des sites avec plusieurs pêches la même année
+annee_de_donnee <- annee_de_donnee %>% 
+  group_by(pop_id, annee) %>% 
+  filter(ope_date == max(ope_date))
+
+series <- annee_de_donnee %>% 
+  borner_series(var_id_site = pop_id,
+                var_temp = annee)
+
+series <- series %>% 
+  filter(n_opes > 9)
 
 
-aer <- annee_de_donnee %>% 
-  filter (pop_id == 45254)
-
-test_aer <- aer %>% 
-  arrange (annee, .by_group = TRUE) %>% 
-  mutate(annee_precedente = lag(annee),
-         annees_manquantes = annee - annee_precedente - 1) 
-
-
-
+  
