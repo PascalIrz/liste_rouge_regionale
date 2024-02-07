@@ -1,4 +1,4 @@
-## Création d'une fonction de calcul de densité à partir des longueurs et des 
+## Création d'une fonction de calcul de biomasse à partir des tailles et des 
 # poids_estimées par opération. 
 
 
@@ -10,10 +10,10 @@ calcul_biomasse <- function(df,
 {
   var_longueur <- enquo(mei_taille, mei_poids_estime)
   var_type_longueur <- enquo(tlo_libelle)
-  var_taxon <- enquo(esp_code_alternatif, esp_nom_commun)
+  var_taxon <- enquo(esp_code_alternatif, esp_nom_commun, esp_nom_latin)
 
   
-# Incorporation des mesures individuelles ----
+# Incorporation des mesures individuelles dans le df ----
   
   data_ind <- df %>%
     mef_ajouter_libelle() %>% 
@@ -44,14 +44,13 @@ calcul_biomasse <- function(df,
     mutate(esp_code_alternatif2 = paste0(esp_nom_commun, "(", esp_code_alternatif, ")"))
   
   
-  # Exemple : Selection de la station l'AER le Croisty dans le 56 - constitution jeu de donnée réduit
+# Exemple : Selection de la station l'AER le Croisty dans le 56 - constitution d'un jeu de données réduit
   # data_ind_aer <- data_ind %>%
   # filter(sta_id %in% c("11601"))
   
   
   
   # Utilisation des relations taille - poids du package aspe
-  
   # data("taille_poids")
   
   taille_poids <- data_taille_poids %>%
@@ -61,18 +60,19 @@ calcul_biomasse <- function(df,
     slice(1)
   
   
-# nb vérifier qu'on a bien les tailles pour tous les poissons avant d'appliquer la taille-poids
+# nb : vérifier qu'on a bien les tailles pour tous les poissons avant d'appliquer la taille-poids
 # combinaisons espèces - type de longueur absentes de la table de conversion
-  tp_manquantes <- data_ind %>% 
+ 
+   tp_manquantes <- data_ind %>% 
     select(esp_code_alternatif, tlo_libelle) %>% 
     distinct() %>% 
     left_join(y = taille_poids) %>% 
     filter(is.na(a))
   
-  
-  # on voit que le pb est que pas mal d'espèces n'ont pas de relation en longueur fourche
+  # nb : certaines espèces n'ont pas de relation en longueur fourche
   # on approxime par la longueur totale
-  esp_tp_manquantes <- tp_manquantes %>% 
+ 
+    esp_tp_manquantes <- tp_manquantes %>% 
     pull(esp_code_alternatif)
   
   
@@ -90,20 +90,25 @@ calcul_biomasse <- function(df,
            poids_tp = a * (mei_taille ^ b),
            erreur_abs = poids_tp - mei_poids,
            erreur_rel = erreur_abs / poids_tp)
+
   
   
+  # On créer un df avec les mesures de poids pour tous les individus
   
   data_ind_poids <- data_ind %>% 
     group_by(ope_id, esp_code_alternatif) %>%
     summarise(poids = sum(poids_tp)) %>% 
     ungroup()
   
+  # On créer un df avec les mesures de poids pour les sp par année et par département
   
-  data_dept_poids <- data_ind %>% 
+  data_dept_poids <- data_ind %>%
     group_by(esp_nom_commun,
              annee,
-             dept) %>% 
+             dept) %>%
     summarise(poids = sum(poids_tp, na.rm = TRUE),
               .groups = "drop")
 }
-  
+
+
+
