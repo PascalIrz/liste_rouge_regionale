@@ -45,39 +45,6 @@ taille_buffer <- 1000
 
 passerelle <- mef_creer_passerelle()
 
-# passerelle <- passerelle #%>% 
-  # mef_ajouter_dept() %>% 
-  # filter(dept %in% c(22, 29, 35, 56))
-
-# SELECTION ZONE GEOGRAPHIQUE NATIONALE : France métropolitaine
-
-# station <- station %>%
-#   left_join(y = ref_type_projection,
-#             by = c("sta_typ_id" = "typ_id"))
-# 
-# 
-# coords_wgs84 <- geo_convertir_coords_df(df = station,
-#                                         var_x = sta_coordonnees_x,
-#                                         var_y = sta_coordonnees_y,
-#                                         var_id = sta_id,
-#                                         var_crs_initial = typ_code_epsg,
-#                                         crs_sortie = 4326) %>%
-#   rename(x_wgs84 = X, y_wgs84 = Y)
-# 
-# station <- station %>%
-#   left_join(y = coords_wgs84) %>%
-#   select(-(sta_geometrie:typ_code_epsg))
-# 
-# 
-# ggplot(regions_metro_geo) +
-#   geom_sf(aes(fill=REG)) +
-#   geom_sf(data = departements_metro_geo,
-#           alpha=0)
-# 
-# sf::st_crs(regions_metro_geo)
-
-
-
 
 # SELECTION GEOGRAHIQUE DEPARTEMENTALE : Bretagne
 
@@ -91,7 +58,7 @@ pop_geo <- point_prelevement %>%
   sf::st_as_sf(coords = c("pop_coordonnees_x","pop_coordonnees_y"),
                crs = 2154)
 
-mapview(pop_geo %>% sample_n(100))
+pop_geo %>% sample_n(100) %>% mapview()
 
 
 
@@ -120,13 +87,6 @@ mapview(
 
 passerelle <- passerelle %>%
   filter(pop_id %in% pop_bzh$pop_id)
-# %>% 
-#   mef_ajouter_objectif() %>% 
-#   filter(obj_libelle %in% c("RCS – Réseau de Contrôle de Surveillance",
-#                             "RRP – Réseau de Référence Pérenne",
-#                             "RHP – Réseau Hydrobiologique Piscicole"))
-
-
 
 
 ## CREATION D'UN DF AVEC SEULEMENT LES PECHES TYPE INVENTAIRES EN BRETAGNE ----
@@ -137,10 +97,6 @@ mes_ope <- passerelle %>%
                     pro_libelle)) %>% 
   select(sta_id:ope_id, pro_libelle) %>% 
   distinct()
-
-
- 
-
 
 ################################################################################
 ######################## VERIFICATION DU JEU DE DONNEES  #######################
@@ -169,8 +125,6 @@ pop_plusieurs_sta <- df1 %>%
   arrange(pop_id)
 
 
-
-
 # RECHERCHE ERREUR : 1 stations = ? opérations (vérification doublons / ...)
 
 df <- mes_ope %>% 
@@ -194,24 +148,11 @@ sta_plusieurs_pop <- df %>%
 # REMARQUE : sta_plusieurs_pop = 3 stations à 2 points de prélèvement (doublons)
 
 
-
-
 #------------------------------------------------------------------------------
 ## ANALYSE DU JEU DE DONNEES:
 #------------------------------------------------------------------------------
 
 # NOMBRE D'ANNEES DE DONNEES PAR STATION :
-
-
-# mes_nvl_ope <- mes_ope %>%
-#   select(sta_id:ope_id) %>%
-#   distinct() %>%
-#   mef_ajouter_type_protocole() %>%
-#   filter(str_detect(pattern = "Pêche",
-#                     pro_libelle)) # %>%
-  # mef_ajouter_dept() %>%
-  # filter(dept %in% c("22", "29", "35", "56"))
-
 
 annee_de_donnee <- mes_ope %>%
   mef_ajouter_ope_date()
@@ -239,7 +180,8 @@ annee_de_donnee %>%
   ggplot(aes(x = as.character(pop_libelle),
              y = annee, 
              fill= pro_libelle)) + 
-  geom_tile() + coord_flip()
+  geom_tile() +
+  coord_flip()
 
 
 

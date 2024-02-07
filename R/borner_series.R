@@ -34,17 +34,21 @@ borner_series <- function(df,
            obs_manquantes := !!var_temp - obs_precedente - 1,
            obs_manquantes = ifelse(is.na(obs_manquantes), 0, obs_manquantes)) %>% 
     # #  group_by(id) %>% 
-    mutate(boolean = obs_manquantes <= max_nb_obs_manquantes) 
+    mutate(boolean = obs_manquantes <= max_nb_obs_manquantes,
+           annee_mini = min(!!var_temp, na.rm = TRUE)) 
   
   test %>%
     mutate(boolean = ifelse(is.na(boolean), 0, boolean)) %>%
-    group_by(!!var_id_site, group = cumsum(c(0, diff(boolean) != 0))) %>%
+    group_by(!!var_id_site,
+             annee_mini,
+             group = cumsum(c(0, diff(boolean) != 0))) %>%
     filter(boolean == 1 & n() > 1)  %>%
     summarize(debut = min(as.character(obs_precedente)),
               fin = max(as.character(!!var_temp)),
               n_opes= 1 + n()) %>%
     ungroup() %>%
     select(-group) %>% 
-    mutate(n_opes = ifelse(is.na(debut), n_opes - 1, n_opes))
+    mutate(n_opes = ifelse(is.na(debut), n_opes - 1, n_opes),
+           debut = ifelse(is.na(debut), annee_mini, debut))
 }
 
