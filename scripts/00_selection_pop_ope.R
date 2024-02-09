@@ -219,6 +219,9 @@ ope_selection %>%
   geom_tile() +
   coord_flip()
 
+passerelle <- passerelle %>% 
+  filter(ope_id %in%ope_selection$ope_id)
+
 
 #######################
 save(series,
