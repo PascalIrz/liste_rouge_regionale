@@ -36,6 +36,6 @@ Il apparaît que certaines données sont manquantes.
 - De nombreux poids manquent. On les estime donc par une relation taille-poids.
 - Si des caractéristiques des sites manquent, elles sont remplacées par leur valeur moyenne
 
-- # Estimation des tendances temporelles
+# Estimation des tendances temporelles
 
-- A compléter
+A compléter
