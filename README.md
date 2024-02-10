@@ -1,6 +1,6 @@
 # Objectif
 
-Repo qui reprend en partie https://github.com/PascalIrz/ipr_trends pour d'évaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce travail vient en appui de la révision de la liste rouge régionale.
+Evaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce travail vient en appui de la révision de la liste rouge régionale.
 
 # Approche
 
