@@ -22,7 +22,7 @@ Evaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce trava
 
 # Approche
 
-Nous produisons une sorte de tableau de bord combinant divers indicateurs de la dynamique des populations. Ces populations sont étudiées à travers leurs densités, leur taux d'occurrence et leur distributions en taille. Les indicateurs sont calculés pour soit séparément pour les juvéniles et les adultes, soit en les combinant.
+Il s'agit de produire une sorte de tableau de bord combinant divers indicateurs de la dynamique des populations. Ces populations sont étudiées à travers leurs densités, leur taux d'occurrence et leur distributions en taille. Les indicateurs sont calculés pour soit séparément pour les juvéniles et les adultes, soit en les combinant.
 
 Une première analyse statistique simple consiste à estimer les tendances temporelles des indicateurs par un test de Mann-Kendall (significativité d'une tendance monotone) suivi d'une régression de Sen-Theil (pente). Dans un second temps les indicateurs serviront à caler des modèles Bayésiens de dynamique de population.
 
@@ -34,12 +34,12 @@ Les caractéristiques des sites seront prises en compte pour analyser les résul
 
 On appelle ici site le *point_prelevement* de la base Aspe, caractérisé par son identifiant *pop_id*.
 
-Dans la base Aspe de l'OFB ([Irz et al. 2022](https://www.kmae-journal.org/articles/kmae/full_html/2022/01/kmae220057/kmae220057.html)), nous sélectionnons des sites :
+Dans la base Aspe de l'OFB ([Irz *et al.* 2022](https://www.kmae-journal.org/articles/kmae/full_html/2022/01/kmae220057/kmae220057.html)), nous sélectionnons des sites :
 
 - Localisés en Bretagne.
 - Qui ont été suivis pendant suffisamment longtemps et selon des protocoles adaptés pour estimer les densités.
 
-Sur ces sites, nous sélectionnons des séries de pêches avec au moins 10 années de données sans que les opérations successives soient distantes de plus de deux ans.
+Sur ces sites, nous sélectionnons des séries de pêches avec au moins 10 années de données sans que les opérations successives soient éloignées de plus de deux ans.
 
 Si plusieurs pêches ont été réalisées la même année sur un site, on ne retient que la plus tardive (pêche d'automne).
 
@@ -75,7 +75,13 @@ Ces deux tableaux sont assemblés(empilés).
 
 ![](assets/indicateurs_annuels.PNG)
 
-## Les données manquantes
+## Qualité des données
+
+### Erreurs dans la base
+
+Des premiers traitements de cohérence interne à la baqse ont été effectués, qui ont permis de détecter des erreurs en particulier d'unité ou de saisie. Ces erreurs ont été corrigées avant de construire les indicateurs.
+
+### Données manquantes
 
 Il apparaît que certaines données sont manquantes.
 
@@ -85,4 +91,29 @@ Il apparaît que certaines données sont manquantes.
 
 # Estimation des tendances temporelles
 
-A compléter
+Les séries d'indicateurs démographiques préparées par les étapes précédentes seront soumises à diverses analyses pour caractériser leurs tendances. On s'attachera à détecter d'éventuelles tendances monotones, sur différentes fenêtres temporelles, ainsi qu'à détecter d'éventuels points d'inflexion.
+
+## Période
+
+Les séries longues d'observation de la faune sont rares et d'une grande valeur en particulier car ce sont les seules permettant d'étudier les effets du changement climatique. Nous ferons donc porter une partie de nos analyses sur les séries les plus longues disponible au site ou à l'échelle régionale.
+
+Une autre série d'analyse se focalisera sur la période à prendre en compte pour appliquer la [méthodologie Liste Rouge Régionale](https://uicn.fr/wp-content/uploads/2018/04/guide-pratique-listes-rouges-regionales-especes-menacees.pdf) (UICN, 2018), qui diffère selon les taxons. Elle est de trois fois le temps de génération ou, si cette durée est inférieure à 10 ans, 10 ans.
+
+## Indicateurs démographiques
+
+Les tendance populationnelles seront d'abord évaluées par site. Les méthodes restent à préciser mais sont envisagés des tests de Mann-Kendall, des ajustements fréquentistes des taux d'évolution interannuels et ajustements de modèles Bayésiens. Cette dernière approche mobilisera des outils développés par Dortel *et al.* (2022).
+
+Les tendances sur les indicateurs régionaux seront ensuite obtenus soit en agrégeant les tendances par site, soit en estimant des tendances sur des indicateurs agrégés (eg taux d'occurrence). 
+
+## Paramètres environnementaux
+
+Les tendances des paramètres environnementaux seront évaluées de manière à fournir des éléments d'interprétation des tendances populationnelles. Les paramètres de profondeur et largeur moyenne, relevés au moment des pêches, seront mobilisés. On peut, en complément, envisager de collecter des relevés de température (Météo France) ou de débit journalier (HydroPortail).
+
+# Bibliographie
+
+Dortel E, Besnard A, Poulet N. 2022. Evolution des populations piscicoles et astacicoles de France métropolitaine. Rapport CNRS - EPHE - OFB. Centre d’Ecologie Fonctionnelle et Evolutive, Montpellier.
+
+Irz P, Vigneron T, Poulet N, Cosson E, Point T, Baglinière E, Porcher J-P. 2022. A long-term monitoring database on fish and crayfish species in French rivers. Knowl Manag Aquat Ecosyst 423: 25.
+
+UICN France. 2018. Guide pratique pour la réalisation de Listes rouges régionales des espèces menacées - Méthodologie de l’UICN & démarche d’élaboration. Seconde édition. Paris, France.
+
