@@ -174,19 +174,32 @@ ope_selection_param_env2 <- ope_selection_param_env %>%
  
 ```
 
-Représentation de mes variables
+Représentation de mes variables avec facet_wrap et facet_grid
 
 
 ```{r, fig.height = 45, fig.width = 10}
-#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 20)
+
+# Représentation avec facet_wrap
+
+#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 10)
 ope_selection_param_env2 %>% 
-  #filter(pop_id%in% mes_id) %>% 
+#  filter(pop_id%in% mes_id) %>% 
   ggplot(aes(x=annee, y=valeur)) +
   geom_bar(stat="identity") +
   facet_wrap(vars(pop_id, parametre),
              ncol = 8,
                scales="free_y")
-  
+
+
+#Représentation avec facet_grid
+
+#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 5) 
+ope_selection_param_env2 %>% 
+#  filter(pop_id%in% mes_id) %>% 
+  ggplot(mapping = aes(x = annee, y = valeur)) +
+  geom_bar(stat="identity") +
+  facet_grid(pop_id ~ parametre, 
+             scales= "free_y")
   
 ```
 
