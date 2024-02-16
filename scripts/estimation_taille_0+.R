@@ -6,13 +6,17 @@
 #install.packages("ggthemes")
 
 library(lemon)
+library(wesanderson)
 library(ggthemes)
 library(tidyverse)
 library(aspe)
 library(ggplot2)
 library (khroma)
+library(classInt)
+source(file = "R/calcul_biomasse.R")
 
 
+# --- Chargement du fichier de données : 
 load(file = "processed_data/selection_pop_ope.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
@@ -27,7 +31,10 @@ mei_table <- misc_nom_dernier_fichier(
 
 load(mei_table)
 
-source(file = "R/calcul_biomasse.R")
+
+# Chargement de la palette de couleur utilisée : 
+pal <- wes_palette("AsteroidCity1")
+
 
 
 ################ Elaboration classe de tailles #####################
@@ -64,10 +71,11 @@ especes_a_garder <- c("ABH","ABL","BBG","ALF","CTI",
                       "CHE","EPI","EPT","FLE","GAH",
                       "GAR","GOU","ALA","GRE","IDE",
                       "LPP","LPR","LPM","LOF","MUP",
-                      "SDF","PER","PES","PLI","PCH",
+                      "PER","PES","PLI","PCH","VAR",
                       "PSR","ROT","SAN","SAT","SIL",
                       "SPI","TAN","TAC","TRF","VAI",
-                      "VAR")
+                      "SDF"
+                      )
 
 esp_selection_filtrer <- esp_selection %>%
   filter(esp_code_alternatif %in% especes_a_garder)
@@ -83,8 +91,9 @@ limites_x <- c(0,500) # Mise en place d'une limite pour "zoomer" sur le graphiqu
 graphique <- esp_selection_filtrer %>%  # Mettre juste esp_selection si je veux toutes les espèces
   ggplot(aes (x = mei_taille, color = esp_code_alternatif)) + 
   geom_density(aes(y=..count..)) + 
-  labs (x = "Taille", y = "Nombre d'individus", title = "Courbes de tailles des espèces en fonction du nombre d'individus") +
+  labs (x = "Taille (en mm)", y = "Nombre d'individus", title = "Courbes de tailles des espèces en fonction du nombre d'individus") +
   theme_minimal() +
+  scale_fill_manual(values= pal) +
   scale_x_continuous(limits = limites_x)
 
 print(graphique)
@@ -92,17 +101,51 @@ print(graphique)
 
 
 #### Représentation graphique en facette
-mes_do <- sample(unique(esp_selection_filtrer$esp_code_alternatif), 20)
+mes_do <- sample(unique(esp_selection_filtrer$esp_code_alternatif), 16)
 
 graphique2 <- esp_selection_filtrer %>% 
   filter(esp_code_alternatif%in% mes_do) %>% 
   ggplot(aes(mei_taille)) + 
   geom_density(aes(y=..count..)) + 
   facet_wrap(.~esp_code_alternatif,
-             scales = "free")
+             scales = "free") + 
+  scale_x_continuous(breaks = seq(0, 3000, by = 55)) + 
+  labs (x= "Taille (en mm)") + 
+  scale_fill_manual(values= pal)
 
 
 print(graphique2)
+
+
+
+
+
+
+######################### JENKS NATURAL BREAKS CLASSIFICATION #################
+# Ca ne marche pas ! 
+
+#library(classInt)
+
+#tailles <- as.numeric(as.character(esp_selection_filtrer$mei_taille))
+
+#donnees_par_espece <- split(esp_selection_filtrer, esp_selection_filtrer$esp_code_alternatif)
+
+#nb_classes <- 3 
+
+#jenks_seuils_par_espece <- list()
+
+#for (esp_code_alternatif in names(donnees_par_espece)) {
+#  tailles_espece <- as.numeric(as.character(donnees_par_espece[[esp_code_alternatif]]$tailles))
+#  
+#  jenks_seuils_espece <- classIntervals (tailles_espece, nb_classes, style = "jenks")$brks
+#  
+#  jenks_seuils_par_espece[[esp_code_alternatif]] <- jenks_seuils_espece
+#}
+     
+
+#print (jenks_seuils_par_espece)
+
+
 
 
 
@@ -342,5 +385,6 @@ donnees_effectifs_OCL <- data.frame(taille = as.numeric(names(effectifs)),
 ggplot(data = donnees_effectifs_OCL, aes(x=taille, y = effectif)) +
   geom_line() +
   labs (x = "Tailles", y = "Effectifs", title = "Distribution des tailles OCL")
+
 
 

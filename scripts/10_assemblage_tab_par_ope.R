@@ -1,5 +1,14 @@
-## Chargement des packages et des données ----
+#_______________________________________________________________________________
+################## ASSEMBLAGE TABLEAUX PAR OPERATION ###########################
+#_______________________________________________________________________________
 
+
+# Objectif : Ce script propose la constitution de tableaux nécessaires à la 
+# préparation des analyses temporelles. 
+
+
+
+## Chargement des packages ----
 
 #install.packages("khroma")
 #install.packages("lemon")
@@ -12,6 +21,8 @@ library(aspe)
 library(ggplot2)
 library (khroma)
 
+
+## Chargement des données ----
 
 load(file = "processed_data/selection_pop_ope.rda")
 
@@ -31,6 +42,40 @@ source(file = "R/calcul_biomasse.R")
 
 
 
+#_______________________________________________________________________________
+######################## DISTINCTION DES CLASSES D'AGES ########################
+#_______________________________________________________________________________
+
+
+# Création d'un dataframe avec les mesures sueils calculées : 
+
+vecteur1 <- c("ABH","ABL","BBG","ALF","CTI",
+              "ANG","ATB","BOU","BRB","BRE",
+              "BRO","CAG","CAA","CCO","CHA",
+              "CHE","EPI","EPT","FLE","GAH",
+              "GAR","GOU","ALA","GRE","IDE",
+              "LPP","LPR","LPM","LOF","MUP","SDF",
+              "PER","PES","PLI","PCH","PSR",
+              "ROT","SAN","SAT","SIL",
+              "SPI","TAN","TAC","TRF","VAI","VAR")
+
+vecteur2 <- c(5.5, 10,13.75,49,77.5,42.5,5,4.05,20,27.5,33,30,20,47.5,6.5,
+               25,3.5,4,21.5,3,6.85,11,40,5.75,30,15,25,70,5.5,28.5,27,15,8,
+               27,20,30,40,70,10,24,21.25,12,7,14)
+
+tableau <- data.frame(x=vecteur1, y=vecteur2)
+
+# Création d'un dataframe accueillant toutes les données : 
+
+age_ind <- ref_espece %>% 
+  select(-esp_code_sandre,
+         -esp_nom_latin,
+         -esp_ordre_affichage,
+         -esp_statut,
+         -esp_code_ipr,
+         -esp_code_taxref,
+         -esp_eligible_calcul_ipr,
+         -esp_eligible_calcul_iprplus)
 
 
 ############################# DENSITES SURFACIQUES ###############################

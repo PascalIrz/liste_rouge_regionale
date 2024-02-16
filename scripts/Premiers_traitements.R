@@ -1,43 +1,53 @@
-################################################################
-###################  TUTO ASPE - ¨Prise en main ###############
-###############################################################
 
+#### PREMIERS TRAITEMENTS ----
+
+# Objectif : Il s'agit d'un premier scirpt de prise en main du package ASPE. 
+
+
+# --- Chargement des packages : 
 library(aspe)
 library(tidyverse)
-
+library(mapview)
+library(COGiter)
+library(sf)
 source(file = "R/borner_series.R")
 
-# retrieve most recent data file from repo 
-
+# --- Récupération du fichier de données le plus récent du dépôt : 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 
-# load it
+# --- Chargement du fichier de données : 
 load(rdata_tables)
 
-##############################  PARAMETRES #####################################
 
-# Le nombre minimum d'années d'échantillonnage pour mon traitement de données
+
+####  PARAMETRES ----
+
+# Séries de pêches avec au moins 9 années de données : 
 n_mini_annee <- 9 
 
-# Le nombre de d'années "trou" minimum et maximum dans les données
-
+# Dans ce n_mini_annee : opérations de pêches successives éloignées d'un maximum 
+# de (en années) : 
 n_max_manquant <- 2
 
 
-################################################################################
-
+#### Création d'une parcelle : 
 
 passerelle <- mef_creer_passerelle()
-
 names(passerelle)
 
+
+# Sélection de l'air géographique à traiter : La Bretagne ----
+# --- Sélection des départements : 
 
 passerelle <- passerelle %>% 
   mef_ajouter_dept() %>% 
   filter(dept %in% c(22, 29, 35, 56))
 
+
+# Sélection des différents réseaux de pêches : RCS / RRP / RHP ----
+# --- Sélection des réseaux : 
 
 passerelle <- passerelle %>%
   mef_ajouter_objectif() %>% 
@@ -45,25 +55,8 @@ passerelle <- passerelle %>%
                             "RRP – Réseau de Référence Pérenne",
                             "RHP – Réseau Hydrobiologique Piscicole"))
 
-ipr <- passerelle %>% 
-  mef_ajouter_ipr() %>% 
-  mef_ajouter_ope_date() %>% 
-  filter(ope_date > lubridate::dmy("01/01/2005")) %>% 
-  mef_ajouter_libelle() %>% 
-  droplevels()
 
-ipr %>% head() %>% DT::datatable()
-
-
-#############################################################
-# Réalisation des Opération graphiques : 
-
-
-# Création des opérations géographiques 
-library(aspe)
-library(tidyverse)
-library(mapview)
-
+#### Réalisation des Opération graphiques : ----
 
 station <- station %>%
   left_join(y = ref_type_projection,
@@ -95,50 +88,23 @@ station_geo %>%
 
 
 
-# remotes::install_github("MaelTheuliere/COGiter")
-
-library(COGiter)
-
-ggplot(regions_metro_geo) +
-  geom_sf(aes(fill = REG)) +
-  geom_sf(data = departements_metro_geo,
-          alpha = 0)
-
-sf::st_crs(regions_metro_geo)
-
-
-
-# Maintien que des départements bretons
+# --- Sélection des départements bretons :
 mes_depts <- departements_metro_geo %>%
   filter(DEP %in% c("22", "29", "35", "56"))
 
-# attribution et filtre
+# --- Attribution et filtres : 
 station_bzh <- station_geo %>% 
   aspe::geo_attribuer(regions_metro_geo) %>% 
   filter(REG == "53")
 
-
-############################################################################
-
-library(sf)
-
-
-# Ici je souhaite visualiser mes départements bretons et leurs stations
+# Visualisation des départements bretons et de leurs stations
 
 station_bzh %>%
   mapview::mapview()
 
-# Je souhaite maintennat les organiser en bassin versants 
-bassin_simp %>%
-  st_as_sf() %>% 
-  mapview::mapview()
-
-class(bassin_simp)
 
 
-# ------------------------------------------------
-
-# Reduction des données recueillies sur le secteur d'étude Bretagne (et opération de pêche)
+# Opération de pêche sur le secteur Bretagne
 
 mes_ope <- mef_creer_passerelle() %>%
   select(sta_id:ope_id) %>%
@@ -150,8 +116,8 @@ mes_ope <- mef_creer_passerelle() %>%
   filter(dept %in% c("22", "29", "35", "56"))
 
 
-
-# Compter le nombre de points par stations après avoir trié le type d'opération de pêches souhaité
+### Détection des erreurs dans le jeu de données : ----
+# Compter le nombre de points de prélèvements par station (vérification des doublons)
 
 df <- mes_ope %>% 
   mef_ajouter_libelle_site(origine_libelle = "station_sandre") %>% 
@@ -160,38 +126,25 @@ df <- mes_ope %>%
   select(-dept, -pro_libelle, -ope_id) %>% 
   distinct()
 
+
 sta_plusieurs_pop <- df %>% 
   group_by(sta_id) %>% 
   summarise(n_pop = n_distinct(pop_id)) %>% 
   filter(n_pop>1, !is.na(sta_id)) %>% 
   pull(sta_id)
 
+
 sta_plusieurs_pop <- df %>% 
   filter(sta_id %in% sta_plusieurs_pop) %>% 
   arrange(sta_id)
 
-# Dans sta_plusieurs_pop on remarque 3 stations qui possèdent 2 points de prélèvements.
-# Nous souhaitons vérifier qu'il s'agit de points regroupables pour allonger au maximum nos séries chronologiques. 
-# J'attend le retour de Vincent
+# Dans sta_plusieurs_pop : 3 stations possèdent 2 points de prélèvements.
+# Nous souhaitons vérifier qu'il s'agit de points regroupables pour allonger 
+# au maximum nos séries temporelles.  
 
 
-#--------------------------------------------------------------------------------------------------------
-
-# Maintenant je cherche à savoir par station, combien il y a eu d'années de données : 
-
-# Je sais si c'est très utile mais je recreer une nouvelle passerelle :
-mes_nvl_ope <- mef_creer_passerelle() %>%
-  select(sta_id:ope_id) %>%
-  distinct() %>%
-  mef_ajouter_type_protocole() %>%
-  filter(str_detect(pattern = "Pêche",
-                    pro_libelle)) %>%
-  mef_ajouter_dept() %>%
-  filter(dept %in% c("22", "29", "35", "56"))
-
-
-# je creer un tableau qui me résume le nombre d'années de suivis  :
-annee_de_donnee <- mes_nvl_ope %>%
+# Recherche du nombre d'années de données disponibles par station : ----
+annee_de_donnee <- mes_ope %>%
   mef_ajouter_ope_date()
 
 resultat <- annee_de_donnee %>% 
@@ -207,8 +160,7 @@ colnames(resultat)[2] <- "nombre_annees_totales"
 print(resultat)
 
 
-# Représentation graphique des années de prélèvements et des types de pêches correspondant
-# Indication sur les trou dans les séries d'inventaire
+# Représentation graphique des données : 
 annee_de_donnee %>% 
   filter(pop_id %in% mes_pop_id) %>% 
   ggplot(aes(x = as.character(pop_id),
@@ -227,7 +179,7 @@ annee_de_donnee %>%
 
 
 
-# On cherche maitenant à définir un nouveau paramètre : le nombre d'années sans données maximum consécutif
+# Nouveau paramètre : on fixe le nombre d'années sans données maximum consécutif
 # sur une série pour une station
 
 
@@ -239,32 +191,22 @@ test <- annee_de_donnee %>%
   filter(annees_manquantes > n_max_manquant)
 
 
-# Je visualise dans mon jeu de donnée, de manière globale, ce qu'il en est  :
 
-test %>% 
-  filter (pop_id %in% mes_pop_id) %>% 
-  mef_ajouter_libelle_site() %>% 
-  ggplot(aes(x = as.character(pop_libelle), 
-             y = annee,
-             fill = pro_libelle)) + 
-  geom_tile() + coord_flip()
+### Affinage des stations sélectionnées du jeu de données : ----
 
-
-##################################
-
-# Identification des séries d'opérations séparées maxi de 2 ans
-
-# cas des sites avec plusieurs pêches la même année
+# Choix de la pêche d'automne (la plus tardive) en cas de 2 pêches ou plus par an. 
 annee_de_donnee <- annee_de_donnee %>% 
   group_by(pop_id, annee) %>% 
   filter(ope_date == max(ope_date))
 
+
+# Création d'un df avec le nombre d'années d'opération total
 series <- annee_de_donnee %>% 
   borner_series(var_id_site = pop_id,
                 var_temp = annee)
 
+# Filtre pour le nombre minimum d'années d'opération total (fixé dans les paramètres)
 series <- series %>% 
-  filter(n_opes > 9)
+  filter(n_opes > n_mini_annee)
 
-
-  
+# On obtient 44 stations ! 

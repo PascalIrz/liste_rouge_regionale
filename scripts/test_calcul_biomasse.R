@@ -1,5 +1,17 @@
+
+#### Test Calcul des biomasses ----
+
+# Objectif : Il s'agit d'un scirpt (exemple) pour utiliser la fonction créée pour 
+# calculer les biomasses individuelles des poissons pour chacune des opérations. 
+
+
+# --- Chargement des packages : 
 library(tidyverse)
 library(aspe)
+source(file = "R/calcul_biomasse.R")
+
+
+# --- Chargement du fichier de données : 
 
 load(file = "processed_data/selection_pop_ope.rda")
 
@@ -15,9 +27,8 @@ mei_table <- misc_nom_dernier_fichier(
 
 load(mei_table)
 
-source(file = "R/calcul_biomasse.R")
 
-
+# Création d'un df avec les données individuelles : 
 
 data_ind <- passerelle %>%
   mef_ajouter_libelle() %>% 
@@ -43,7 +54,9 @@ data_ind <- passerelle %>%
          tlo_libelle)
 
 
-# Exemple : Selection de la station l'AER le Croisty dans le 56 - constitution d'un jeu de données réduit
+# Construction d'un jeu de données réduit pour entrainement ----
+# Exemple : Selection de la station l'AER le Croisty dans le 56 - 
+
 data_ind_aer <- data_ind %>%
  filter(pop_id == "45254") %>% 
  select(mei_id,
@@ -54,7 +67,9 @@ data_ind_aer <- data_ind %>%
         mei_poids,
         tlo_libelle)
 
-test <- calcul_biomasse(df = data_ind_aer)
 
-View(data_ind_aer)
+# Utilisation de la fonction créée pour calculer les biomasses ----
+# (à partir des relations tailles-poids qui produise un poids estimé). 
+
+test <- calcul_biomasse(df = data_ind_aer)
 View(test)
