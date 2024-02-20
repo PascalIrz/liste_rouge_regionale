@@ -74,7 +74,8 @@ especes_a_garder <- c("ABH","ABL","BBG","ALF","CTI",
                       "PER","PES","PLI","PCH","VAR",
                       "PSR","ROT","SAN","SAT","SIL",
                       "SPI","TAN","TAC","TRF","VAI",
-                      "SDF"
+                      "SDF",
+                      "ASP","CCU","CMI","GBT","VAN","TRM"
                       )
 
 esp_selection_filtrer <- esp_selection %>%
@@ -101,7 +102,7 @@ print(graphique)
 
 
 #### Représentation graphique en facette
-mes_do <- sample(unique(esp_selection_filtrer$esp_code_alternatif), 16)
+mes_do <- sample(unique(esp_selection_filtrer$esp_code_alternatif), 2)
 
 graphique2 <- esp_selection_filtrer %>% 
   filter(esp_code_alternatif%in% mes_do) %>% 
@@ -109,7 +110,7 @@ graphique2 <- esp_selection_filtrer %>%
   geom_density(aes(y=..count..)) + 
   facet_wrap(.~esp_code_alternatif,
              scales = "free") + 
-  scale_x_continuous(breaks = seq(0, 3000, by = 55)) + 
+  scale_x_continuous(breaks = seq(0, 3000, by = 20)) + 
   labs (x= "Taille (en mm)") + 
   scale_fill_manual(values= pal)
 

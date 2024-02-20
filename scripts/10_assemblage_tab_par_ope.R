@@ -42,30 +42,54 @@ source(file = "R/calcul_biomasse.R")
 
 
 
-#_______________________________________________________________________________
-######################## DISTINCTION DES CLASSES D'AGES ########################
-#_______________________________________________________________________________
 
 
-# Création d'un dataframe avec les mesures sueils calculées : 
+#_______________________________________________________________________________
+##############################  PARAMETRES #####################################
+#_______________________________________________________________________________
+
+## La liste des espèces souhaitée dans l'analyse et leurs tailles adultes minimum ----
 
 vecteur1 <- c("ABH","ABL","BBG","ALF","CTI",
               "ANG","ATB","BOU","BRB","BRE",
               "BRO","CAG","CAA","CCO","CHA",
               "CHE","EPI","EPT","FLE","GAH",
               "GAR","GOU","ALA","GRE","IDE",
-              "LPP","LPR","LPM","LOF","MUP","SDF",
-              "PER","PES","PLI","PCH","PSR",
-              "ROT","SAN","SAT","SIL",
-              "SPI","TAN","TAC","TRF","VAI","VAR")
+              "LPP","LPR","LPM","LOF","MUP",
+              "SDF","PER","PES","PLI","PCH",
+              "PSR","ROT","SAN","SAT","SIL",
+              "SPI","TAN","TAC","TRF","VAI",
+              "VAR","VAN","TRM","ASP",
+              "CMI","GBT","CCU")
 
-vecteur2 <- c(5.5, 10,13.75,49,77.5,42.5,5,4.05,20,27.5,33,30,20,47.5,6.5,
-               25,3.5,4,21.5,3,6.85,11,40,5.75,30,15,25,70,5.5,28.5,27,15,8,
-               27,20,30,40,70,10,24,21.25,12,7,14)
+vecteur2 <-
+  c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,35,40,215,
+    30,68.5,110,400,57.5,300,150,250,700,55,285,270,150,80,270,200,52.5,200,300,
+    400,700,100,240,212.5,185,70,140,137,185,400,450,38,500)
 
-tableau <- data.frame(x=vecteur1, y=vecteur2)
 
-# Création d'un dataframe accueillant toutes les données : 
+
+## Les espèces à retirer du jeu de données initial ----
+especes_a_retirer <- c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC","PFL","CCU","CAS")
+
+
+# Le nombre de passage souhaiter (ou selection entre le premier ou le second passage)
+
+passage_a_retirer <- c("2","3")
+
+# Remarque : si je souhaite enlever les premiers passages je dois sélectionner
+# "0" et "1" (cf ligne 137)
+
+#_______________________________________________________________________________
+######################## DISTINCTION DES CLASSES D'AGES ########################
+#_______________________________________________________________________________
+
+
+### Création d'un dataframe avec les mesures seuils d'adultes calculées ---- 
+tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1, taille_min_adu=vecteur2) #PARAMETRE
+
+
+### Création d'un df contenant les valeurs seuils des tailles minimum des adultes ----
 
 age_ind <- ref_espece %>% 
   select(-esp_code_sandre,
@@ -75,13 +99,93 @@ age_ind <- ref_espece %>%
          -esp_code_ipr,
          -esp_code_taxref,
          -esp_eligible_calcul_ipr,
-         -esp_eligible_calcul_iprplus)
+         -esp_eligible_calcul_iprplus) %>% 
+   left_join(tab_ref_taille) %>% 
+  select(-esp_id,
+         -esp_nom_commun,
+         -esp_taille_maximale) 
+
+
+
+########################### LONGUEURS MEDIANNES #################################
+
+# Ajout des mesures individuelles en partant de mes ope_selection 
+
+ope_selection <- passerelle %>% 
+  mef_ajouter_mei() %>%
+  mef_ajouter_lots() %>% 
+  mef_ajouter_passage() %>% 
+  mef_ajouter_esp() %>% 
+  mef_ajouter_type_longueur() %>% 
+  select(ope_id,
+         lop_id,
+         esp_code_alternatif,
+         mei_id,
+         sta_id,
+         pop_id,
+         mei_taille,
+         pas_numero)
+
+
+# Je retire les espèces non souhaitées de mon jeu de données : les écrevisses, 
+# les espèces indeterminées, ... et les passages non souhaités. 
+
+ope_selection <- subset(ope_selection, !esp_code_alternatif %in% especes_a_retirer)
+ope_selection <- subset(ope_selection, !pas_numero %in% passage_a_retirer)
+
+
+# Remplacer les "NA" des passages en 0 (car c'est un premier et unique passage)
+
+ope_selection <- ope_selection %>% 
+  dplyr::mutate(pas_numero = replace_na(pas_numero,0))
+
+
+
+# Je retire de mon jeu de données les lignes avec des "mei_id" NA (problème, à avoir avec Thibault !) ----
+ope_selection <- na.omit(ope_selection)
+
+# Je compose un df avec les longueurs médianes d'une espèce par opération - tailles confondues (lm_ope)
+# Je compose un df avec toutes les longueurs médiannes de chacune tailles des espèces (lm_ope_esp)
+ope_selection1 <- merge(ope_selection, age_ind, by ="esp_code_alternatif")
+
+ope_selection1$statut <- ifelse (ope_selection1$mei_taille < ope_selection1$taille_min_adu, "juvénile","adulte")
+
+  
+medianes <- ope_selection1 %>% 
+  group_by(esp_code_alternatif, ope_id, statut) %>% 
+  summarise(valeur = median(mei_taille))
+
+medianes <- medianes %>% 
+  mutate(indicateur = "longueur_medianne") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut)
+
+medianes_globales <- ope_selection1 %>% 
+  group_by(esp_code_alternatif, ope_id) %>% 
+  summarise(valeur = median(mei_taille))
+
+lm_ope <- medianes_globales %>% 
+  mutate(indicateur="longueur_medianne", statut = "toutes") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut)
+
+
+
+lm_ope_global <- bind_rows(medianes, lm_ope)
 
 
 ############################# DENSITES SURFACIQUES ###############################
 ## Je complète mon df ope_selection pour calculer mes surfaces échantillonnées
 
-ope_selection <- passerelle %>% 
+
+
+ope_selection <- ope_selection %>%
   left_join(y=lot_poissons %>% 
               select(lop_id,
                      esp_id = lop_esp_id,
@@ -92,86 +196,111 @@ ope_selection <- passerelle %>%
   select(-esp_id)
 
 
-# Calcul des surfaces échantillonnées
+ope_selection2 <- merge(ope_selection, age_ind, by ="esp_code_alternatif")
+ope_selection2$statut <- ifelse (ope_selection2$mei_taille < ope_selection2$taille_min_adu, "juvénile","adulte")
 
 
-ope_selection_surf <- ope_selection %>% 
+
+# Calcul des surfaces échantillonnées ----
+
+densites <- ope_selection2 %>% 
   left_join (y=operation %>% 
-               select (ope_id, ope_surface_calculee))
+               select (ope_id, 
+                       ope_surface_calculee,
+                       passage$pas_numero))
+
+densites <- densites %>% 
+  select (-ope_code_wama,
+          -ope_id_wama,
+          -ope_pop_id,
+          -taille_min_adu,
+          -sta_id)
 
 
-# Agrégation par opération et par espèces (somme des effectifs par espèce pour chaque opération)
-
-ope_selection_surf <- ope_selection_surf %>% 
+densites <- densites %>% 
   group_by(ope_id,
            esp_code_alternatif,
-           ope_surface_calculee) %>% 
+           ope_surface_calculee,
+           pas_numero,
+           statut) %>% 
   summarise(effectif=sum(lop_effectif)) %>% 
   ungroup()
 
-# Calcul des densités (en individus pour 1000 m²)
-
-ope_selection_densite <- ope_selection_surf %>% 
-  mutate (valeur = 1000*effectif / ope_surface_calculee) %>% 
-  select (-ope_surface_calculee)
 
 
 
-# Création d'une nouvelle colonne "indicateur"
+# Calcul des densités (en individus pour 1000 m²) ----
+
+densites1 <- densites %>% 
+  mutate(indicateur= "densite_surfacique") %>% 
+  mutate (valeur = 1000*effectif / ope_surface_calculee)
 
 
-ope_selection_densite <- ope_selection_densite %>% 
-  mutate(indicateur= "densite_surfacique")
+densites2 <- densites1 %>% 
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee) %>% 
+  summarise(effectif=sum(effectif)) %>% 
+  ungroup()
 
 
+densites_globales <- densites2 %>% 
+  group_by(esp_code_alternatif, ope_id) %>% 
+  summarise(valeur = 1000*effectif / ope_surface_calculee)
 
 
-# Création de mon df ds_ope (qui correspond à mes densite surfacique)
-ds_ope <- ope_selection_densite %>% #ds pour densité surfacique
+ds_ope <- densites_globales %>% 
+  mutate(indicateur="densites_surface", statut = "toutes") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
-         -effectif)
+         statut)
+
+
+ds_ope_global <- bind_rows(densites1, ds_ope) 
+ds_ope_global <- ds_ope_global %>% 
+  select(-pas_numero,
+         -effectif,
+         -ope_surface_calculee)
 
 
 
-########################### LONGUEURS MEDIANNES #################################
+########################## POURCENTAGE DE JUVENILES ############################
+# Pour calculer le pourcentage de juvénils par espèces et par opération, je débute
+# du tableau densites1 qui regroupe les effectifs d'adultes et de juvénils par espèces
+# et par opération
 
 
-# En partant de mes ope_selection je dois maintenant ajouter le tableau des mesures individuelles
+totals <- densites1 %>% 
+  group_by(ope_id, esp_code_alternatif, statut) %>% 
+  summarise (total_effectif = sum(effectif))
 
-ope_selection_lm <- passerelle %>% 
-  mef_ajouter_mei() %>%
-  mef_ajouter_lots() %>% 
-  mef_ajouter_esp() %>% 
-  mef_ajouter_type_longueur() %>% 
-  select(ope_id,
-         lop_id,
-         esp_code_alternatif,
-         mei_id,
-         sta_id,
-         pop_id,
-         mei_taille)
+juveniles <- totals %>% 
+  filter(statut == "juvénile") %>% 
+  rename(total_juveniles = total_effectif)
 
 
-# Je cherche maintenant à calculer les longueurs mediannes
+# Fusionner les totaux avec les totaux de juvéniles
 
-ope_selection_lmed <- ope_selection_lm %>% 
-  group_by(ope_id,esp_code_alternatif) %>% 
-  summarise(valeur=median(mei_taille, na.rm=TRUE))
+result <- totals %>%
+  left_join(juveniles, by = c("ope_id", "esp_code_alternatif")) %>%
+  mutate(total_juveniles = coalesce(total_juveniles, 0)) %>% # Remplacer les NA par 0
+  group_by(ope_id, esp_code_alternatif) %>%
+  summarise(total_effectif = sum(total_effectif),
+            total_juveniles = sum(total_juveniles)) %>%
+  mutate(percentage_juveniles = (total_juveniles / total_effectif) * 100,
+         statut = "toutes") %>%
+  select(ope_id, esp_code_alternatif, statut, percentage_juveniles, total_effectif)
 
-lm_ope <- ope_selection_lmed %>% 
-  mutate(indicateur="longueur_medianne") %>% 
-  select(ope_id,
-         esp_code_alternatif,
-         indicateur,
-         valeur)
+# Ici j'ai des pourcentages qui vont au dela de 100 donc c'est un problème, a revoir !
+
 
 
 
 ######################### INTERVALLE INTERQUARTILE #############################
 # Je cherche maintenant à calculer l'intervalle interquartile des longueurs
+
 
 l_inter_qua_ope <- ope_selection_lm %>% 
   group_by(ope_id,esp_code_alternatif) %>% 
@@ -332,7 +461,7 @@ dv_ope <- tab_ds %>%
 ######################## CREATION TABLEAU FINAL EMPILE #######################
 
 # J'empile les différentes valeurs pour créer le tableau pré-final
-indicateur_ope <- rbind(ds_ope,lm_ope,l_inter_qua_ope,l_25_ope,l_75_ope)
+indicateur_ope <- rbind(ds_ope) #,lm_ope)#l_inter_qua_ope,l_25_ope,l_75_ope)
 
 #Vérification que nous avons bien la même valeur pour nos différents indicateurs
 table(indicateur_ope$indicateur)
