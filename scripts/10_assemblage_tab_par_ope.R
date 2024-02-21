@@ -465,3 +465,24 @@ dsv_ope_global <- ds_ope_global %>%
 print(dsv_ope)
 print(dsv_ope_global)
 
+
+
+
+
+
+
+
+################## Indicateurs régionaux :
+# Pour les indicateurs calculés au point, on agrège chaque année leur valeur à 
+# l'échelle régionale. 
+
+# Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale,
+# comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
+
+
+
+
+
+
+
+
