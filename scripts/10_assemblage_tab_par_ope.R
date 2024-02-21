@@ -25,6 +25,7 @@ library (khroma)
 ## Chargement des données ----
 
 load(file = "processed_data/selection_pop_ope.rda")
+load(file = "processed_data/pre_traitements_donnees_env.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
@@ -39,7 +40,6 @@ mei_table <- misc_nom_dernier_fichier(
 load(mei_table)
 
 source(file = "R/calcul_biomasse.R")
-
 
 
 
@@ -140,8 +140,7 @@ ope_selection <- ope_selection %>%
   dplyr::mutate(pas_numero = replace_na(pas_numero,0))
 
 
-
-# Je retire de mon jeu de données les lignes avec des "mei_id" NA (problème, à avoir avec Thibault !) ----
+# Je retire de mon jeu de données les tailles individuelles issues de lots "G" - inexploitables.
 ope_selection <- na.omit(ope_selection)
 
 # Je compose un df avec les longueurs médianes d'une espèce par opération - tailles confondues (lm_ope)
@@ -313,6 +312,8 @@ densites <- ope_selection2 %>%
                        ope_surface_calculee,
                        passage$pas_numero))
 
+
+
 densites <- densites %>% 
   select (-ope_code_wama,
           -ope_id_wama,
@@ -321,11 +322,25 @@ densites <- densites %>%
           -sta_id)
 
 
-densites <- densites %>% 
+
+
+densites1 <- densites %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee,
            pas_numero,
+           lop_effectif,
+           statut) %>% 
+  summarise(effectif=sum(lop_effectif)) %>% 
+  ungroup()
+
+# C'est une technique approbable mais ça marche pour rendre mon effectif bon ! 
+densites <- densites1 %>% 
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee,
+           pas_numero,
+           lop_effectif,
            statut) %>% 
   summarise(effectif=sum(lop_effectif)) %>% 
   ungroup()
@@ -335,12 +350,12 @@ densites <- densites %>%
 
 # Calcul des densités (en individus pour 1000 m²) ----
 
-densites1 <- densites %>% 
+densites2 <- densites %>% 
   mutate(indicateur= "densite_surface") %>% 
   mutate (valeur = (1000*effectif / ope_surface_calculee))
 
 
-densites2 <- densites1 %>% 
+densites3 <- densites2 %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
@@ -379,12 +394,12 @@ ds_ope_global <- ds_ope_global %>%
 
 totals <- densites1 %>% 
   group_by(ope_id, esp_code_alternatif) %>% 
-  summarise (total_effectif = sum(effectif))
+  summarise (total_effectif = mean(sum(effectif)))
 
 juveniles <- densites1 %>% 
   filter(statut == "juvénile") %>% 
   group_by(ope_id, esp_code_alternatif) %>% 
-  summarise(total_juveniles = sum(effectif))
+  summarise(total_juveniles = mean(sum(effectif)))
 
 
 pourjuv_ope <- left_join(totals, juveniles, by = c("ope_id", "esp_code_alternatif")) %>%
@@ -429,36 +444,24 @@ indicateur_ope <- indicateur_ope %>%
 
 
 
-
 ############################ DENSITE VOLUMIQUE #################################
 
-# Je créer un tableau contenant à la fois les densités surfaciques et les profondeurs
+# Calcul de la densité volumique par opération, espèce et statut "toutes" (juvéniles et adultes confondus)
 
-tab_ds <- ds_ope %>% 
-  select(ope_id,
-         valeur)
-
-tab_prof <- ope_selection_param_env3 %>%
-  filter(parametre == "profondeur") %>% 
-  select(ope_id.x,
-         valeur)
+dsv_ope <- ds_ope %>%
+  inner_join(ope_selection_param_env2 %>% filter(parametre == "profondeur"), by = "ope_id") %>%
+  mutate(densite_volumique = ds_ope$valeur * ope_selection_param_env2$valeur) %>%
+  select(ope_id, esp_code_alternatif, indicateur, valeur = densite_volumique, statut = "toutes")
 
 
-# Ici je suis bloquée car je n'ai pas encore mes valeurs médianes qui remplaces les NA ... donc pas
-# la même longueur au niveau de mes colonnes ! 
+# Calcul de la densité volumique par opération, espèce et statut "juvéniles", "adultes" et "toutes"
 
-dv_ope <- tab_ds %>% 
-  mutate(valeur = valeur / tab_prof %>% 
-           select(valeur))
-
+dsv_ope_global <- ds_ope_global %>%
+  inner_join(ope_selection_param_env2 %>% filter(parametre == "profondeur"), by = "ope_id") %>%
+  mutate(densite_volumique = ds_ope_global$valeur * ope_selection_param_env2$valeur)
 
 
-
-
-
-
-
-
-
-
+# Affichage des tableaux résultants
+print(dsv_ope)
+print(dsv_ope_global)
 

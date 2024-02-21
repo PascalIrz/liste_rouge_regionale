@@ -14,6 +14,7 @@
 #install.packages("khroma")
 #install.packages("lemon")
 #install.packages("ggthemes")
+#install.packages("zoo")
 
 library(lemon)
 library(ggthemes)
@@ -21,7 +22,7 @@ library(tidyverse)
 library(aspe)
 library(ggplot2)
 library (khroma)
-
+library(zoo)
 
 ## Chargement des données ----
 
@@ -57,7 +58,8 @@ ope_selection_param_env <- passerelle %>%
   mef_ajouter_ope_date() %>% 
   select(-ope_date,
          -sta_id,
-         -distance_mer)
+         -distance_mer,
+         -obj_id)
 
 
 ope_selection_param_env2 <- ope_selection_param_env %>% 
@@ -68,21 +70,23 @@ ope_selection_param_env2 <- ope_selection_param_env %>%
 
 # GESTION DES NA DANS LE JEU DE DONNEES ENV ---- 
 
-# Je fais apparaître mes NA dans mon jeu de données environnement : 
+# Je fais apparaître mes NA dans un nouveau jeu de données : 
+rows_with_missing <- which(apply(is.na(ope_selection_param_env2), 1, any))
+print(ope_selection_param_env2[rows_with_missing, ])
 
-
-ope_selection_param_env3 <- left_join(ope_selection_param_env, 
-                                      ope_selection_param_env2,
-                                      by = "annee")
 
 
 # Une fois que mes NA seront apparants : je remplace ces NA par les médianes :
 
-ope_selection_param_env3 %>% 
-  group_by(parametre, pop_id.x) %>% 
-  mutate (valeur = (ifelse (is.na (valeur), 
-                            yes = median (valeur, na.rm = TRUE), 
-                            no = valeur)))
+# Trier les données par paramètre et par année
+ope_selection_param_env2 <- ope_selection_param_env2 %>% 
+  arrange(parametre, annee)
+
+
+# Remplacer les valeurs manquantes par les médianes des autres données relatives aux points de prélèvements
+ope_selection_param_env2 <- ope_selection_param_env2 %>%
+  group_by(parametre) %>%
+  mutate(valeur = ifelse(is.na(valeur), zoo::na.aggregate(valeur, median), valeur))
 
 
 
@@ -125,3 +129,6 @@ ope_selection_param_env2 %>%
 
 
 
+# SAUVEGARDE ----
+save(ope_selection_param_env2,
+     file = "processed_data/pre_traitements_donnees_env.rda")
