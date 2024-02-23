@@ -422,7 +422,7 @@ ope_densitesurf1 <- ope_densitesurf %>%
 
 
 ope_densitevol <- left_join(ope_densitesurf1, ope_selection_param_env_prof, by = "ope_id") %>%
-  mutate(valeur = valeur_ds * valeur_prof) %>%
+  mutate(valeur = valeur_ds / valeur_prof) %>%
   mutate(indicateur = "densite_volumique") %>% 
   select(ope_id, esp_code_alternatif, statut, indicateur,valeur)
 

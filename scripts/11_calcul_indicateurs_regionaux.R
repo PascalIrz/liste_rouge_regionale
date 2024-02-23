@@ -20,7 +20,7 @@ library(aspe)
 library(ggplot2)
 library (khroma)
 library(dplyr)
-
+library(wesanderson)
 
 ## Chargement des données ----
 
@@ -38,7 +38,11 @@ mei_table <- misc_nom_dernier_fichier(
   pattern = "^mei")
 
 load(mei_table)
-source(file = "R/calcul_biomasse.R")
+
+source(file = "R/mk_st_by_group.R")
+
+# Chargement de la palette de couleur utilisée : 
+pal <- wes_palette("AsteroidCity1")
 
 
 
@@ -47,12 +51,45 @@ source(file = "R/calcul_biomasse.R")
 ##################### CONSTITUTION JEU DE DONNEES ##############################
 #_______________________________________________________________________________
 
-# Construction d'un df pour les indicateurs calculés au point ----
+# Construction d'un df pour les indicateurs calculés au point de prélèvement (pop_id)  ----
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 pop_indicateur <- ope_indicateur %>%
   group_by(esp_code_alternatif, annee, statut, indicateur) %>%
-  summarize(median_value = median(valeur)) %>%
+  summarize(valeur = median(valeur)) %>%
   ungroup() %>% 
   distinct()
+
+
+
+# Représentation graphique de mes données : 
+
+mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5)
+
+graphique <- pop_indicateur %>% 
+  filter(esp_code_alternatif%in%mes_do) %>% 
+  ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
+  geom_line() +
+  facet_grid(indicateur ~ esp_code_alternatif , scales = "free") + 
+  scale_color_manual(values= pal)
+
+
+print(graphique)
+
+################################################################################
+
+# On souhaite observer les différentes tendances présentes sur les différents
+# indicateurs calculés : 
+
+per_25 <- pop_indicateur %>% 
+  filter (indicateur== "25_percentiles") %>% 
+  select(-indicateur)
+
+
+mk_st_by_group(per_25, valeur, annee)
+
+
+
+
+
 
 
