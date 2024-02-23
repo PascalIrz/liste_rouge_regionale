@@ -447,7 +447,7 @@ ope_indicateur <- rbind(ope_lm,
                         ope_densitevol,
                         ope_pourcentjuv)
 
-#Vérification des valeurs des différents indicateurs (doivent être égales)
+# Vérification des valeurs des différents indicateurs (doivent être égales)
 table(ope_indicateur$indicateur)
 
 
@@ -460,22 +460,20 @@ ope_indicateur <- ope_indicateur %>%
                      pop_id= ope_pop_id,
                      ope_date)) 
 
+ope_indicateur <- ope_indicateur %>% 
+  mef_ajouter_ope_date()
+
+ope_indicateur <- ope_indicateur %>% 
+  select(ope_id, 
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut,
+         pop_id,
+         annee)
 
 
-
-
-################## Indicateurs régionaux :
-
-# Pour les indicateurs calculés au point, on agrège chaque année leur valeur à 
-# l'échelle régionale. 
-
-# Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale,
-# comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
-
-
-
-
-
-
-
+# SAUVEGARDE ----
+save(ope_indicateur,
+     file = "processed_data/assemblage_tab_par_ope.rda")
 

@@ -49,7 +49,6 @@ source(file = "R/calcul_biomasse.R")
 
 
 # Je créer un tableau avec mes variables environnement : 
-
 ope_selection_param_env <- passerelle %>% 
   select(-lop_id,
          -pre_id) %>% 
@@ -92,7 +91,6 @@ ope_selection_param_env2 <- ope_selection_param_env2 %>%
 
 
 # Représentation de mes variables environnements (avec facet_wrap) : 
-
 mes_id <- sample(unique(ope_selection_param_env2$pop_id), 2)
 ope_selection_param_env2 %>% 
   filter(pop_id%in% mes_id) %>% 
@@ -112,8 +110,6 @@ ope_selection_param_env2 %>%
 
 
 # Représentation de mes variables environnements (avec facet_grid) : mais problème d'échelle
-
-
 mes_id <- sample(unique(ope_selection_param_env2$pop_id), 2) 
 ope_selection_param_env2 %>% 
   filter(pop_id%in% mes_id) %>% 
