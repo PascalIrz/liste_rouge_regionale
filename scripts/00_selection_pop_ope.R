@@ -46,15 +46,15 @@ pal <- wes_palette("AsteroidCity1")
 taille_buffer <- 1000
 
 
-## Les réseaux de pêche ----
+## Les réseaux de pêches ----
 
 mes_reseaux <- c("RCS – Réseau de Contrôle de Surveillance",
                  "RRP – Réseau de Référence Pérenne",
                  "RHP – Réseau Hydrobiologique Piscicole")
 
-## Les types de pêche ----
+## Les types de pêches ----
 
-type_de_peche <- c("Pêche complète à un ou plusieurs passages",
+mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages",
                    "Pêche partielle par points (grand milieu)",
                    "Pêche par ambiances",
                    "Pêche partielle sur berge")
@@ -64,7 +64,7 @@ type_de_peche <- c("Pêche complète à un ou plusieurs passages",
 ## Le nombre minimum d'années sur les séries de pêches  ----
 n_mini_annees <- 9 
 
-## Le nombre de d'années "trou" minimum et maximum dans les données ----
+## Le nombre d'années manquantes consécutives maximum sur les séries de pêches  ----
 n_max_manquant <- 2
 
 
@@ -76,13 +76,11 @@ n_max_manquant <- 2
 #_______________________________________________________________________________
 
 ## Création d'une passerelle ----
-
 passerelle <- mef_creer_passerelle()
 
 
 ## Sélection de l'aire géographique ----
 # Echelle départementale : Exemple : La Bretagne
-
 mes_depts <- departements_metro_geo %>% 
   filter (DEP %in% c("22", "29", "35", "56"))
 
@@ -96,7 +94,6 @@ mes_depts %>%
 # des paramètres (ci-dessus).
 
 ## Mise en place d'un buffer ----
-
 bzh_buff <- st_buffer(mes_depts, taille_buffer) # PARAMETRES
 
 # Visualisation des départements et du buffer
@@ -130,28 +127,32 @@ passerelle <- passerelle %>%
 
 
 ## Sélection des réseaux de pêches (cf paramètres) ---- 
-
 passerelle <- passerelle %>%
   mef_ajouter_objectif() %>% 
   filter(obj_libelle %in% mes_reseaux)
 
 
 ## Création d'un dataframe contenant seulement la sélection des pêches choisies ---- 
-
 mes_ope <- passerelle %>% 
   mef_ajouter_type_protocole() %>%
-  filter(pro_libelle %in% type_de_peche) %>% 
+  filter(pro_libelle %in% mes_types_de_peche) %>% 
   select(sta_id:ope_id, pro_libelle) %>% 
   distinct()
 
 
-
-## Sélection des séries de pêches avec au moins 9 années de données (paramètres) ----
-
-annee_de_donnees <- mes_ope %>%
+mes_ope <- mes_ope %>%
   mef_ajouter_ope_date()
 
-bilan_annee_de_donnees <- annee_de_donnees %>% 
+
+## Sélection d'une seule pêche par années, par station ----
+# (cas des sites avec plusieurs pêches la même année)
+mes_ope <- mes_ope %>% 
+  group_by(pop_id, annee) %>% 
+  filter(ope_date == max(ope_date))
+
+
+## Sélection des séries de pêches avec au moins 9 années de données (paramètres) ----
+bilan_annee_de_donnees <- mes_ope %>% 
   group_by (pop_id) %>% 
   summarise(n_annee = n_distinct(annee), 
             premier_annee=min(annee),dernier_annee=max(annee),duree=dernier_annee-premier_annee)
@@ -164,38 +165,8 @@ colnames(bilan_annee_de_donnees)[2] <- "nombre_annees_totales"
 print(bilan_annee_de_donnees)
 
 
-
-## Représentation graphique de stations sélectionnées (et types de pêches associées) ----
-
-annee_de_donnees %>% 
-  filter(pop_id %in% mes_pop_id) %>% 
-  mef_ajouter_libelle_site() %>% 
-  ggplot(aes(x = as.character(pop_libelle),
-             y = annee, 
-             fill= pro_libelle)) + 
-  scale_fill_manual(values= pal) +
-  geom_tile() +
-  labs(title = "Les stations sélectionnées et les types de pêches associées",
-       subtitle = "Région Bretagne",
-       x = "Station", 
-       y = "Années",
-       fill = "Type de pêche") + 
-  theme(legend.background = element_rect(fill="lightgray")) +
-  coord_flip()
-
-
-
-## Sélection d'une seule pêche par années, par station ----
-# (cas des sites avec plusieurs pêches la même année)
-annee_de_donnees <- annee_de_donnees %>% 
-  group_by(pop_id, annee) %>% 
-  filter(ope_date == max(ope_date))
-
-
-
 ## Sélection des stations ayant un nombre d'années maximum de suivis consécutifs manquant par station (paramètres) ----
-
-series <- annee_de_donnees %>% 
+series <- mes_ope %>% 
   borner_series(var_id_site = pop_id,
                 var_temp = annee,
                 max_nb_obs_manquantes = n_max_manquant) # PARAMETRE
@@ -206,17 +177,39 @@ series <- series %>%
   select(-annee_mini)
 
 
+## Représentation graphique de stations sélectionnées (et types de pêches associées) ----
+mes_ope %>% 
+  filter(pop_id %in% mes_pop_id) %>% 
+  mef_ajouter_libelle_site() %>% 
+  ggplot(aes(x = as.character(pop_libelle),
+             y = annee, 
+             fill= pro_libelle),
+         legend.background = element_rect(fill="#ffffff")) + 
+  scale_fill_manual(values= pal) +
+  geom_tile() +
+  labs(title = "Les stations sélectionnées et les types de pêches associées",
+       subtitle = "Région Bretagne", 
+       x ="",
+       y = "Années",
+       fill = "Type de pêche") + 
+  theme_light(base_size = 11) +
+  theme(panel.grid.major = element_line(color="#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill="#faf0e6")) +
+  coord_flip()
+
 
 ## Construction d'un nouveau dataframe avec toutes les opérations de pêches
 # présentes dans les stations retenues
-
-ope_selection <- annee_de_donnees %>% 
+ope_selection <- mes_ope %>% 
   left_join(series) %>% 
   filter(!is.na(debut),
          annee >= debut,
          annee <= fin) %>% 
   select(-debut, -fin, -n_opes) %>% 
   ungroup()
+
+
 
 # --- Enregistrement des opérations de pêches retenues dans la passerelle
 passerelle <- passerelle %>% 
@@ -272,8 +265,6 @@ sta_plusieurs_pop <- df %>%
   arrange(sta_id)
 
 # REMARQUE : sta_plusieurs_pop = 3 stations à 2 points de prélèvement (doublons)
-
-
 
 
 # SAUVEGARDE ----

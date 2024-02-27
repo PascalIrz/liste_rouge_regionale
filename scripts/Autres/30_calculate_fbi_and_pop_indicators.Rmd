@@ -1,0 +1,433 @@
+---
+title: "Fish population trends in the rivers of Britanny"
+subtitle: "Calculation of population indicators"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+#  bookdown::word_document2
+always_allow_html: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Setup
+
+## Load packages and functions
+
+```{r}
+# if necessary
+# devtools::install_github("pascalirz/aspe")
+library(aspe)
+library(tidyverse)
+
+# install custom functions
+source("../R/functions.R")
+```
+
+## Load data
+
+```{r}
+# retrieve most recent data file from repo 
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+# load it
+load(rdata_tables)
+
+load(file = "../processed_data/20_selected_data.RData")
+```
+
+
+# Fish-based Index
+
+## Aggregated index
+
+Here we add a color palette to use as background in plots. A distinction in the quality classes threshold has recently been introduced depending on site altitude, but here we stick to the genuine thresholds, ie we remove the thresholds corresponding to the sites over 500m in altitude.
+
+```{r}
+fbi_classes <- classe_ipr %>%
+  aspe::ip_completer_classes_couleur() %>% 
+  filter(cli_altitude_min != 500 | is.na(cli_altitude_min))
+```
+
+Assembly of the dataset
+
+```{r}
+fbi <- surveys %>% 
+  mef_ajouter_ipr() %>% # add FBI score
+  mef_ajouter_metriques() %>% # add FBI metrics scores
+  # add hydrographic districts
+  left_join(y = point_prelevement %>% 
+              select(pop_id, unh_id = pop_unh_id)) %>% 
+  left_join(y = ref_unite_hydrographique %>% 
+              select(unh_id, unh_libelle)) %>% 
+  select(-unh_id)
+```
+
+Add the reference and/or non-reference status of the survey
+
+> NB this duplicates the surveys contributing to more than one
+
+```{r}
+# fbi <- fbi %>% 
+#   left_join(points_ref_status_2_cats %>% 
+#               select(-n_ope))
+
+# remove the surveys on "reference sites" before REFNET was set up
+# fbi <- fbi %>% 
+#   filter(!(network == "REFNET" & annee < params$refnet_start))
+```
+
+Calculation of quantiles for the `geom_ribbon()` plot.
+
+```{r}
+# fbi_quartiles <- fbi %>% 
+#   group_by(annee, network) %>% 
+#   summarise(p25 = quantile(ipr, 0.25, na.rm = TRUE),
+#             p50 = quantile(ipr, 0.50, na.rm = TRUE),
+#             p75 = quantile(ipr, 0.75, na.rm = TRUE)) %>% 
+#   ungroup()
+# 
+# fbi_pc_quality_class <- fbi %>% 
+#   group_by(annee, network) %>% 
+#   summarise(pc_very_good = sum(ipr < 5) / n(),
+#             pc_good_or_better = sum(ipr < 16) / n(),
+#             pc_mediocre_or_better = sum(ipr < 25) / n(),
+#             pc_bad_or_better = sum(ipr < 36) / n()) %>% 
+#   ungroup()
+# 
+# fbi_quartiles <- fbi_quartiles %>% 
+#   left_join(y = fbi_pc_quality_class)
+```
+
+## FBI metrics
+
+Build a dataframe with the FBI metrics, organised in 'long' format.
+
+```{r, eval=TRUE}
+# fbi_metrics <- fbi %>% 
+#   select(sta_id:annee, ner:dti, unh_libelle, network) %>% 
+#   # put into "long format" for the faceted plot
+#   pivot_longer(cols = ner:dti,
+#                names_to = "metric",
+#                values_to = "value") %>% 
+#   # translate metrics abbreviations into ENG labels
+#   mutate(metric = fct_recode(metric,
+#     "dens_invertivorous_indiv" = "dii",
+#     "dens_omnivorous_indiv" = "dio",
+#     "dens_tolerant_indiv" = "dit",
+#     "dens_total_indiv" = "dti",
+#     "nb_lithophilic_sp" = "nel",
+#     "nb_rheophilic_sp" = "ner",
+#     "nb_total_sp" = "nte"),
+#          # for a nicer plot
+#          metric = fct_rev(metric))
+# 
+# fbi_metrics %>% 
+#   head() %>% 
+#   mutate(across(c(sta_id:ope_id, annee), as.character)) %>% 
+#   flextable::flextable()
+```
+
+Calculate the annual median of each metric across sites
+
+```{r}
+# fbi_metrics_median <- fbi_metrics %>% 
+#   group_by(annee, metric, network) %>% 
+#   summarise(p50 = median(value, na.rm = TRUE)) %>% 
+#   ungroup()
+```
+
+# Populations trends
+
+## Species occurrence probability
+
+This information is in the Aspe database and obtained using the function `aspe::mef_ajouter_proba_presence_ipr()`.
+
+```{r}
+# Assembly of a temp dataframe
+sp_proba_init <- fbi %>% 
+  select(sta_id:annee) %>% 
+  distinct() %>% 
+  # add probabilities of occurrence from dataframe "probabilite_presence_ipr"
+  mef_ajouter_proba_presence_ipr() %>% 
+  rename(sp_proba_occur = ppi_valeur_probabilite, # proba occurrence
+         obs_nb_indiv = ppi_param_effectif # observed catches
+  ) %>% 
+  # add species scientific name
+  left_join(y = ref_espece %>% 
+              select(esp_id, # species id
+                     esp_nom_latin # species scientific name
+              )) %>% 
+  # recode some inacurate species names
+  latin_recoding(var_latin_name = esp_nom_latin)
+```
+
+The species are considered as predicted present if, and only if, their modeled probability of occurrence exceeds 0.5 (cf. Oberdorff et al. (2002) Development and validation of a fish‐based index for the assessment of 'river health' in France. Freshwater Biology, 47(9), 1720-1734).
+
+```{r}
+sp_proba <- sp_proba_init %>%
+  mutate(sp_pred_presence = sp_proba_occur >= 0.5, # threshold between pres and abs
+         sp_obs_presence = obs_nb_indiv > 0) %>%
+  select(ope_id,
+         annee,
+      #   network,
+         esp_nom_latin,
+         sp_pred_presence,
+         sp_obs_presence)
+```
+
+Here we distinguish the cases as in a confusion matrix (good model prediction, false positive and false negative).
+
+```{r}
+confusion1 <- sp_proba %>%
+  mutate(
+    case = case_when(
+      sp_pred_presence & sp_obs_presence ~ "pred_pres_obs_pres",
+      !sp_pred_presence & sp_obs_presence ~ "pred_abs_obs_pres",
+      sp_pred_presence & !sp_obs_presence ~ "pred_pres_obs_abs",
+      !sp_pred_presence & !sp_obs_presence ~ "pred_abs_obs_abs"
+    )
+  )
+
+# nb surveys by year
+n_surveys_by_year <- sp_proba %>%
+  group_by(annee) %>%
+  summarise(n_surveys = n_distinct(ope_id))
+
+# count of confusion cases
+confusion <- confusion1 %>%
+  group_by(esp_nom_latin, annee, case) %>%
+  tally() %>%
+  ungroup()
+
+# completing missing combinations
+confusion <- confusion %>%
+  select(esp_nom_latin, annee, case, n) %>%
+  complete(esp_nom_latin, annee, case, fill = list(n = 0)) %>%
+  left_join(y = n_surveys_by_year) %>%
+  pivot_wider(names_from = case,
+              values_from = n) %>%
+  # calculation of percentages
+  mutate(
+    pc_pred_abs_obs_pres = pred_abs_obs_pres / n_surveys,
+    pc_pred_pres_obs_abs = pred_pres_obs_abs / n_surveys,
+    pc_pred_pres_obs_pres = pred_pres_obs_pres / n_surveys
+  )
+
+confusion %>% 
+  sample_n(10) %>% 
+  mutate(across(annee, as.character)) %>% 
+  flextable::flextable() %>% 
+  flextable::color(j = c(4, 7), color = "green", part = "body", source = j) %>% 
+  flextable::color(j = c(5, 6), color = "red", part = "body")
+  
+```
+
+## Species densities
+
+For each species, the densities (in number of individuals per 1000 m²) are first calculated for each survey, then averaged by year.
+
+```{r}
+# my_species <- c(
+# "Abramis brama",
+# "Alburnus alburnus",
+# "Barbatula barbatula",
+# "Cottus perifretum",
+# "Cyprinus carpio",
+# "Esox lucius",
+# "Gasterosteus aculeatus",
+# "Gobio gobio",
+# "Gymnocephalus cernuus",
+# "Lampetra planeri",
+# "Leuciscus burdigalensis",
+# "Perca fluviatilis",
+# "Phoxinus phoxinus",
+# "Pungitus pungitus",
+# "Rutilus rutilus",
+# "Salmo trutta",
+# "Scardinius erythrophthalmus",
+# "Squalius cephalus",
+# "Tinca tinca"
+# )
+
+breams <- c("BRB", "BRE")
+
+bream_densities_ope <- densities_ope %>% 
+  filter(esp_code_alternatif %in% breams) %>% 
+  mutate(esp_nom_latin = ifelse(esp_code_alternatif == "BRE", "Abramis brama", "Blicca bjoerkna"))
+
+bream_densities <- bream_densities_ope %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(density = mean(density)) %>% 
+  select(year = annee,
+         esp_nom_latin,
+         density)
+  
+fbi_taxa_densities_ope <- sp_proba_init %>% 
+  mef_ajouter_surf_calc() %>% 
+  mutate(density = 1000 * obs_nb_indiv / ope_surface_calculee)
+
+fbi_taxa_densities <- fbi_taxa_densities_ope %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(density = mean(density)) %>% 
+  filter(esp_nom_latin != "Abramis brama") %>% 
+  rename(year = annee)
+
+densities_ope <- rbind(fbi_taxa_densities_ope %>% 
+                         select(sta_id:annee, esp_nom_latin, density),
+                       bream_densities_ope%>% 
+                         select(sta_id:annee, esp_nom_latin, density))
+
+densities <- rbind(fbi_taxa_densities,
+                   bream_densities)
+```
+
+## Species occurency rate across sites
+
+For each species and each year, this indicator is the ratio of the number of sites where the species was observed by the number of sites surveyed.
+
+```{r}
+# fbi_taxa_occupancy <- sp_proba_init %>% 
+#   filter(obs_nb_indiv > 0) %>% 
+#   group_by(annee, esp_nom_latin) %>% 
+#   summarise(n_occur = n_distinct(ope_id)) %>% 
+#   ungroup() %>% 
+#   left_join(n_surveys_by_year) %>% 
+#   mutate(occurency_rate = n_occur / n_surveys)
+
+occupancy <- densities_ope %>% 
+  filter(density > 0) %>% 
+  group_by(annee, esp_nom_latin) %>% 
+  summarise(n_occur = n()) %>% 
+  left_join(y = n_surveys_by_year) %>% 
+  mutate(pc_occur = n_occur / n_surveys)
+  
+```
+
+## Assembly of population indicators
+
+```{r}
+sp_occ <- occupancy %>% 
+  select(-n_occur, -n_surveys) %>% 
+  rename(value = pc_occur) %>% 
+  mutate(indicator = "occurency_rate")
+
+sp_densities <- densities %>% 
+#  left_join(y = ref_espece %>%  select(esp_code_alternatif, esp_nom_latin)) %>% 
+  mutate(indicator = "density") %>% 
+  select(annee = year,
+         esp_nom_latin,
+         value = density,
+         indicator)
+  
+  
+names(sp_occ)
+names(sp_densities)
+
+sp_indicators <- rbind(sp_occ, sp_densities)
+names(sp_indicators)
+
+names(confusion)
+
+sp_models <- confusion %>% 
+  select(esp_nom_latin,
+         annee,
+         false_abs = pc_pred_abs_obs_pres,
+         false_pres = pc_pred_pres_obs_abs,
+         true_pres = pc_pred_pres_obs_pres) %>% 
+  pivot_longer(cols = false_abs:true_pres,
+               names_to = "indicator",
+               values_to = "value") %>% 
+  left_join(y = ref_espece %>% 
+              select(esp_code_alternatif, esp_nom_latin)) %>% 
+  select(names(sp_indicators))
+
+sp_indicators <- sp_indicators %>% 
+  rbind(sp_models)
+```
+
+## The breams
+
+In the models underlying the FBI, the common bream and the white bream are pooled together, so they can not be used at the species-level. Therefore, we choose to exclude the population indicators derived from these models for these two species. They are replaced by zeros in order to keep the data structure constant for graphical display.
+
+```{r}
+sp_indicators <- sp_indicators %>% 
+  mutate(value = ifelse(esp_nom_latin == "Abramis brama" &
+                          indicator %in% c("false_abs", "false_pres", "true_pres"),
+                        0,
+                        value))
+
+white_bream1 <- sp_indicators %>% 
+  filter(esp_nom_latin == "Blicca bjoerkna" & indicator == "density") %>% 
+  mutate(value = 0,
+         indicator = "false_abs")
+
+white_bream2 <- white_bream1 %>% 
+    mutate(indicator = "false_pres")
+
+white_bream3 <- white_bream1 %>% 
+    mutate(indicator = "true_pres")
+
+white_bream <- rbind(white_bream1, white_bream2, white_bream3)
+```
+
+Add the white bream indicators to the main dataframe.
+
+```{r}
+sp_indicators <- sp_indicators %>% 
+  rbind(white_bream)
+```
+
+## Restriction to the appropriate nb of years by species
+
+The Red List method is to assess population trends in a time lapse defined as the maximum between 10 years and 3 times the species generation time. The dataset, so far, starts in 2007 and ends in 2023 (17 annual data, allowing the study of trends on 16 annual intervals). Hence, for the species with a generation time 5 years (lapse 3 x 5y = 15y) or less, the dataset has to be filtered to exclude the oldest data.
+
+```{r}
+sp_generation_time <- readxl::read_xlsx("../raw_data/Temps de génération.xlsx")
+
+sp_start_date <- sp_generation_time %>% 
+  mutate(sp_start_year = 2023 - `Période étude`) %>% 
+  select(esp_nom_latin = Espèce,
+         generation_time = `Temps génération`,
+         sp_start_year)
+
+sp_indicators <- sp_indicators %>% 
+  left_join(sp_start_date) %>% 
+  filter(!is.na(sp_start_year),
+         annee >= sp_start_year) %>% 
+  select(-sp_start_year)
+```
+
+
+
+
+
+# Saving
+
+```{r}
+save(#fbi,
+     # fbi_quartiles,
+     # fbi_metrics,
+     # points_ref_status_2_cats,
+     # fbi_metrics_median,
+     # fbi_classes,
+     points_geo,
+     points,
+     # sp_proba,
+     # confusion1,
+     # confusion,
+     # classe_ipr,
+     # sp_occupancy,
+     # sp_densities,
+     # env_surveys,
+     sp_start_date,
+     ref_espece,
+     densities_ope,
+     sp_indicators,
+     file = "../processed_data/30_indicators.RData")
+```

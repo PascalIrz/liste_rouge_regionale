@@ -41,6 +41,7 @@ source(file= "R/calcul_50_percentile.R")
 source(file= "R/calcul_ecart_interquartile.R")
 source(file = "R/calcul_25_percentile.R")
 source(file = "R/calcul_75_percentile.R")
+source(file = "R/calcul_densite_surface.R")
 
 #_______________________________________________________________________________
 ##############################  PARAMETRES #####################################
@@ -155,9 +156,9 @@ ope_50_percentile_statut <- resultats_longueur_mediane$df3 # Construction d'un D
 
 #########################    ECART INTERQUARTILE   #############################
 resultats_ecart_interquartile <- calcul_ecart_interquartile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_interqua <- resultats_longueur_mediane$df1 # Construction d'un df de l'écart interquartile des tailles des différents statuts des espèces (juvéniles / adultes) ----
-ope_interqua_esp <- resultats_longueur_mediane$df2 # Construction d'un Df de l'écart interquartile des espèces par opération toutes tailles confondues ----
-ope_interqua_statut <- resultats_longueur_mediane$df3 # Construction d'un Df avec les écarts interquartiles des espèces par opération toutes tailles confondues + des différents statuts ----
+ope_ecart_interqua <- resultats_ecart_interquartile$df1 # Construction d'un df de l'écart interquartile des tailles des différents statuts des espèces (juvéniles / adultes) ----
+ope_ecart_interqua_esp <- resultats_ecart_interquartile$df2 # Construction d'un Df de l'écart interquartile des espèces par opération toutes tailles confondues ----
+ope_ecart_interqua_statut <- resultats_ecart_interquartile$df3 # Construction d'un Df avec les écarts interquartiles des espèces par opération toutes tailles confondues + des différents statuts ----
 
 
 ######################### PERCENTILES (25) ###################################
@@ -169,7 +170,7 @@ ope_25_percentile_statut <- resultats_25_percentile$df3 # Construction d'un Df a
 
 ######################### PERCENTILES (75) ###################################
 resultats_75_percentile <- calcul_75_percentile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_75_percentile <- resultats_75_percentile$df1 # Construction d'un df ddes percentiles 75 des tailles des différents statuts des espèces (juvéniles / adultes) ----
+ope_75_percentile <- resultats_75_percentile$df1 # Construction d'un df des percentiles 75 des tailles des différents statuts des espèces (juvéniles / adultes) ----
 ope_75_percentile_esp <- resultats_75_percentile$df2 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues ----
 ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues + des différents statuts ----
 
@@ -178,7 +179,7 @@ ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un Df d
 
 # indicateurs sur les opérations de pêches : 
 
-##########################    DENSITES SURFACIQUES    ##########################
+######################    DENSITE DE SURFACE   ####################
 # Ajout des surfaces échantillonnées dans ope_selection ----
 ope_selection <- ope_selection %>% 
   left_join (y=operation %>% 
@@ -187,29 +188,19 @@ ope_selection <- ope_selection %>%
                        passage$pas_numero))
 
 
-
-#???????????????????????????????????????????????????????????????????????????????
-#???????????????????????????????????????????????????????????????????????????????
-# Vérification de chose un peu inquiétantes....
-
+# Vérification JDD : J'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30)
 verif_effectif <- ope_selection %>% 
   group_by(lop_id,lop_effectif) %>% 
   summarise(nbr_lignes = n()) %>% 
   ungroup()
-
-resultat <- verif_effectif %>% 
+resultat_verif_effectif <- verif_effectif %>% 
   filter(nbr_lignes!= lop_effectif)
-# La j'ai deux données qui font le bazar mais bon ... 
-#???????????????????????????????????????????????????????????????????????????????
-#???????????????????????????????????????????????????????????????????????????????
 
-
-# Vérification qu'il y a bien que 1 mei_id par ligne (et pas de doublons) : 
+# Vérification JDD : Je n'ai qu'un mei_id par ligne (et pas de doublons) : 
 # nb_unique doit être égal au nombre total de lignes dans la colonne. 
 nb_unique <- ope_selection %>% 
   summarise(nb_unique = n_distinct(mei_id))
 print(nb_unique)
-
 
 
 # Ajout des effectifs dans un df ope_densite_statut ----
@@ -223,67 +214,86 @@ ope_densite_statut_eff <- ope_selection %>%
   mutate(indicateur= "densite_surface")
 
 
-# Calcul des densités (en individus pour 1000 m²) des différents statuts des espèces (juvéniles / adultes) ----
-ope_densitesurf_statut <- ope_densite_statut_eff %>% 
-  mutate (valeur = (1000*effectif / ope_surface_calculee))
+source(file = "R/calcul_densite_surface.R")
+resultats_densite <- calcul_densite_surface(ope_selection,
+                                            ope_surface_calculee,
+                                            ope_id,esp_code_alternatif, 
+                                            statut,
+                                            mei_id)
 
-ope_densitesurf_statut <- ope_densitesurf_statut %>% 
+ope_densite_surface <- resultats_densite$df1 
+ope_densite_surface_esp <- resultats_densite$df2 
+ope_densite_surface_statut <- resultats_densite$df3 
+
+
+
+
+
+######################### DENSITE VOLUME ######################################
+
+#Ajout des profondeurs pour réaliser les densités volumiques 
+ope_selection_param_profondeur <- ope_selection_param_env2 %>% 
+  filter(parametre == "profondeur") %>% 
   select(ope_id,
-         esp_code_alternatif,
-         indicateur,
-         valeur,
-         statut)
+         valeur) %>% 
+  rename(ope_valeur_profondeur=valeur) %>% 
+  distinct()
 
-# Construction d'un Df des effectifs des espèces par opération toutes tailles confondues ----
-ope_densite_esp_eff <- ope_selection %>% 
-  group_by(ope_id,
-           esp_code_alternatif,
-           ope_surface_calculee) %>% 
-  summarise(effectif=sum(length(mei_id))) %>% 
+
+ope_densite_surface_1 <- ope_densite_surface %>% 
+  rename(valeur_ds = valeur)
+
+
+ope_densite_vol<- left_join(ope_selection_param_profondeur, ope_densite_surface_1, by = "ope_id") %>% 
+  mutate(valeur = valeur_ds /ope_valeur_profondeur) %>%
   ungroup() %>% 
-  mutate(indicateur="densite_surface", statut = "toutes") 
-
-
-# Ajouter une colonne de densité des espèces par opération toutes tailles confondues ----
-ope_densitesurf_esp <- ope_densite_esp_eff %>% 
-  group_by(esp_code_alternatif, ope_id,statut, indicateur) %>% 
-  summarise(valeur = (1000*effectif / ope_surface_calculee))
-
-
-ope_densitesurf_esp <- ope_densitesurf_esp %>% 
-  select(ope_id,
-         esp_code_alternatif,
+  mutate(indicateur = "densite_volumique") %>% 
+  select(ope_id, 
+         esp_code_alternatif, 
          indicateur,
          valeur,
          statut)
 
-# Construction d'un Df avec les densités des espèces par opération toutes tailles confondues + des différents statuts ----
-ope_densitesurf <- bind_rows(ope_densitesurf_statut, ope_densitesurf_esp)
+ope_densite_volume_statut <- ope_densite_vol %>% 
+  filter (statut == "juvénile"| statut == "adulte")
+
+ope_densite_volume_esp <- ope_densite_vol %>% 
+  filter (statut == "toutes")
 
 
 
 
 ########################## POURCENTAGE DE JUVENILES ############################
+# Calcul des pourcentages de juvéniles pour les différents statuts des espèces (juvéniles / adultes) ----
+
+
+
+ope_pourcentage_juveniles_statut_eff <- ope_selection %>%
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee,
+           statut) %>% 
+  summarise(effectif=sum(length(mei_id))) %>% 
+  ungroup() %>% 
+  mutate(indicateur = "densite_surface")
+
+
 
 # Calcul des pourcentages de juvéniles pour les différents statuts des espèces (juvéniles / adultes) ----
 ope_pourcentjuv_esp_eff <- ope_densite_statut_eff %>% 
   group_by(ope_id, esp_code_alternatif) %>% 
   summarise (total_effectif = mean(sum(effectif))) 
 
-
 ope_pourcentjuv_juv_eff <- ope_densite_statut_eff %>% 
   filter(statut == "juvénile") %>% 
   group_by(ope_id, esp_code_alternatif) %>% 
   summarise(total_juveniles = mean(sum(effectif)))
-
 
 ope_pourcentjuv_esp <- left_join(ope_pourcentjuv_esp_eff, ope_pourcentjuv_juv_eff, by = c("ope_id", "esp_code_alternatif")) %>%
   mutate(total_juveniles = coalesce(total_juveniles, 0)) %>% # Remplacer les NA par 0
   mutate(valeur = round((total_juveniles / total_effectif) * 100,2)) %>%
   mutate(statut = "toutes", indicateur ="pourcentage_juveniles") %>%
   select(ope_id, esp_code_alternatif, indicateur, valeur, statut)
-
-
 
 # Ajout des pourcentages de juvéniles aux différents statuts des espèces (juvéniles / adultes) ----
 ope_pourcentjuv_statut <- ope_densite_statut_eff %>% 
@@ -295,54 +305,25 @@ ope_pourcentjuv_esp_select <- ope_pourcentjuv_esp %>%
 
 ope_pourcentjuv_statut <- left_join(ope_pourcentjuv_statut, ope_pourcentjuv_esp_select, 
                                     by = c("ope_id", "esp_code_alternatif"))
-
 # Construction d'un Df avec les pourcentages de juvénils des espèces par opération toutes tailles confondues + des différents statuts ----
 ope_pourcentjuv <- bind_rows(ope_pourcentjuv_statut, ope_pourcentjuv_esp)
 
 
 
 
-############################ DENSITE VOLUMIQUE #################################
-
-# Calcul de la densité volumique par opération, espèce et statut "toutes" (juvéniles et adultes confondus)
-
-ope_selection_param_env_prof <- ope_selection_param_env2 %>% 
-  filter(parametre == "profondeur") %>% 
-  select(ope_id,
-         valeur) %>% 
-  rename(valeur_prof=valeur) %>% 
-  distinct()
-
-
-ope_densitesurf1 <- ope_densitesurf %>% 
-  rename(valeur_ds = valeur)
-
-
-ope_densitevol <- left_join(ope_densitesurf1, ope_selection_param_env_prof, by = "ope_id") %>%
-  mutate(valeur = valeur_ds / valeur_prof) %>%
-  mutate(indicateur = "densite_volumique") %>% 
-  select(ope_id, esp_code_alternatif, statut, indicateur,valeur)
-
-
-ope_densitevol_statut <- ope_densitevol %>% 
-  filter (statut == "juvénile"| statut == "adulte")
-
-
-ope_densitevol_esp <- ope_densitevol %>% 
-  filter (statut == "toutes")
 
 
 
 ######################## CREATION TABLEAU FINAL EMPILE #######################
 
 # Création du tableau pré-final avec tous les indicateurs calculés
-ope_indicateur <- rbind(ope_lm,
-                        ope_interqua,
-                        ope_percent25,
-                        ope_percent75,
-                        ope_densitesurf,
-                        ope_densitevol,
-                        ope_pourcentjuv)
+ope_indicateur <- rbind(ope_50_percentile,
+                        ope_ecart_interqua,
+                        ope_25_percentile,
+                        ope_75_percentile,
+                        ope_densite_surface,
+                        ope_densite_vol,
+                        ope_pourcentjuv) 
 
 # Vérification des valeurs des différents indicateurs (doivent être égales)
 table(ope_indicateur$indicateur)

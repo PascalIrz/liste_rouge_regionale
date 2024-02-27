@@ -11,42 +11,28 @@
 
 ## Chargement des packages ----
 
-#install.packages("khroma")
-#install.packages("lemon")
-#install.packages("ggthemes")
-#install.packages("zoo")
-
-library(lemon)
-library(ggthemes)
 library(tidyverse)
 library(aspe)
 library(ggplot2)
-library (khroma)
 library(zoo)
+library(lemon)
+
 
 ## Chargement des données ----
-
 load(file = "processed_data/selection_pop_ope.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
-
 load(rdata_tables)
 
 mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
-
 load(mei_table)
-
-source(file = "R/calcul_biomasse.R")
-
-
 
 
 ########################### DONNEES ENVIRONNEMENTALES #########################
-
 
 # Je créer un tableau avec mes variables environnement : 
 ope_selection_param_env <- passerelle %>% 

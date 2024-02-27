@@ -19,7 +19,6 @@
 #' var_esp_code_alternatif = esp_code_alternatif,
 #' var_statut = statut)
 #' }
-
 calcul_ecart_interquartile <- function(df,
                                     var_taille,
                                     var_id_site,

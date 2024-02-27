@@ -1,0 +1,206 @@
+---
+title: "Fish population trends in the rivers of Britanny"
+subtitle: "Results"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+  bookdown::word_document2:
+always_allow_html: true
+params:
+  refnet_start: 2013
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+
+```{css, echo = FALSE}
+p.caption {
+    font-size: 0.9em;
+    font-style: italic;
+    color: grey;
+    margin-right: 10%;
+    margin-left: 10%;  
+    text-align: justify;
+}
+```
+
+
+```{r}
+# install packages
+# devtools::install_github("pascalirz/aspe")
+library(aspe)
+library(tidyverse)
+library(flextable)
+
+# install custom functions
+source("../R/functions.R")
+source("../R/gg_temp_fbi.R")
+source("../R/gg_box_env_fbi_trend.R")
+
+# load data
+load(file = "../processed_data/10_maps.RData")
+load(file = "../processed_data/20_selected_data.RData")
+load(file = "../processed_data/30_indicators.RData")
+load(file = "../processed_data/40_trends.RData")
+```
+
+# The dataset
+
+## The networks
+
+From the overall dataset of the Aspe database, only 2 monitoring networks are considered here.
+
+-   Réseau de Contrôle de Surveillance (RCS)\
+-   Réseau Hydrobiologique Piscicole (RHP)
+
+The former two are monitoring networks considered representative of the diversity of the rivers ecosystems in continental France and operated unmodified since 2007. Pooled together, they are further referred to as "REPNET". The RRP (perennial reference network) encompasses only minimally-impacted sites. It is operated unmodified since 2013, and further referred to as "REFNET". 
+
+Note that one site can contribute to more than one network (true also for one survey).
+
+## Data selection
+
+> *Are the sampling sites distributed evenly in space?*
+
+The points sizes indicate the number of years the site has been surveyed.
+
+```{r}
+mapview::mapviewOptions(fgb = FALSE)
+
+points_geo %>% 
+  mapview::mapview(cex = "n_ope",
+                   layer.name = "Nb of surveys",
+                   min.rad = 4,
+                   max.rad = 8,
+                   row.numbers = FALSE,
+                   popup = leafpop::popupTable(points_geo, feature.id = FALSE))
+```
+
+## Sampling effort across time
+
+How many sites sampled by year?
+
+```{r}
+surveys %>% 
+  group_by(annee) %>% 
+  summarise(n_ope = n_distinct(pop_id)) %>% 
+  ggplot(aes(x = annee, y = n_ope)) +
+    geom_bar(stat = "identity") +
+  labs(x = "Year",
+       y = "Nb of sites surveyed")
+```
+
+# Populations trends
+
+## Time window for species assessmment
+
+The Red List method is to assess population trends in a time lapse defined as the maximum between 10 years and 3 times the species generation time. The dataset, so far, starts in 2007 and ends in 2023 (17 annual data, allowing the study of trends on 16 annual intervals). Hence, for the species with a generation time 5 years (lapse 3 x 5y = 15y) or less, the dataset has to be filtered to exclude the oldest data.
+
+```{r}
+sp_start_date %>% 
+  arrange(esp_nom_latin) %>% 
+  mutate(n_years = 3*generation_time,
+         n_years = ifelse(n_years < 10, 10, n_years),
+         sp_start_year = ifelse(sp_start_year < 2007, 2007, sp_start_year)) %>% 
+  mutate(across(generation_time:n_years, as.character)) %>% 
+  select(Species = esp_nom_latin,
+         `Generation time` = generation_time,
+         `Years to assess` = n_years,
+         `First year` = sp_start_year) %>% 
+  flextable() %>% 
+  italic(j = 1) %>% 
+  autofit() %>% 
+  align(j = 2:4, align = "center")
+  
+```
+
+
+## Nb of occurrences by year
+
+```{r, fig.height = 12, fig.width = 9, fig.cap = "Annual number of occurrences by species, along with their regression lines."}
+sp_occur_by_year <- sp_densities_trends_pop %>% 
+  filter(density > 0) %>% 
+  group_by(esp_nom_latin, annee) %>% 
+  summarise(n_occur = n_distinct(pop_id)) %>% 
+  mutate(esp_nom_latin = fct_reorder(esp_nom_latin, n_occur)) %>% 
+  left_join(sp_start_date) %>% 
+  filter(!is.na(sp_start_year),
+         annee >= sp_start_year) %>% 
+  select(-sp_start_year)
+
+ggplot(data = sp_occur_by_year,
+       aes(x = annee, y = n_occur)) +
+  geom_point() +
+
+  geom_smooth(method = "lm", se = FALSE, col = "red") +
+  facet_wrap(vars(esp_nom_latin), ncol = 4) +
+  labs(x = "Year", y = "Number of occurrences reported")
+```
+
+
+## Population indicators
+
+```{r, fig.height = 30, fig.width = 12, dpi = 300, fig.cap = "Temporal trend in the fish populations indicators. Each point is the annual mean value of the indicator. Solid regression lines indicate that the Mann-Kendall trend test is significant at the 5% threshold. All the indicators for a given species are on a row."}
+data <- sp_trends %>% 
+  mutate(indicator = as.factor(indicator),
+         indicator = fct_relevel(indicator, "density", "occurency_rate", "false_abs", "true_pres"))
+
+g_sp_trends_indicators(
+  df = data,
+  var_x = annee,
+  var_y = value,
+  var_facet_col = indicator,
+  var_facet_row = esp_nom_latin,
+  var_sig = trend,
+  scales = "free_y",
+  x_lab = "Year",
+  y_lab = "",
+  ncol = 5
+) 
+  
+```
+
+# Density trends at sites
+
+To assess the significance of a monotonous temporal trend for each sampling point, a Mann-Kendall non-parametric test is performed. Sen-Theil slope is then estimated in order to retrieve its sign.
+
+
+```{r, fig.width = 10, fig.height = 13, fig.cap = "Temporal trend fish species densities assessed by Mann-Kendall test. The red and green points indicate the sites where densities significantly decrease and increase, respectively. The grey points indicate that the species is or has been present, but displays no significant trend. The sites where the species were never recorded are not displayed."}
+pop_by_species <- sp_densities_trends_pop %>% 
+  filter(density > 0) %>% 
+  select(esp_nom_latin, pop_id) %>% 
+  distinct()
+
+map_data <- points_geo %>%
+  left_join(sp_densities_trends_pop) %>%
+  filter(!is.na(trend)) %>% 
+  select(pop_id, esp_nom_latin, trend) %>% 
+  distinct() %>% 
+  right_join(y = pop_by_species)
+
+ggplot() +
+  geom_sf(data = background) +
+  geom_sf(data = map_data,
+          aes(col = trend,
+              size = (trend != "No trend"))) +
+  scale_color_manual(
+    name = "Trend",
+    values = c(
+      "No trend" = "gray",
+      "Decrease" = "red",
+      "Increase" = "darkgreen"
+    )
+  ) +
+  scale_size_manual(values = c(0.2, 1.2),
+                    guide = 'none') +
+  theme(panel.background = element_rect(fill = "lightblue")) +
+  # coord_sf(xlim = c(-5.4, 8.4),
+  #          ylim = c(42, 51.2),
+  #          expand = FALSE) +
+  facet_wrap(vars(esp_nom_latin),
+             ncol = 3)
+```
+

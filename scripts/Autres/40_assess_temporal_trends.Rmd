@@ -1,0 +1,96 @@
+---
+title: "Fish population trends in the rivers of Britanny"
+subtitle: "Population trend indicators"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+#  bookdown::word_document2
+always_allow_html: true
+params:
+  refnet_start: 2013
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Load packages and data
+
+```{r}
+# install packages
+# devtools::install_github("pascalirz/aspe")
+library(aspe)
+library(tidyverse)
+library(trend)
+
+# install custom functions
+source("../R/functions.R")
+
+# load data
+load(file = "../processed_data/30_indicators.RData")
+```
+
+# Aim of this file
+
+The aim of this file is to get the dataframes that will further be used to plot the yearly indicators against year, along with linear trend. We want the regression line to be solid only when the slope is significantly different from zero (p = 0.05). To avoid temporal autocorrelation issues, this significance is estimated by a Mann-Kendall non-parametric rank test (and the slope direction by Sen-Theil regression).
+
+Hence, the trends significance are assessed for each indicator and joined to the yearly indicators dataframes.
+
+Ultimately, the populations indicators dataframes are stacked, which will allow to produce nice gridded plots and synthetic tables.
+
+# Populations indicators 
+
+## Species modelled occurrence probability
+
+The idea here is to assess whether the species distribution models underlying the FBI perform as well today as they used to, or if a 'drift' can be detected reflecting modifications of the species' ranges. Our hypothesis is that under the effect of broad-scale environmental changes and of local habitat conditions (e.g. improvement of water quality due to à better treatment of sewage), the models lost accuracy. For each species, our indicators of this accuracy are the mismatches between prediction and observation, i.e. the rates of observed presences despite being predicted absent (false absences), and of observed absence despite being predicted present (false presences). The species are considered as predicted present if, and only if, their modeled probability of occurrence exceeds 0.5.
+
+Should a species shift habitat in response to broad-scale changes, both indicators are expected to rise. Should a species expand, the false presences are expected to decrease and false absences to increase, and reverse in case of range contraction. 
+
+We acknowledge that uncertainty exists in detection probability, that may vary across species, however, we consider that it should be rather constant in time, and hence not affect the temporal trends.
+
+```{r}
+# apply tests
+sp_indicators_trends <- sp_indicators %>%
+  tester_pente_mk_multi2(
+    var_groupe1 = esp_nom_latin,
+    var_groupe2 = indicator,
+    var_x = annee,
+    var_y = value
+  )
+
+sp_trends <- sp_indicators %>% 
+  left_join(y = sp_indicators_trends) 
+```
+
+# Trend tests by point
+
+To assess the significance of a monotonous temporal trend for each sampling point, a Mann-Kendall non-parametric test is performed. Sen-Theil slope is then estimated in order to retrieve its sign. As the FBI score is a measure of degradation, both are positively correlated. Hence, if the trend is significant and the sign is positive, FBI scores tend to increase through time, reflecting a degradation of the river. On the contrary, a significant trend with a positive sign indicates an improvement on 'river health'. The same applied to FBI metrics. 
+
+
+```{r}
+# apply tests to each sampling point
+sp_densities_trends_pop <- densities_ope %>%
+  tester_pente_mk_multi2(
+    var_groupe1 = esp_nom_latin,
+    var_groupe2 = pop_id,
+    var_x = annee,
+    var_y = density
+  )
+
+sp_densities_trends_pop <- densities_ope %>% 
+  left_join(y = sp_densities_trends_pop) %>% 
+  filter(esp_nom_latin %in% unique(sp_indicators_trends$esp_nom_latin))
+```
+
+
+
+# Saving
+
+```{r}
+save(sp_trends,
+     sp_densities_trends_pop,
+     file = "../processed_data/40_trends.RData")
+```
+
