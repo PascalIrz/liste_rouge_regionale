@@ -35,6 +35,7 @@ load(rdata_tables)
 
 # Chargement de la palette de couleur utilisée : 
 pal <- wes_palette("AsteroidCity1")
+pal2 <- wes_palette("FantasticFox1")
 
 
 
@@ -135,13 +136,10 @@ passerelle <- passerelle %>%
 ## Création d'un dataframe contenant seulement la sélection des pêches choisies ---- 
 mes_ope <- passerelle %>% 
   mef_ajouter_type_protocole() %>%
+  mef_ajouter_ope_date() %>% 
   filter(pro_libelle %in% mes_types_de_peche) %>% 
-  select(sta_id:ope_id, pro_libelle) %>% 
+  select(sta_id:ope_id, pro_libelle,annee, ope_date) %>% 
   distinct()
-
-
-mes_ope <- mes_ope %>%
-  mef_ajouter_ope_date()
 
 
 ## Sélection d'une seule pêche par années, par station ----
@@ -199,6 +197,35 @@ mes_ope %>%
   coord_flip()
 
 
+
+
+## Représentation graphique de stations sélectionnées (et types de réseaux associés) ----
+
+mes_ope %>% 
+  filter(pop_id %in% mes_pop_id) %>% 
+  mef_ajouter_libelle_site() %>% 
+  mef_ajouter_objectif() %>% 
+  filter(obj_libelle %in% mes_reseaux) %>% 
+  ggplot(aes(x = as.character(pop_libelle),
+             y = annee, 
+             fill= obj_libelle),
+         legend.background = element_rect(fill="#ffffff")) + 
+  scale_fill_manual(values= pal2) +
+  geom_tile() +
+  labs(title = "Les stations sélectionnées et les types de réseaux de pêches associées",
+       subtitle = "Région Bretagne", 
+       x ="",
+       y = "Années",
+       fill = "Type de réseau de pêche") + 
+  theme_light(base_size = 11) +
+  theme(panel.grid.major = element_line(color="#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill="#faf0e6")) +
+  coord_flip()
+
+
+
+
 ## Construction d'un nouveau dataframe avec toutes les opérations de pêches
 # présentes dans les stations retenues
 ope_selection <- mes_ope %>% 
@@ -214,7 +241,6 @@ ope_selection <- mes_ope %>%
 # --- Enregistrement des opérations de pêches retenues dans la passerelle
 passerelle <- passerelle %>% 
   filter(ope_id %in%ope_selection$ope_id)
-
 
 
 #_______________________________________________________________________________

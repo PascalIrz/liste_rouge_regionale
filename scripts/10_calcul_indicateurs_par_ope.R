@@ -232,7 +232,7 @@ ope_densite_surface_statut <- resultats_densite$df3
 ######################### DENSITE VOLUME ######################################
 
 #Ajout des profondeurs pour réaliser les densités volumiques 
-ope_selection_param_profondeur <- ope_selection_param_env2 %>% 
+ope_selection_param_profondeur <- ope_selection_param_env %>% 
   filter(parametre == "profondeur") %>% 
   select(ope_id,
          valeur) %>% 

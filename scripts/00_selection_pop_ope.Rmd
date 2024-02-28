@@ -46,6 +46,7 @@ load(rdata_tables)
 
 # Chargement de la palette de couleur ---- 
 pal <- wes_palette("AsteroidCity1")
+pal2 <- wes_palette("FantasticFox1")
 
 ```
 
@@ -239,6 +240,32 @@ mes_ope %>%
         panel.grid.minor = element_line(color = "#ffffff"),
         panel.background = element_rect(fill="#faf0e6"),
         legend.position = "bottom") +
+  coord_flip()
+
+
+
+## Représentation graphique de stations sélectionnées (et types de réseaux associés) ----
+
+mes_ope %>% 
+  filter(pop_id %in% mes_pop_id) %>% 
+  mef_ajouter_libelle_site() %>% 
+  mef_ajouter_objectif() %>% 
+  filter(obj_libelle %in% mes_reseaux) %>% 
+  ggplot(aes(x = as.character(pop_libelle),
+             y = annee, 
+             fill= obj_libelle),
+         legend.background = element_rect(fill="#ffffff")) + 
+  scale_fill_manual(values= pal2) +
+  geom_tile() +
+  labs(title = "Les stations sélectionnées et les types de réseaux de pêches associées",
+       subtitle = "Région Bretagne", 
+       x ="",
+       y = "Années",
+       fill = "Type de réseau de pêche") + 
+  theme_light(base_size = 11) +
+  theme(panel.grid.major = element_line(color="#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill="#faf0e6")) +
   coord_flip()
 
 ```
