@@ -81,6 +81,86 @@ print(graphique)
 
 
 
+####################### Calcul du taux de densité de surface : 
+
+resultats_densite_surface <- list()
+#Parcourir chaque espèce de poissons : 
+especes <- unique(pop_indicateur$esp_code_alternatif)
+
+
+ope_indicateur_densite <- pop_indicateur %>% 
+  filter(indicateur == "densite_surface" | indicateur == "densite_volumique") %>%
+  select (esp_code_alternatif,
+          annee,
+          indicateur,
+          valeur)
+
+
+for(espece in especes) {
+  #Filtrer les données pour l'espèce en cours
+  donnees_espece_s <- subset(ope_indicateur_densite, esp_code_alternatif == espece, indicateur == "densite_surface")
+  donnees_espece_v <- subset(ope_indicateur_densite, esp_code_alternatif == espece, indicateur == "densite_volumique")
+  #Trier les données par années
+  donnees_espece_s <- donnees_espece_s[order(donnees_espece_s$annee),]
+  donnees_espece_v <- donnees_espece_v[order(donnees_espece_v$annee),]
+  
+  #Calculer les taux de densité de surface
+  taux_surface <- c(NA)
+  for(i in 2:nrow(donnees_espece_s)){
+    densite_surface_actuelle <- donnees_espece_s$valeur[i]
+    densite_surface_precedente <- donnees_espece_s$valeur[i-1]
+    
+    #Gérer les valeurs manquantes
+    if(is.na(densite_surface_actuelle) || is.na(densite_surface_precedente)) {
+      taux_surface <- c(taux_surface, NA)
+    } else {
+      taux_surface <- c(taux_surface, ((densite_surface_actuelle / densite_surface_precedente)-1)*100)
+    }
+  }
+
+  #Calculer les taux de densité volumique
+  taux_volumique <- c(NA)
+  for(i in 2:nrow(donnees_espece_v)){
+    densite_volumique_actuelle <- donnees_espece_v$valeur1[i]
+    densite_volumique_precedente <- donnees_espece_v$valeur2[i-1]
+    
+    #Gérer les valeurs manquantes
+    if(is.na(densite_volumique_actuelle) || is.na(densite_volumique_precedente)) {
+      taux_volumique <- c(taux_volumique, NA)
+    } else {
+      taux_volumique <- c(taux_volumique, ((densite_volumique_actuelle / densite_volumique_precedente)-1)*100)
+    }
+  }
+  
+  #Stocker les résultats dans la liste
+  noms_colonne_surface <- paste("Taux_surface_", espece, sep="")
+  resultats[[noms_colonne_surface]] <- taux_surface
+  
+  noms_colonne_volumique <- paste("Taux_volumique_", espece, sep="")
+  resultats[[noms_colonne_volumique]] <- taux_volumique
+}
+
+#Convertir la liste de résultats en dataframe
+resultats_df <- as.data.frame(resultats)
+
+#Ajouter une colonne 'annee' au dataframe de résultats
+resultats_df$annee <- ope_indicateur_densite$annee[-1]
+
+print(resultats_df)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ####################### Calcul du pourcentage des stations pour laquelle l'espèce
 #### est présente une année donnée (et aussi en fonction de son statut)
 
