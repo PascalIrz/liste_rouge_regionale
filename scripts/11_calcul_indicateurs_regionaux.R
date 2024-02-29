@@ -21,6 +21,8 @@ library(ggplot2)
 library (khroma)
 library(dplyr)
 library(wesanderson)
+library(zoo)
+library(lemon)
 
 ## Chargement des données ----
 
@@ -78,10 +80,37 @@ graphique <- pop_indicateur %>%
 print(graphique)
 
 
+
+####################### Calcul du pourcentage des stations pour laquelle l'espèce
+#### est présente une année donnée (et aussi en fonction de son statut)
+
+source(file = "R/calcul_pourcentage_presence_station.R")
+calcul_pourcentage_presence_station <- calcul_pourcentage_presence_station(pop_indicateur,
+                                                                           esp_code_alternatif,
+                                                                           statut,
+                                                                           pop_id,
+                                                                           annee)
+
+# Représentation graphique :
+ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
+  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
+  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
+  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
+  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
+  # Ajoutez d'autres lignes pour chaque espèce
+  labs(title = "Évolution des taux d'évolution par espèce",
+       x = "Année",
+       y = "Taux d'évolution") +
+  theme_minimal()
+
+
+
 #_______________________________________________________________________________
 ##################### CALCUL DU TAUX D'OCCURRENCE ##############################
 #_______________________________________________________________________________
 
+
+#################### Sur les données de densités de surface ####################
 ope_id <- unique(ope_indicateur$ope_id)
 esp_code_alternatif <- unique(ope_indicateur$esp_code_alternatif)
 statut <- unique(ope_indicateur$statut)
@@ -94,15 +123,36 @@ annees <- ope_indicateur %>%
 
 tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
 
-densites <- ope_indicateur %>% 
+densites_surface <- ope_indicateur %>% 
   filter(indicateur == "densite_surface") 
 
+taux_occurrence_densite_surface <- tab_oc %>% 
+  left_join(densites_surface) %>% 
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(-indicateur,
+         -annee,
+         -pop_id) %>% 
+  left_join(annees) %>% 
+  group_by(esp_code_alternatif,
+           statut,
+           annee) %>% 
+  summarise(n_ope = n_distinct(ope_id),
+            n_oc = n_distinct(ope_id[valeur > 0]),
+            taux_oc = n_oc / n_ope) %>% 
+  mutate(indicateur = "taux_occurrence",
+         valeur = taux_oc) %>% 
+  select(-n_ope,
+         -n_oc,
+         -taux_oc)
 
 
+#################### Sur les données de longueur médianes ####################
+tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
+longueur_med <- ope_indicateur %>% 
+  filter(indicateur == "longueur_mediane") 
 
-
-taux_occurrence <- tab_oc %>% 
-  left_join(densites) %>% 
+taux_occurrence_longueur_mediane <- tab_oc %>% 
+  left_join(longueur_med) %>% 
   mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
   select(-indicateur,
          -annee,
@@ -122,11 +172,34 @@ taux_occurrence <- tab_oc %>%
 
 
 
-# J'empile mon indicateur de taux d'occurence dans le tab de données
 
-pop_indicateur <-
+
+#################### Sur les données de densités volume ####################
+tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
+densite_volumique <- ope_indicateur %>% 
+  filter(indicateur == "densite_volumique") 
+
+taux_occurrence_densite_volumique <- tab_oc %>% 
+  left_join(densite_volumique) %>% 
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(-indicateur,
+         -annee,
+         -pop_id) %>% 
+  left_join(annees) %>% 
+  group_by(esp_code_alternatif,
+           statut,
+           annee) %>% 
+  summarise(n_ope = n_distinct(ope_id),
+            n_oc = n_distinct(ope_id[valeur > 0]),
+            taux_oc = n_oc / n_ope) %>% 
+  mutate(indicateur = "taux_occurrence",
+         valeur = taux_oc) %>% 
+  select(-n_ope,
+         -n_oc,
+         -taux_oc)
 
 ################################################################################
+################### OBSERVATION DES TENDANCES GLOBALES #########################
 
 # On souhaite observer les différentes tendances présentes sur les différents
 # indicateurs calculés : 
@@ -141,14 +214,6 @@ pop_indicateur <-
 source(file="R/mann_kendall_sen.R")
 library(trend)
 
-test_41683_longueur <- ope_indicateur %>% 
-  filter (pop_id == "41683") %>% 
-  filter (statut == "toutes") %>% 
-  filter (indicateur== "longueur_medianne") %>% 
-  select(-ope_id,
-         -pop_id,
-         -indicateur,
-         -statut)
 
 tendance_indicateur <- mk_st_by_group(ope_indicateur,
                var_x = annee,
@@ -159,36 +224,164 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
                pop_id)
 
 
-
-test_41683_longueur <- taux_occurrence %>% 
-  select(-indicateur,
-         -statut)
-
-
+mes_id_1 <- sample(unique(tendance_indicateur$esp_code_alternatif), 2) 
 tendance_indicateur %>% 
-  filter(statut == "toutes",
-         esp_code_alternatif == "ANG") %>% 
+  filter(esp_code_alternatif%in% mes_id_1) %>% 
   group_by(indicateur,
-           trend) %>% 
-  summarise(n = n_distinct(pop_id))  %>% 
-  ggplot(aes(x = trend,
-             y = n, 
-             fill= trend,
-             color = trend)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~indicateur)  + 
-  scale_color_manual(values= pal)
+           trend,
+           esp_code_alternatif,
+           statut) %>% 
+  summarise (n = n_distinct (pop_id)) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ indicateur ~ esp_code_alternatif, 
+                 scales = "free") +
+  labs(title = "Diagrammes en baton des tendances indicateurs", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
 
 
 
+################################################################################
+############# OBSERVATION DES TENDANCES SUR LES TAUX D'OCCURENCE ###############
 
-########################################################################
+################################################################################
+#################### Sur les données de densités de surface ####################
 
-tendance_indicateur <- mk_st_by_group(taux_occurrence,
+
+tendance_indicateur_t_oc_densite_surface <- mk_st_by_group(taux_occurrence_densite_surface,
                                       var_x = annee,
                                       var_y = valeur,
                                       esp_code_alternatif,
                                       indicateur,
                                       statut)
+
+
+mes_id_2 <- sample(unique(tendance_indicateur_t_oc_densite_surface$esp_code_alternatif), 9) 
+tendance_indicateur_t_oc_densite_surface %>% 
+  filter(esp_code_alternatif%in% mes_id_2) %>% 
+  group_by(trend,
+           esp_code_alternatif,
+           statut) %>% 
+  summarise (n = mk_pvalue) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ esp_code_alternatif, 
+              scales = "free") +
+  labs(title = "Diagrammes en baton des tendances indicateurs de densités de surface", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
+
+
+
+#################### Sur les données de longueur médianes ####################
+
+
+tendance_indicateur_t_oc_longueur_mediane <- mk_st_by_group(taux_occurrence_longueur_mediane,
+                                                           var_x = annee,
+                                                           var_y = valeur,
+                                                           esp_code_alternatif,
+                                                           indicateur,
+                                                           statut)
+
+
+mes_id_2 <- sample(unique(tendance_indicateur_t_oc_longueur_mediane$esp_code_alternatif), 9) 
+tendance_indicateur_t_oc_longueur_mediane %>% 
+  filter(esp_code_alternatif%in% mes_id_2) %>% 
+  group_by(trend,
+           esp_code_alternatif,
+           statut) %>% 
+  summarise (n = mk_pvalue) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ esp_code_alternatif, 
+              scales = "free") +
+  labs(title = "Diagrammes en baton des tendances de longueurs médianes", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
+
+
+
+#################### Sur les données de densité volumique ####################
+
+
+tendance_indicateur_t_oc_densite_volumique <- mk_st_by_group(taux_occurrence_densite_volumique,
+                                                            var_x = annee,
+                                                            var_y = valeur,
+                                                            esp_code_alternatif,
+                                                            indicateur,
+                                                            statut)
+
+
+mes_id_2 <- sample(unique(tendance_indicateur_t_oc_densite_volumique$esp_code_alternatif), 9) 
+tendance_indicateur_t_oc_densite_volumique %>% 
+  filter(esp_code_alternatif%in% mes_id_2) %>% 
+  group_by(trend,
+           esp_code_alternatif,
+           statut) %>% 
+  summarise (n = mk_pvalue) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ esp_code_alternatif, 
+              scales = "free") +
+  labs(title = "Diagrammes en baton des tendances de densite volumique", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
+
+
+
+################################################################################
+############################## TAUX EVOLUTION ##################################
+################################################################################
+
+# Le taux d'évolution : On souhaite calculer le taux d'évolution inter-annuel, 
+# c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution
+# est positif, cela correspond à une croissance de la population ; si il est 
+# négatif, cela correspond à un déclin. 
+
+source(file = "R/calcul_taux_evolution.R")
+
+
+# Taux d'évolution du taux d'occurence de densité de surface : 
+# FONCTION : 
+
+calcul_taux_evol_oc_densite_surface <- calcul_taux_evolution(taux_occurrence_densite_surface,
+                                             annee,
+                                             statut,
+                                             esp_code_alternatif,
+                                             valeur)
+
+# Représentation graphique :
+ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
+  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
+  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
+  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
+  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
+  # Ajoutez d'autres lignes pour chaque espèce
+  labs(title = "Évolution des taux d'évolution par espèce",
+       x = "Année",
+       y = "Taux d'évolution") +
+  theme_minimal()
+
+
+
+
+
 
 
