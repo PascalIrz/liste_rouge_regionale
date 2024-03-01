@@ -1,0 +1,83 @@
+---
+title: "11_calcul_indicateurs_regionaux"
+author: "Léa Bouchet"
+date: "2024-03-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 11_calcul_indicateurs_regionaux
+
+Pour les indicateurs calculés au point, on agrège chaque année leur valeur à l'échelle régionale. Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale, comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
+
+
+# I. Installation : 
+## I.A : Chargement des packages, fonctions et des données : 
+
+```{r}
+
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(lemon)
+
+## Chargement des données ----
+load(file = "processed_data/selection_pop_ope.rda")
+load(file = "processed_data/pre_traitements_donnees_env.rda")
+load(file = "processed_data/assemblage_tab_par_ope.rda")
+
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+source(file = "R/mk_st_by_group.R")
+
+# Définition des couleurs de l'OFB en format RGB
+pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
+```
+
+
+# II. Constitution du jeu de données : 
+## II.A : Application des choix inscrits dans les paramètres : 
+
+```{r}
+# Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
+pop_indicateur <- ope_indicateur %>%
+  group_by(pop_id, esp_code_alternatif, annee, indicateur, statut) %>% # Est-ce que je conserve le statut ? 
+  summarize(valeur = median(valeur)) %>%
+  ungroup() %>% 
+  distinct()
+
+
+
+# Représentation graphique de mes données : 
+mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5) # Ech de 5 espèces
+graphique <- pop_indicateur %>% 
+  filter(esp_code_alternatif%in%mes_do) %>% 
+  ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
+  geom_line() +
+  facet_grid(indicateur ~ esp_code_alternatif , scales = "free") + 
+  scale_color_manual(values= pal) +
+  labs(title = "Les différents indicateurs de tendances pour 5 espèces de poissons d'eau douce", 
+       x = "Années", 
+       y = "Valeurs")
+print(graphique)
+
+```
+

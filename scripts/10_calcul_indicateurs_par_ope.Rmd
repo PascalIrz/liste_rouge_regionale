@@ -8,25 +8,20 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-# Objectif : 
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 10_calcul_indicateurs_par_ope
+
 
 Ce script permet de constituer les premiers tableaux de données nécessaires à la
-préparation des analyses temporelles. 
-
-ces populations seront étudiées à travers leurs densités, leurs taux d'occurence 
-et leur distribution en taille.Les indicateurs sont calculés soit séparement pour 
-les juvéniles et les adultes, soit de manière combinée. 
+préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvénils, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
 
 
-
-# Installation
-## Chargement des packages, fonctions et des données
+# I. Installation : 
+## I.A : Chargement des packages, fonctions et des données : 
 
 ```{r}
 
-# if necessary
-# devtools::install_github("pascalirz/aspe")
-
+## Chargement des packages ----
 library(tidyverse)
 library(aspe)
 library(ggplot2)
@@ -34,9 +29,9 @@ library(ggthemes)
 library(dplyr)
 
 
-# Chargement des données
+## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
-load(file = "processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
@@ -46,190 +41,436 @@ load(rdata_tables)
 mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
-
 load(mei_table)
 
-# Chargement des fonctions
+## Chargement des fonctions ----
 source(file = "../R/calcul_biomasse.R")
-source(file = "../R/calcul_biomasse.R")
-source(file= "../R/calcul_50_percentile.R")
-source(file= "../R/calcul_ecart_interquartile.R")
+source(file = "../R/calcul_50_percentile.R")
+source(file = "../R/calcul_ecart_interquartile.R")
 source(file = "../R/calcul_25_percentile.R")
 source(file = "../R/calcul_75_percentile.R")
 source(file = "../R/calcul_densite_surface.R")
+```
+
+
+## I.B : Paramètres : 
+
+Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'étude. Ces paramètres sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres :
+
+- Les tailles minimum des poissons "adultes" : cf ATTENTION (ci-dessous dans le code)
+
+- Les espèces à retirer du jeu de données : c'est le cas des écrevisses et des espèces hybrides ou mal identifiées (..X) présentes dans notre dataframe. 
+
+- Sélection des passages de pêche à retirer : dans notre étude, les passages 2 et 3 sont retirés. 
+
+- Sélection des types de lots à retirer : dans notre étude, le type de lot "G" n'est pas souhaité.
+
+- Les réseaux de pêches : Il s'agit des types de réseaux sélectionnés. Parmi eux se trouvent le RCS - Réseau de Contrôle de Surveillance ; le RRP - Réseaux de Référence Pérenne ; le RHP - Réseau Hydrobiologique Piscicole ; le RCA - Réseau de contrôle additionnel ; le RCO – Réseau Contrôle opérationnel. Dans notre étude, seul les trois premiers réseaux seront utilisés. Ces réseaux seront tester ensemble puis individuellement afin d'écarter un risque de biais d'objectifs. En effet, les réseaux n'ayant pas les mêmes "objectifs d'observations", un biais peut apparaïtre (ex. le réseaux RPP est un réseau "témoin", qui ne doit pas subir d'influences extérieures, il doit seulement informer des potentiels effets provoqué par le changement climatique). 
+
+- Les types de pêches : Il existe de nombreux types de pêches : pêche partielle par point, pêche par ambiance,.... Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
+
+```{r}
+
+#_______________________________________________________________________________
+##############################  PARAMETRES #####################################
+#_______________________________________________________________________________
+
+## Selection des espèces (vecteur 1) et de leurs tailles adultes minimum associée (vecteur 2) ----
+# ATTENTION : ici les tailles du vecteur2 ne sont pas définitives. Elles ont été calculées à partir de 4 sources différentes (1 et 2 : ouvrages d'identification des poissons d'eau douce de France); 3 : observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille du fichier ASPE ; 4 : les valeurs dans fishbase)
+
+
+vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
+              "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
+              "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
+              "SDF","PER","PES","PLI","PCH","PSR","ROT","SAN","SAT","SIL",
+              "SPI","TAN","TAC","TRF","VAI","VAR","VAN","TRM","ASP","CMI",
+              "GBT","CCU")
+vecteur2 <- c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,
+              35,40,215,30,68.5,110,400,57.5,300,150,250,700,55,285,270,150,80,
+              270,200,52.5,200,300, 400,700,100,240,212.5,185,70,140,137,185,
+              400,450,38,500)
+
+
+## Sélection des espèces à retirer du jeu de données initial ----
+especes_a_retirer <- c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC",
+                       "PFL","CCU","CAS")
+
+
+# Selection du nombre de passage souhaité ----
+# Remarque : si je souhaite enlever les premiers passages je dois sélectionner"0" et "1" 
+passage_a_retirer <- c("2","3")
+
+
+# Selection des lots à retirer du jeu de données ----
+# tyl_libelle  = G (cf ref_type_lot)
+type_lot_a_retirer <- c("G")
+
+
+# Selection des types de pêches à inclure au jeu de données (pro_libelle) ---- 
+type_peche_a_inclure <- c("Pêche complète à un ou plusieurs passages",
+                          "Pêche partielle par points (grand milieu)",
+                          "Pêche par ambiances",
+                          "Pêche partielle sur berge")
 
 
 ```
 
-
-## Mise en place des paramètres
-
-
-
-
-## Densités surfaciques
-
-Je complète mon df ope_selection pour calculer mes surfaces échantillonnées
+# II. Constitution du jeu de données : 
+## II.A : Application des choix inscrits dans les paramètres : 
 
 ```{r}
-ope_selection <- passerelle %>% 
-  left_join(y=lot_poissons %>% 
-              select(lop_id,
-                     esp_id = lop_esp_id,
-                     lop_effectif)) %>% 
-  left_join (y=  ref_espece %>% 
-               select(esp_id,
-                      esp_code_alternatif)) %>% 
-  select(-esp_id)
-
-```
-
-# Calcul des surfaces échantillonnées
-
-```{r}
-ope_selection_surf <- ope_selection %>% 
-  left_join (y=operation %>% 
-               select (ope_id, ope_surface_calculee))
-
-```
-
-Agrégation par opération et par espèces (somme des effectifs par espèce pour chaque opération)
-
-
-```{r}
-ope_selection_surf <- ope_selection_surf %>% 
-  group_by(ope_id,
-           esp_code_alternatif,
-           ope_surface_calculee) %>% 
-  summarise(effectif=sum(lop_effectif)) %>% 
-  ungroup()
-```
-
-Calcul des densités (en individus pour 1000 m²)
-
-```{r}
-ope_selection_densite <- ope_selection_surf %>% 
-  mutate (valeur = 1000*effectif / ope_surface_calculee) %>% 
-  select (-ope_surface_calculee)
-```
-
-
-Création d'une nouvelle colonne "indicateur"
-
-```{r}
-ope_selection_densite <- ope_selection_densite %>% 
-  mutate(indicateur= "densite_surfacique")
-
-```
-
-
-Création de mon df ds_ope (qui correspond à mes densite surfacique)
-
-```{r}
-ds_ope <- ope_selection_densite %>% #ds pour densité surfacique
-  select(ope_id,
-         esp_code_alternatif,
-         indicateur,
-         valeur,
-         -effectif)
-
-```
-
-
-##Longueur médiane
-
-
-En partant de mes ope_selection je dois maintenant ajouter le tableau des mesures individuelles
-
-
-```{r}
-ope_selection_lm <- passerelle %>% 
+# Ajout des mesures individuelles en partant de mes ope_selection ----
+ope_selection <- passerelle %>%
+  mef_ajouter_ope_date() %>% 
   mef_ajouter_mei() %>%
   mef_ajouter_lots() %>% 
-  mef_ajouter_esp() %>% 
+  mef_ajouter_type_protocole() %>% 
+  mef_ajouter_passage() %>% 
+  mef_ajouter_type_lot() %>% 
   mef_ajouter_type_longueur() %>% 
   select(ope_id,
          lop_id,
+         lop_effectif,
          esp_code_alternatif,
          mei_id,
          sta_id,
          pop_id,
-         mei_taille)
+         mei_taille,
+         pas_numero,
+         tyl_libelle,
+         pro_libelle,
+         annee,
+         tlo_libelle)
+
+# Suppression des espèces, des passages, des répétitions et des lots non souhaités du jeu de données ----
+ope_selection <- subset(ope_selection, !esp_code_alternatif %in% especes_a_retirer)
+ope_selection <- subset(ope_selection, !pas_numero %in% passage_a_retirer)
+ope_selection <- subset(ope_selection, pro_libelle %in% type_peche_a_inclure)
+ope_selection <- subset(ope_selection, !tyl_libelle%in% type_lot_a_retirer)
+ope_selection <- distinct(ope_selection)
+
+# Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
+ope_selection <- ope_selection %>% 
+  dplyr::mutate(pas_numero = replace_na(pas_numero,0))
+
+#Suppression des "NA" restants ----
+ope_selection <- na.omit(ope_selection)
+
 ```
 
 
-Je cherche maintenant à calculer les longueurs mediannes
+## II.B : Distinction des classes d'âges : 
+
+En complément de la base ASPE, un tableau indiquant por chaque espèce la maximale des 0+ est constitué (et donc la taille référence minimum adulte). On utilise donc la longueur du poisson comme proxy de son age.  Une distinction des classes d'âges est réalisée : a chaque espèce correspond alors 3 statuts différents : 
+- Adulte (individus dont la taille est supérieure à la taille_min_adulte)
+- Juvénile (individus dont la taille est inférieure à la taille_min_adulte)
+- Toutes : toute classe d'e taille'âge confondue
 
 
 ```{r}
-ope_selection_lmed <- ope_selection_lm %>% 
-  group_by(ope_id,esp_code_alternatif) %>% 
-  summarise(valeur=median(mei_taille, na.rm=TRUE))
+### Création df avec les mesures seuils d'adultes calculées ---- 
+tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1, taille_min_adu=vecteur2) #PARAMETRE
 
-lm_ope <- ope_selection_lmed %>% 
-  mutate(indicateur="longueur_medianne") %>% 
+### Ajout de la colonne "taille_min_adulte" par espèces ----
+ope_selection <- merge(ope_selection, tab_ref_taille, by ="esp_code_alternatif")
+
+# Ajout du statut par individus ----
+ope_selection$statut <- ifelse (ope_selection$mei_taille < ope_selection$taille_min_adu, "juvénile","adulte")
+
+```
+
+
+# III. Les indicateurs par opération de pêche : 
+## III.A : Indicateurs généraux par opération de pêche :
+### III.A.1 : Effectif total des espèces par opération de pêche :
+
+
+```{r}
+ope_effectif_total_statut <- ope_selection %>% # Réalisation d'un df contenant les données d'effectifs selon les différents statuts (adulte / juvénile)
+  group_by(ope_id,
+           esp_code_alternatif,
+           statut) %>%
+  summarise(valeur=sum(length(mei_id))) %>% 
+  mutate(indicateur= "effectif_total") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
-         valeur)
+         valeur,
+         statut)
+  
+ope_effectif_total_esp <- ope_effectif_total_statut %>% # Réalisation d'un df contenant les données d'effectifs tous statuts confondus
+  group_by(ope_id,
+           esp_code_alternatif) %>% 
+  summarise(valeur=sum(valeur)) %>% 
+  mutate(indicateur= "effectif_total") %>%
+  mutate (statut = "toutes") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut)
+
+ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_esp)
+
 ```
 
 
-## Données environnementales
+### III.A.2 : Biomasse des espèces par opération de pêche :
 
-Je créer un tableau avec mes variables environnement : 
+```{r}
+# Calcul de la biomasse par opération : par espèce et par statut : 
+ope_biomasse_statut <- calcul_biomasse(ope_selection,
+                                       ope_id,
+                                       esp_code_alternatif,
+                                       statut,
+                                       mei_taille,
+                                       tlo_libelle)
+ope_biomasse_statut <- ope_biomasse_statut %>% 
+  mutate(indicateur = "biomasse")
+
+
+ope_biomasse_esp <- ope_biomasse_statut %>% # Réalisation d'un df contenant les données de biomasse par espèce tous statuts confondus
+  group_by(ope_id,
+           esp_code_alternatif) %>% 
+  summarise(valeur = sum(valeur)) %>% 
+  mutate(indicateur= "biomasse") %>%
+  mutate (statut = "toutes") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut)
+
+ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
+
+```
+
+
+### III.A.3 : Densité surfacique par opération :
 
 
 ```{r}
-ope_selection_param_env <- passerelle %>% 
-  select(-lop_id,
-         -pre_id) %>% 
-  distinct() %>% 
-  mef_ajouter_ope_env() %>% 
-  mef_ajouter_ope_date() %>% 
-  select(-ope_date,
-         -sta_id,
-         -distance_mer)
+# Ajout des données de surfaces échantillonnées dans ope_selection ----
+ope_selection <- ope_selection %>% 
+  left_join (y=operation %>% 
+               select (ope_id, 
+                       ope_surface_calculee,
+                       passage$pas_numero))
 
 
-ope_selection_param_env2 <- ope_selection_param_env %>% 
-  pivot_longer(altitude:temp_janvier,
-               names_to = "parametre",
-               values_to= "valeur")
- 
+#!!!!! ATTENTION !!!!! ---------------------------------------------------------
+# Partie optionnelle : 
+# Vérification JDD : J'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30)
+verif_effectif <- ope_selection %>% 
+  group_by(lop_id,lop_effectif) %>% 
+  summarise(nbr_lignes = n()) %>% 
+  ungroup()
+resultat_verif_effectif <- verif_effectif %>% 
+  filter(nbr_lignes!= lop_effectif)
+
+# Vérification JDD : Je n'ai qu'un mei_id par ligne (et pas de doublons) : 
+# "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
+nb_unique <- ope_selection %>% 
+  summarise(nb_unique = n_distinct(mei_id))
+print(nb_unique)
+# ------------------------------------------------------------------------------
+# Ajout des effectifs dans un df ope_densite_statut ----
+ope_densite_statut_eff <- ope_selection %>% 
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee,
+           statut) %>% 
+  summarise(effectif=sum(length(mei_id))) %>% 
+  ungroup() %>% 
+  mutate(indicateur= "densite_surface")
+
+resultats_densite <- calcul_densite_surface(ope_selection,
+                                            ope_surface_calculee,
+                                            ope_id,esp_code_alternatif, 
+                                            statut,
+                                            mei_id)
+
+ope_densite_surface <- resultats_densite$df1 
+ope_densite_surface_esp <- resultats_densite$df2 
+ope_densite_surface_statut <- resultats_densite$df3 
 ```
 
-Représentation de mes variables avec facet_wrap et facet_grid
+
+### III.A.4 : Densité volumique par opération :
+
+!! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
+```{r}
+
+#Ajout des données de profondeurs :
+ope_selection_param_profondeur <- ope_selection_param_env %>% 
+  filter(parametre == "profondeur") %>% 
+  select(ope_id,
+         valeur) %>% 
+  rename(ope_valeur_profondeur=valeur) %>% 
+  distinct()
 
 
-```{r, fig.height = 45, fig.width = 10}
-
-# Représentation avec facet_wrap
-
-#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 10)
-ope_selection_param_env2 %>% 
-#  filter(pop_id%in% mes_id) %>% 
-  ggplot(aes(x=annee, y=valeur)) +
-  geom_bar(stat="identity") +
-  facet_wrap(vars(pop_id, parametre),
-             ncol = 8,
-               scales="free_y")
+ope_densite_surface_1 <- ope_densite_surface %>% 
+  rename(valeur_ds = valeur)
 
 
-#Représentation avec facet_grid
+ope_densite_vol<- left_join(ope_selection_param_profondeur, ope_densite_surface_1, by = "ope_id") %>% 
+  mutate(valeur = valeur_ds /ope_valeur_profondeur) %>%
+  ungroup() %>% 
+  mutate(indicateur = "densite_volumique") %>% 
+  select(ope_id, 
+         esp_code_alternatif, 
+         indicateur,
+         valeur,
+         statut)
 
-#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 5) 
-ope_selection_param_env2 %>% 
-#  filter(pop_id%in% mes_id) %>% 
-  ggplot(mapping = aes(x = annee, y = valeur)) +
-  geom_bar(stat="identity") +
-  facet_grid(pop_id ~ parametre, 
-             scales= "free_y")
-  
+ope_densite_volume_statut <- ope_densite_vol %>% 
+  filter (statut == "juvénile"| statut == "adulte")
+
+ope_densite_volume_esp <- ope_densite_vol %>% 
+  filter (statut == "toutes")
+
+```
+
+
+### III.A.5 : Pourcentage de juvéniles par opération :
+
+!! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
+```{r}
+
+########################## POURCENTAGE DE JUVENILES ############################
+# Calcul des pourcentages de juvéniles pour les différents statuts des espèces (juvéniles / adultes) ----
+ope_pourcentage_juveniles_statut_eff <- ope_selection %>%
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee,
+           statut) %>% 
+  summarise(effectif=sum(length(mei_id))) %>% 
+  ungroup() %>% 
+  mutate(indicateur = "densite_surface")
+
+ope_pourcentjuv_esp_eff <- ope_densite_statut_eff %>% 
+  group_by(ope_id, esp_code_alternatif) %>% 
+  summarise (total_effectif = mean(sum(effectif))) 
+
+ope_pourcentjuv_juv_eff <- ope_densite_statut_eff %>% 
+  filter(statut == "juvénile") %>% 
+  group_by(ope_id, esp_code_alternatif) %>% 
+  summarise(total_juveniles = mean(sum(effectif)))
+
+ope_pourcentjuv_esp <- left_join(ope_pourcentjuv_esp_eff, ope_pourcentjuv_juv_eff, by = c("ope_id", "esp_code_alternatif")) %>%
+  mutate(total_juveniles = coalesce(total_juveniles, 0)) %>% # Remplacer les NA par 0
+  mutate(valeur = round((total_juveniles / total_effectif) * 100,2)) %>%
+  mutate(statut = "toutes", indicateur ="pourcentage_juveniles") %>%
+  select(ope_id, esp_code_alternatif, indicateur, valeur, statut)
+
+# Ajout des pourcentages de juvéniles aux différents statuts des espèces (juvéniles / adultes) ----
+ope_pourcentjuv_statut <- ope_densite_statut_eff %>% 
+  select(ope_id, esp_code_alternatif, statut) %>% 
+  mutate(indicateur = "pourcentage_juveniles")
+
+ope_pourcentjuv_esp_select <- ope_pourcentjuv_esp %>% 
+  select(ope_id, esp_code_alternatif, valeur)
+
+ope_pourcentjuv_statut <- left_join(ope_pourcentjuv_statut, ope_pourcentjuv_esp_select, 
+                                    by = c("ope_id", "esp_code_alternatif"))
+
+# Construction d'un Df avec les pourcentages de juvéniles des espèces par opération toutes tailles confondues + des différents statuts (adultes et juvéniles) ----
+ope_pourcentjuv <- bind_rows(ope_pourcentjuv_statut, ope_pourcentjuv_esp)
+
+```
+
+
+## III.B : Indicateurs sur les mesures individuelles par opération de pêche : 
+### III.B.1 : Longueur médiane : 
+
+Calcul des longueurs médianes des tailles des individus par opération : Création de la fonction "calcul_50_percentile" : 
+```{r}
+resultats_longueur_mediane <- calcul_50_percentile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
+ope_50_percentile <- resultats_longueur_mediane$df1 # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues + des différents statuts ----
+ope_50_percentile_esp <- resultats_longueur_mediane$df2 # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues ----
+ope_50_percentile_statut <- resultats_longueur_mediane$df3 # Construction d'un Df avec les longueurs médianes des différents statuts des espèces (juvéniles / adultes) ----
+
+```
+
+
+### III.B.2 : Ecart interquartile : 
+
+Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" : 
+```{r}
+#########################    ECART INTERQUARTILE   #############################
+resultats_ecart_interquartile <- calcul_ecart_interquartile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
+ope_ecart_interqua <- resultats_ecart_interquartile$df1 # Construction d'un Df avec les écarts interquartiles des espèces par opération toutes tailles confondues + des différents statuts ----
+ope_ecart_interqua_esp <- resultats_ecart_interquartile$df2 # Construction d'un Df des écarts interquartiles des espèces par opération toutes tailles confondues ----
+ope_ecart_interqua_statut <- resultats_ecart_interquartile$df3 # Construction d'un df des écarts interquartiles des tailles des différents statuts des espèces (juvéniles / adultes) ----
+
+```
+
+
+### III.B.3 : Percentiles 25 et 75 : 
+
+Calcul des percentiles 25 et 75 des tailles des individus par opération : Création de la fonction "calcul_25_percentile" et "calcul_75_percentile" : 
+
+```{r}
+resultats_25_percentile <- calcul_25_percentile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
+ope_25_percentile <- resultats_25_percentile$df1 # Construction d'un Df des percentiles 25 des espèces par opération toutes tailles confondues + des différents statuts ----
+ope_25_percentile_esp <- resultats_25_percentile$df2 # Construction d'un Df des percentiles 25 des espèces par opération toutes tailles confondues ----
+ope_25_percentile_statut <- resultats_25_percentile$df3 # Construction d'un df des percentiles 25 des tailles des différents statuts des espèces (juvéniles / adultes) ----
+
+
+resultats_75_percentile <- calcul_75_percentile(ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
+ope_75_percentile <- resultats_75_percentile$df1 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues + des différents statuts ----
+ope_75_percentile_esp <- resultats_75_percentile$df2 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues ----
+ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un df des percentiles 75 des tailles des différents statuts des espèces (juvéniles / adultes) ----
+
 ```
 
 
 
+# IV. Création du tableau final empilé des indicateurs : 
+
+```{r}
+# Création du tableau pré-final avec tous les indicateurs calculés
+ope_indicateur <- rbind(ope_50_percentile,
+                        #ope_ecart_interqua,
+                        #ope_25_percentile,
+                        #ope_75_percentile,
+                        ope_densite_surface,
+                        ope_densite_vol,
+                        ope_pourcentjuv,
+                        ope_biomasse,
+                        ope_effectif_total)
+
+# Ajout des années d'opération au site et à l'année (pop_id) et (ope_date)
+ope_indicateur <- ope_indicateur %>% 
+  left_join(y=operation %>% 
+              select(ope_id,
+                     pop_id= ope_pop_id,
+                     ope_date)) 
+
+ope_indicateur <- ope_indicateur %>% 
+  mef_ajouter_ope_date()
+
+ope_indicateur <- ope_indicateur %>% 
+  select(ope_id, 
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut,
+         pop_id,
+         annee)
+
+#Représentation graphique du tableau 
+ope_indicateur%>%
+  DT::datatable(rownames = FALSE)
 
 
+```
+
+# Sauvegarde ;
+```{r}
+# SAUVEGARDE ----
+save(ope_indicateur,
+     file = "../processed_data/assemblage_tab_par_ope.rda")
+```
 

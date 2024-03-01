@@ -112,8 +112,8 @@ ope_selection <- passerelle %>%
 
 # Suppression des espèces, des passages, des répétitions et des lots non souhaités du jeu de données ----
 ope_selection <- subset(ope_selection, !esp_code_alternatif %in% especes_a_retirer)
-ope_selection <- subset(ope_selection, pro_libelle %in% type_peche_a_inclure)
 ope_selection <- subset(ope_selection, !pas_numero %in% passage_a_retirer)
+ope_selection <- subset(ope_selection, pro_libelle %in% type_peche_a_inclure)
 ope_selection <- subset(ope_selection, !tyl_libelle%in% type_lot_a_retirer)
 ope_selection <- distinct(ope_selection)
 
@@ -179,25 +179,25 @@ ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un Df d
 
 # indicateurs sur les opérations de pêches : 
 
-##################### ABONDANCE TOTALE ####################################
+##################### EFFECTIF TOTAL ####################################
 
-ope_abondance_totale_statut <- ope_selection %>%
+ope_effectif_total_statut <- ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
            statut) %>%
   summarise(valeur=sum(length(mei_id))) %>% 
-  mutate(indicateur= "abondance_totale") %>% 
+  mutate(indicateur= "effectif_total") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
          statut)
-  
-ope_abondance_totale_esp <- ope_abondance_totale_statut %>% 
+
+ope_effectif_total_esp <- ope_effectif_total_statut %>% 
   group_by(ope_id,
            esp_code_alternatif) %>% 
   summarise(valeur=sum(valeur)) %>% 
-  mutate(indicateur= "abondance_totale") %>%
+  mutate(indicateur= "effectif_total") %>%
   mutate (statut = "toutes") %>% 
   select(ope_id,
          esp_code_alternatif,
@@ -205,37 +205,7 @@ ope_abondance_totale_esp <- ope_abondance_totale_statut %>%
          valeur,
          statut)
 
-ope_abondance_totale <- bind_rows(ope_abondance_totale_statut, ope_abondance_totale_esp)
-
-
-#########################   DIVERSITE SPECIFIQUE   ############################
-ope_diversite_spe_statut <- ope_selection %>%
-  group_by(ope_id,
-           esp_code_alternatif,
-           statut) %>%
-  summarise(valeur=length(unique(esp_code_alternatif))) %>% 
-  mutate(indicateur= "diversite_specifique") %>%
-  select(ope_id,
-         esp_code_alternatif,
-         indicateur,
-         valeur,
-         statut)
-
-ope_diversite_spe_esp <- ope_diversite_spe_statut %>% 
-  group_by(ope_id,
-           esp_code_alternatif) %>% 
-  summarise(valeur = median(valeur)) %>% 
-  mutate(indicateur= "diversite_specifique") %>%
-  mutate (statut = "toutes") %>% 
-  select(ope_id,
-         esp_code_alternatif,
-         indicateur,
-         valeur,
-         statut)
-
-ope_diversite_spe <- bind_rows(ope_diversite_spe_statut, ope_diversite_spe_esp)
-
-
+ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_esp)
 
 
 ############################     BIOMASSE    ###################################
@@ -405,8 +375,7 @@ ope_indicateur <- rbind(ope_50_percentile,
                         ope_densite_vol,
                         ope_pourcentjuv,
                         ope_biomasse,
-                        ope_abondance_totale,
-                        ope_diversite_spe)
+                        ope_effectif_total)
 
 # Vérification des valeurs des différents indicateurs (doivent être égales)
 table(ope_indicateur$indicateur)

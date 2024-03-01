@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 L'objectif de cette étude est d'évaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce travail vient en appui de la révision de la liste rouge régionale. Il s'agit de produire un tableau de bord combinant divers indicateurs de la dynamique des populations des poissons d'eau douce de Bretagne. 
 
 
-Dans un premier temps, ce script a pour objectif de constituer un premier dataframe rassemblant les données de la base ASPE correspondant à une zone géographique identifiée. Il s'agit de constituer un jeu de données regroupant des réseaux, des sites ainsi que des opérations de pêches ciblés qui constiturons la base de nos données pour l'étude des tendances des séries temporelles qui sera réalisée par la suite. 
+Dans un premier temps, ce script a pour objectif de constituer un premier dataframe rassemblant les données de la base ASPE correspondant à une zone géographique identifiée. Il s'agit de constituer un jeu de données regroupant des réseaux, des sites ainsi que des opérations de pêches ciblés qui constiturons la base de nos données pour l'étude des séries temporelles qui suivra. 
 
 
 # I. Installation : 
@@ -56,11 +56,11 @@ Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'
 
 - La taille du buffer (en mètres) : il s'agit de la taille du buffer lié aux opérations de pêches. 
 
-- Les réseaux de pêches : Il s'agit des types de réseaux sélectionnés. Parmi eux se trouvent le RCS - Réseau de Contrôle de Surveillance ; le RRP - Réseaux de Référence Pérenne ; le RHP - Réseau Hydrobiologique Piscicole. Dans notre étude, seul les trois premiers réseaux seront utilisés. Ces réseaux seront tester individuellement des uns des autres afin d'écarter ou non des analyses communes. En effet, les réseaux n'ayant pas le même objectif, un biais peut s'appliquer (ex. le réseaux RCS est un réseau "neutre", qui est sensé ne pas subir d'influence extérieure). 
+- Les réseaux de pêches : Il s'agit des types de réseaux sélectionnés. Parmi eux se trouvent le RCS - Réseau de Contrôle de Surveillance ; le RRP - Réseaux de Référence Pérenne ; le RHP - Réseau Hydrobiologique Piscicole ; le RCA - Réseau de contrôle additionnel ; le RCO – Réseau Contrôle opérationnel. Dans notre étude, seul les trois premiers réseaux seront utilisés. Ces réseaux seront tester ensemble puis individuellement afin d'écarter un risque de biais d'objectifs. En effet, les réseaux n'ayant pas les mêmes "objectifs d'observations", un biais peut apparaïtre (ex. le réseaux RPP est un réseau "témoin", qui ne doit pas subir d'influences extérieures, il doit seulement informer des potentiels effets provoqué par le changement climatique). 
 
-- Les types de pêches : Il existe de nombreux types de pêches. Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
+- Les types de pêches : Il existe de nombreux types de pêches : pêche partielle par point, pêche par ambiance,.... Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
 
-- Le nombre d'années minimum d'années sur les séries de pêches : il s'agit de la période minimum souhaitée dans les séries de pêches. 
+- Le nombre minimum d'années sur les séries de pêches : il s'agit de la période minimum souhaitée. 
 
 - Le nombre d'années manquantes consécutives maximum sur les séries de pêches : il s'agit de la période d'années manquantes consécutives maximum souhaitée dans l'analyse. 
 
@@ -146,7 +146,7 @@ mapview(
 Après visualisation de l'aire géographique et de ses stations associées, une sauvegarde des points de prélèvements peut s'effectuer dans la passerelle. Une sélection des réseaux et des types de pêches souhaitées est également réalisée. 
 
 Rappel : Dans le choix des données, il est nécessaire de sélectionner les réseaux de pêches souhaités. Il existe notamment 3 grands types de réseaux différents (RRP / RCS et RHP). Il est nécessaire d’être prudent lorsque ces 3 réseaux sont traités ensembles.
-En effet, ces 3 réseaux n’ont pas les mêmes objectifs : les RCS et RHP mesurent les impacts anthropiques (elles sont soumises aux perturbations anthropiques). Le réseau RRP est un « témoin » susceptible d'évaluer les tendances engrangées par le changement climatique. Ces différents réseaux présentent des particularités pouvant biaiser les résultats des tendances générales. 
+En effet, ces 3 réseaux n’ont pas les mêmes objectifs : les RCS et RHP mesurent les impacts anthropiques (elles sont soumises aux perturbations anthropiques). Le réseau RRP est un « témoin » susceptible d'évaluer les tendances engendrées par le changement climatique. Ces différents réseaux présentent des particularités pouvant biaiser les résultats des tendances générales. 
 
 
 ```{r}
@@ -265,7 +265,8 @@ mes_ope %>%
   theme_light(base_size = 11) +
   theme(panel.grid.major = element_line(color="#ffffff", size = 0.1),
         panel.grid.minor = element_line(color = "#ffffff"),
-        panel.background = element_rect(fill="#faf0e6")) +
+        panel.background = element_rect(fill="#faf0e6"),
+        legend.position = "bottom") +
   coord_flip()
 
 ```
@@ -302,11 +303,11 @@ Il s'agit ici de détecter des erreurs potentielles dans le jeu de données cons
 
 ## III.A : Les points de prélèvements et les stations : 
 
-Pour chacune des pêches réalisées, des points de prélèvement attaché à des stations sont inscrits dans la base. Il s'agit ici d'identifier pour chaque station combien de point de prélèvement sont associés. Le résultat permet  une vérification des doublons possible. 
+Pour chacune des pêches réalisées, des points de prélèvement attachés à des stations sont inscrits dans la base. Il s'agit ici d'identifier pour chaque station combien de point de prélèvement sont associés. Le résultat permet une vérification des doublons. 
 
-Remarque : l’idée étant d’obtenir les séries chronologiques les plus longues, vérifier qu’une fusion de point de prélèvement n’est pas possible (si les points de prélèvements sont proches !). 
+Remarque : l’idée étant d’obtenir les séries chronologiques les plus longues, il est important de vérifier si une fusion de point de prélèvement est envisageable (en cas de proximité géographique). 
 
-Il s'agit également d'identifier pour chaque point de prélèvement combien de station sont combinées (le résultat devant être égale à 1 sinon erreur probable).
+Il s'agit également d'identifier pour chaque point de prélèvement combien de station sont combinées (le résultat devant être égale à 1, sinon une erreur est probable).
 
 
 ```{r}

@@ -43,10 +43,9 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 ##################### CONSTITUTION JEU DE DONNEES ##############################
 #_______________________________________________________________________________
 
-# Construction d'un df pour les indicateurs calculés au point de prélèvement (pop_id)  ----
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 pop_indicateur <- ope_indicateur %>%
-  group_by(esp_code_alternatif, annee, statut, indicateur) %>%
+  group_by(pop_id, esp_code_alternatif, annee, indicateur, statut) %>% # Est-ce que je conserve le statut ? 
   summarize(valeur = median(valeur)) %>%
   ungroup() %>% 
   distinct()
@@ -54,14 +53,14 @@ pop_indicateur <- ope_indicateur %>%
 
 
 # Représentation graphique de mes données : 
-mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5) # Echantillon de 5 espèces
+mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5) # Ech de 5 espèces
 graphique <- pop_indicateur %>% 
   filter(esp_code_alternatif%in%mes_do) %>% 
   ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
   geom_line() +
   facet_grid(indicateur ~ esp_code_alternatif , scales = "free") + 
   scale_color_manual(values= pal) +
-  labs(title = "Indicateurs de tendances pour 5 espèces de poissons d'eau douce", 
+  labs(title = "Les différents indicateurs de tendances pour 5 espèces de poissons d'eau douce", 
        x = "Années", 
        y = "Valeurs")
 print(graphique)
@@ -72,7 +71,7 @@ print(graphique)
 #_______________________________________________________________________________
 
 
-#################### Sur les données de densités de surface ####################
+#################### Sur les données de densité de surface ####################
 ope_id <- unique(ope_indicateur$ope_id)
 esp_code_alternatif <- unique(ope_indicateur$esp_code_alternatif)
 statut <- unique(ope_indicateur$statut)
@@ -192,8 +191,6 @@ tendance_indicateur_t_oc_densite_surface %>%
 
 
 #################### Sur les données de longueur médianes ####################
-
-
 tendance_indicateur_t_oc_longueur_mediane <- mk_st_by_group(taux_occurrence_longueur_mediane,
                                                            var_x = annee,
                                                            var_y = valeur,
@@ -224,8 +221,6 @@ tendance_indicateur_t_oc_longueur_mediane %>%
 
 
 #################### Sur les données de densité volumique ####################
-
-
 tendance_indicateur_t_oc_densite_volumique <- mk_st_by_group(taux_occurrence_densite_volumique,
                                                             var_x = annee,
                                                             var_y = valeur,

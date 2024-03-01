@@ -9,9 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Objectif : Dynamique des populations des poissons d'eau douce de Bretagne - 05_pre_traitements_donnees_env
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 05_pre_traitements_donnees_env
 
-Il s’agit de réaliser les pré-traitements des données environnementales utilisées pour l’étude. Cette partie permet notamment d’observer les erreurs ou incohérences présentes dans le jeu de données relatif aux variables environnementales. Il s'agit d'un travail de mise en qualité des données. Elle permet également de s’occuper des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, des données peuvent être non renseignées d’une année à l’autre et la valeur étant pour certains paramètres non changeante d’une année à l’autre, ces dernières sont remplacées par les données médianes des mêmes stations. 
+Il s’agit de réaliser les pré-traitements des données environnementales utilisées pour l’étude. Cette partie permet notamment d’observer les erreurs ou incohérences présentes dans le jeu de données relatif aux variables environnementales. Il s'agit d'un travail de mise en qualité des données. Il s'agit également de s’occuper des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, des données peuvent être non renseignées d’une année à l’autre et la valeur étant, pour certains paramètres, non changeante d’une année à l’autre, ces dernières sont remplacées par les données médianes des mêmes stations. 
 
 # I. Installation : 
 ## I.A : Chargement des packages, fonctions et des données : 
@@ -68,16 +68,16 @@ ope_selection_param_env <- passerelle %>%
 Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des autres données relatives aux points de prélèvements. 
 
 ```{r}
-# Je fais apparaître mes NA dans un nouveau jeu de données : 
+# Les NA sont indiquées dans un nouveau jeu de données : 
 N_A <- which(apply(is.na(ope_selection_param_env), 1, any)) 
 print(ope_selection_param_env[N_A, ]) # Observation des NA
 
 
 
 ope_selection_param_env <- ope_selection_param_env %>% 
-  arrange(parametre, annee)%>%  # Trier les données environnementales globales
+  arrange(parametre, annee)%>%  # Tri des données environnementales globales
   group_by(parametre,pop_id) %>%
-  mutate(valeur = ifelse(is.na(valeur), # Remplacer les NA par les médianes
+  mutate(valeur = ifelse(is.na(valeur), # NA remplacées par les médianes
                          zoo::na.aggregate(valeur, median), valeur))
 
 ```
@@ -104,7 +104,8 @@ ope_selection_param_env %>%
 
 
 
-# Représentation de mes variables environnements (avec facet_grid) : mais problème d'échelle
+# Représentation de mes variables environnements (avec facet_grid) : 
+# !!! ATTENTION !!! Ici problème d'échelle non résolu
 ope_selection_param_env %>% 
   ggplot(mapping = aes(x = annee, y = valeur), scales = "free") +
   geom_bar(stat="identity", fill = "darkcyan") +
@@ -117,6 +118,8 @@ ope_selection_param_env %>%
   theme_bw()
 
 ```
+
+
 
 # Sauvegarde : 
 ```{r}
