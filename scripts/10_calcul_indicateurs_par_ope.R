@@ -103,12 +103,12 @@ ope_selection <- passerelle %>%
          sta_id,
          pop_id,
          mei_taille,
-         mei_poids,
          pas_numero,
          tyl_libelle,
          pro_libelle,
          annee,
          tlo_libelle)
+
 
 # Suppression des espèces, des passages, des répétitions et des lots non souhaités du jeu de données ----
 ope_selection <- subset(ope_selection, !esp_code_alternatif %in% especes_a_retirer)
@@ -177,7 +177,6 @@ ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un Df d
 
 
 
-
 # indicateurs sur les opérations de pêches : 
 
 ##################### ABONDANCE TOTALE ####################################
@@ -194,7 +193,6 @@ ope_abondance_totale_statut <- ope_selection %>%
          valeur,
          statut)
   
-
 ope_abondance_totale_esp <- ope_abondance_totale_statut %>% 
   group_by(ope_id,
            esp_code_alternatif) %>% 
@@ -227,7 +225,7 @@ ope_diversite_spe_esp <- ope_diversite_spe_statut %>%
   group_by(ope_id,
            esp_code_alternatif) %>% 
   summarise(valeur = median(valeur)) %>% 
-  mutate(indicateur= "abondance_totale") %>%
+  mutate(indicateur= "diversite_specifique") %>%
   mutate (statut = "toutes") %>% 
   select(ope_id,
          esp_code_alternatif,
@@ -240,18 +238,32 @@ ope_diversite_spe <- bind_rows(ope_diversite_spe_statut, ope_diversite_spe_esp)
 
 
 
-################################## BIOMASSE ###################################
-#Revoir la fonction qui ne marche pas / a refaire plus tard
+############################     BIOMASSE    ###################################
+# On calcul la biomasse par espèce et par statut : 
 source(file = "R/calcul_biomasse.R")
-calcul_biomasse <- calcul_biomasse(ope_selection,
-                                   ope_id,
-                                   esp_code_alternatif,
-                                   statut,
-                                   mei_taille,
-                                   tlo_libelle,
-                                   mei_poids)
-ope_biomasse <- calcul_biomasse$resultat_bio
+ope_biomasse_statut <- calcul_biomasse(ope_selection,
+                                       ope_id,
+                                       esp_code_alternatif,
+                                       statut,
+                                       mei_taille,
+                                       tlo_libelle)
+ope_biomasse_statut <- ope_biomasse_statut %>% 
+  mutate(indicateur = "biomasse")
 
+
+ope_biomasse_esp <- ope_biomasse_statut %>% 
+  group_by(ope_id,
+           esp_code_alternatif) %>% 
+  summarise(valeur = sum(valeur)) %>% 
+  mutate(indicateur= "biomasse") %>%
+  mutate (statut = "toutes") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         statut)
+
+ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
 
 
 ######################    DENSITE DE SURFACE   ####################
@@ -302,8 +314,6 @@ ope_densite_surface_statut <- resultats_densite$df3
 
 
 
-
-
 ######################### DENSITE VOLUME ######################################
 
 #Ajout des profondeurs pour réaliser les densités volumiques 
@@ -334,8 +344,6 @@ ope_densite_volume_statut <- ope_densite_vol %>%
 
 ope_densite_volume_esp <- ope_densite_vol %>% 
   filter (statut == "toutes")
-
-
 
 
 ########################## POURCENTAGE DE JUVENILES ############################
@@ -390,12 +398,13 @@ ope_pourcentjuv <- bind_rows(ope_pourcentjuv_statut, ope_pourcentjuv_esp)
 
 # Création du tableau pré-final avec tous les indicateurs calculés
 ope_indicateur <- rbind(ope_50_percentile,
-                        ope_ecart_interqua,
-                        ope_25_percentile,
-                        ope_75_percentile,
+                        #ope_ecart_interqua,
+                        #ope_25_percentile,
+                        #ope_75_percentile,
                         ope_densite_surface,
                         ope_densite_vol,
                         ope_pourcentjuv,
+                        ope_biomasse,
                         ope_abondance_totale,
                         ope_diversite_spe)
 

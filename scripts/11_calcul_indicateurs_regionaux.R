@@ -1,19 +1,13 @@
 #_______________________________________________________________________________
 ##################         INDICATEURS REGIONAUX        #######################
 #_______________________________________________________________________________
-
-
 # Pour les indicateurs calculés au point, on agrège chaque année leur valeur à 
 # l'échelle régionale. 
-
 # Le taux d'occurence de chaque espèce est directement calculée annuellement, à 
 # l'échelle régionale, comme le pourcentage de sites prospectés où l'espèce a 
 # été trouvée. 
 
-
-
 ## Chargement des packages ----
-
 library(ggthemes)
 library(tidyverse)
 library(aspe)
@@ -25,7 +19,6 @@ library(zoo)
 library(lemon)
 
 ## Chargement des données ----
-
 load(file = "processed_data/selection_pop_ope.rda")
 load(file = "processed_data/pre_traitements_donnees_env.rda")
 load(file = "processed_data/assemblage_tab_par_ope.rda")
@@ -38,15 +31,12 @@ load(rdata_tables)
 mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
-
 load(mei_table)
 
 source(file = "R/mk_st_by_group.R")
 
-# Chargement de la palette de couleur utilisée : 
-pal <- wes_palette("AsteroidCity1")
-
-
+# Définition des couleurs de l'OFB en format RGB
+pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
 
 
 #_______________________________________________________________________________
@@ -64,9 +54,7 @@ pop_indicateur <- ope_indicateur %>%
 
 
 # Représentation graphique de mes données : 
-
-mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5)
-
+mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5) # Echantillon de 5 espèces
 graphique <- pop_indicateur %>% 
   filter(esp_code_alternatif%in%mes_do) %>% 
   ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
@@ -76,113 +64,7 @@ graphique <- pop_indicateur %>%
   labs(title = "Indicateurs de tendances pour 5 espèces de poissons d'eau douce", 
        x = "Années", 
        y = "Valeurs")
-
 print(graphique)
-
-
-
-####################### Calcul du taux de densité de surface : 
-
-resultats_densite_surface <- list()
-#Parcourir chaque espèce de poissons : 
-especes <- unique(pop_indicateur$esp_code_alternatif)
-
-
-ope_indicateur_densite <- pop_indicateur %>% 
-  filter(indicateur == "densite_surface" | indicateur == "densite_volumique") %>%
-  select (esp_code_alternatif,
-          annee,
-          indicateur,
-          valeur)
-
-
-for(espece in especes) {
-  #Filtrer les données pour l'espèce en cours
-  donnees_espece_s <- subset(ope_indicateur_densite, esp_code_alternatif == espece, indicateur == "densite_surface")
-  donnees_espece_v <- subset(ope_indicateur_densite, esp_code_alternatif == espece, indicateur == "densite_volumique")
-  #Trier les données par années
-  donnees_espece_s <- donnees_espece_s[order(donnees_espece_s$annee),]
-  donnees_espece_v <- donnees_espece_v[order(donnees_espece_v$annee),]
-  
-  #Calculer les taux de densité de surface
-  taux_surface <- c(NA)
-  for(i in 2:nrow(donnees_espece_s)){
-    densite_surface_actuelle <- donnees_espece_s$valeur[i]
-    densite_surface_precedente <- donnees_espece_s$valeur[i-1]
-    
-    #Gérer les valeurs manquantes
-    if(is.na(densite_surface_actuelle) || is.na(densite_surface_precedente)) {
-      taux_surface <- c(taux_surface, NA)
-    } else {
-      taux_surface <- c(taux_surface, ((densite_surface_actuelle / densite_surface_precedente)-1)*100)
-    }
-  }
-
-  #Calculer les taux de densité volumique
-  taux_volumique <- c(NA)
-  for(i in 2:nrow(donnees_espece_v)){
-    densite_volumique_actuelle <- donnees_espece_v$valeur1[i]
-    densite_volumique_precedente <- donnees_espece_v$valeur2[i-1]
-    
-    #Gérer les valeurs manquantes
-    if(is.na(densite_volumique_actuelle) || is.na(densite_volumique_precedente)) {
-      taux_volumique <- c(taux_volumique, NA)
-    } else {
-      taux_volumique <- c(taux_volumique, ((densite_volumique_actuelle / densite_volumique_precedente)-1)*100)
-    }
-  }
-  
-  #Stocker les résultats dans la liste
-  noms_colonne_surface <- paste("Taux_surface_", espece, sep="")
-  resultats[[noms_colonne_surface]] <- taux_surface
-  
-  noms_colonne_volumique <- paste("Taux_volumique_", espece, sep="")
-  resultats[[noms_colonne_volumique]] <- taux_volumique
-}
-
-#Convertir la liste de résultats en dataframe
-resultats_df <- as.data.frame(resultats)
-
-#Ajouter une colonne 'annee' au dataframe de résultats
-resultats_df$annee <- ope_indicateur_densite$annee[-1]
-
-print(resultats_df)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-####################### Calcul du pourcentage des stations pour laquelle l'espèce
-#### est présente une année donnée (et aussi en fonction de son statut)
-
-source(file = "R/calcul_pourcentage_presence_station.R")
-calcul_pourcentage_presence_station <- calcul_pourcentage_presence_station(pop_indicateur,
-                                                                           esp_code_alternatif,
-                                                                           statut,
-                                                                           pop_id,
-                                                                           annee)
-
-# Représentation graphique :
-ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
-  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
-  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
-  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
-  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
-  # Ajoutez d'autres lignes pour chaque espèce
-  labs(title = "Évolution des taux d'évolution par espèce",
-       x = "Année",
-       y = "Taux d'évolution") +
-  theme_minimal()
-
 
 
 #_______________________________________________________________________________
@@ -226,57 +108,6 @@ taux_occurrence_densite_surface <- tab_oc %>%
          -taux_oc)
 
 
-#################### Sur les données de longueur médianes ####################
-tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
-longueur_med <- ope_indicateur %>% 
-  filter(indicateur == "longueur_mediane") 
-
-taux_occurrence_longueur_mediane <- tab_oc %>% 
-  left_join(longueur_med) %>% 
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(-indicateur,
-         -annee,
-         -pop_id) %>% 
-  left_join(annees) %>% 
-  group_by(esp_code_alternatif,
-           statut,
-           annee) %>% 
-  summarise(n_ope = n_distinct(ope_id),
-            n_oc = n_distinct(ope_id[valeur > 0]),
-            taux_oc = n_oc / n_ope) %>% 
-  mutate(indicateur = "taux_occurrence",
-         valeur = taux_oc) %>% 
-  select(-n_ope,
-         -n_oc,
-         -taux_oc)
-
-
-
-
-
-#################### Sur les données de densités volume ####################
-tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
-densite_volumique <- ope_indicateur %>% 
-  filter(indicateur == "densite_volumique") 
-
-taux_occurrence_densite_volumique <- tab_oc %>% 
-  left_join(densite_volumique) %>% 
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(-indicateur,
-         -annee,
-         -pop_id) %>% 
-  left_join(annees) %>% 
-  group_by(esp_code_alternatif,
-           statut,
-           annee) %>% 
-  summarise(n_ope = n_distinct(ope_id),
-            n_oc = n_distinct(ope_id[valeur > 0]),
-            taux_oc = n_oc / n_ope) %>% 
-  mutate(indicateur = "taux_occurrence",
-         valeur = taux_oc) %>% 
-  select(-n_ope,
-         -n_oc,
-         -taux_oc)
 
 ################################################################################
 ################### OBSERVATION DES TENDANCES GLOBALES #########################
@@ -304,13 +135,13 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
                pop_id)
 
 
-mes_id_1 <- sample(unique(tendance_indicateur$esp_code_alternatif), 2) 
+mes_id_1 <- sample(unique(tendance_indicateur$esp_code_alternatif), 1) 
 tendance_indicateur %>% 
   filter(esp_code_alternatif%in% mes_id_1) %>% 
   group_by(indicateur,
            trend,
-           esp_code_alternatif,
-           statut) %>% 
+           statut,
+           esp_code_alternatif) %>% 
   summarise (n = n_distinct (pop_id)) %>% 
   ggplot(mapping = aes(x = trend,
                        y = n,
@@ -331,8 +162,6 @@ tendance_indicateur %>%
 
 ################################################################################
 #################### Sur les données de densités de surface ####################
-
-
 tendance_indicateur_t_oc_densite_surface <- mk_st_by_group(taux_occurrence_densite_surface,
                                       var_x = annee,
                                       var_y = valeur,
@@ -429,7 +258,6 @@ tendance_indicateur_t_oc_densite_volumique %>%
 ################################################################################
 ############################## TAUX EVOLUTION ##################################
 ################################################################################
-
 # Le taux d'évolution : On souhaite calculer le taux d'évolution inter-annuel, 
 # c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution
 # est positif, cela correspond à une croissance de la population ; si il est 
@@ -437,15 +265,134 @@ tendance_indicateur_t_oc_densite_volumique %>%
 
 source(file = "R/calcul_taux_evolution.R")
 
-
 # Taux d'évolution du taux d'occurence de densité de surface : 
 # FONCTION : 
 
 calcul_taux_evol_oc_densite_surface <- calcul_taux_evolution(taux_occurrence_densite_surface,
-                                             annee,
-                                             statut,
-                                             esp_code_alternatif,
-                                             valeur)
+                                                             annee,
+                                                             statut,
+                                                             esp_code_alternatif,
+                                                             valeur)
+
+# Représentation graphique :
+ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
+  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
+  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
+  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
+  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
+  # Ajoutez d'autres lignes pour chaque espèce
+  labs(title = "Évolution des taux d'évolution par espèce",
+       x = "Année",
+       y = "Taux d'évolution") +
+  theme_minimal() +
+  scale_color_manual(values= pal)
+
+
+
+#######################   Taux de densité surfacique ######################### 
+# Les taux de densité de surface sont des mesures de changement de densité de 
+# surface d'une espèce entre deux périodes de temps différentes. Ils représentent
+# le pourcentage de variation dans la densité de surface d'une espèce entre 2 
+# moments donnés. 
+
+
+# ATTENTION : Ne marche pas
+tab_densite_s <- pop_indicateur %>% 
+  select(esp_code_alternatif,
+         indicateur,
+         valeur,
+         annee) %>% 
+  filter (indicateur == "densite_surface") %>% 
+  select(-indicateur)
+
+tab_densite_s$annee <- as.Date(tab_densite_s$annee, format="%Y")
+resultats_densite_surface <- list()
+especes <- unique(tab_densite_s$esp_code_alternatif)
+
+
+for(espece in especes) {
+  # Filtrer les données pour l'espèce en cours
+  donnees_espece_s <- subset(tab_densite_s, esp_code_alternatif == espece)
+  # Trier les données par années
+  donnees_espece_s <- donnees_espece_s[order(donnees_espece_s$annee),]
+  
+  # Calculer les taux de densité de surface
+  taux_surface <- c(NA)
+  for(i in 2:nrow(donnees_espece_s)){
+    densite_surface_actuelle <- donnees_espece_s$valeur[i]
+    densite_surface_precedente <- donnees_espece_s$valeur[i-1]
+    
+    # Gérer les valeurs manquantes
+    if(is.na(densite_surface_actuelle) || is.na(densite_surface_precedente)) {
+      taux_surface <- c(taux_surface, NA)
+    } else {
+      taux_surface <- c(taux_surface, ((densite_surface_actuelle / densite_surface_precedente)-1)*100)
+    }
+  }
+  
+  # Stocker les résultats dans la liste
+  noms_colonne_surface <- paste("Taux_surface_", espece, sep="")
+  resultats_densite_surface[[noms_colonne_surface]] <- taux_surface
+}
+
+# Convertir la liste de résultats en dataframe
+resultats_df <- as.data.frame(resultats_densite_surface)
+
+# Ajouter une colonne 'annee' au dataframe de résultats
+resultats_df$annee <- tab_densite_s$annee[-1]
+print(resultats_df)
+
+
+
+####################### Calcul du pourcentage des stations pour laquelle l'espèce
+#### est présente une année donnée (et aussi en fonction de son statut)
+
+resultats_pourcentage_esp_pop <- list() # Créer une liste de résultats
+
+
+# Parcourir chaque espèce de poissons
+especes <- unique(ope_indicateur$esp_code_alternatif)
+
+# Fonction pour calculer le pourcentage de présence
+calcul_pourcentage <- function(ope_indicateur, pop_id, annee) {
+  stations_par_annee <- aggregate(ope_indicateur$pop_id ~ ope_indicateur$annee,
+                                  data = ope_indicateur,
+                                  FUN = function(x) length(unique(x)))
+  
+  pourcentage_presence <- stations_par_annee$pop_id / length(unique(ope_indicateur$pop_id)) * 100
+  return(pourcentage_presence)
+}
+
+# Parcourir les combinaisons d'espèces et de statuts
+for(espece in especes) {
+  # Filtrer les données pour l'espèce et le statut en cours
+  donnees_espece_statut <- subset(ope_indicateur, ope_indicateur$esp_code_alternatif == espece)
+  
+  # Calculer le pourcentage de présence
+  nom_colonne <- paste("Pourcentage_presence_", espece, "_", statut, sep = "")
+  resultats_pourcentage_esp_pop[[nom_colonne]] <- calcul_pourcentage(donnees_espece_statut, pop_id, annee)
+}
+
+# Convertir la liste de résultats en dataframe
+resultats_df <- as.data.frame(resultats_pourcentage_esp_pop)
+
+# Ajouter une colonne 'annee' au dataframe de résultats
+#stations_par_annee <- aggregate(ope_indicateur$pop_id ~ ope_indicateur$annee, data = ope_indicateur, FUN = function(x) length(unique(x)))
+resultats_df$annee <- stations_par_annee$annee
+
+# Affichage du dataframe avec les pourcentages de présence
+print(resultats_df)
+
+
+source(file = "R/calcul_pourcentage_presence_station.R")
+calcul_pourcentage_presence_station <- calcul_pourcentage_presence_station(pop_indicateur,
+                                                                           esp_code_alternatif,
+                                                                           statut,
+                                                                           pop_id,
+                                                                           annee)
+
+
+
 
 # Représentation graphique :
 ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
@@ -458,10 +405,4 @@ ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
        x = "Année",
        y = "Taux d'évolution") +
   theme_minimal()
-
-
-
-
-
-
 

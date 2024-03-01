@@ -9,12 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Objectif : Dynamique des populations des poissons d'eau douce de Bretagne - 00-Selection_pop_ope
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 00-Selection_pop_ope
 
-L'objectif de cette étude est d'évaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce travail vient en appui de la révision de la liste rouge régionale. Il s'agit de produire un tableau de bord combinant divers indicateurs de la dynamique des populations. 
+L'objectif de cette étude est d'évaluer les tendances temporelles des poissons d'eau douce de Bretagne. Ce travail vient en appui de la révision de la liste rouge régionale. Il s'agit de produire un tableau de bord combinant divers indicateurs de la dynamique des populations des poissons d'eau douce de Bretagne. 
 
 
-Dans un premier temps, ce script a pour objectif de constituer un premier dataframe rassemblant les données de la base ASPE correspondant à une zone géographique identifiée. Il s'agit de constituer un jeu de données regroupant des réseaux, des sites ainsi que des opérations de pêches ciblés qui constiturons la base de nos données pour l'étude des tendances des séries temporelles. 
+Dans un premier temps, ce script a pour objectif de constituer un premier dataframe rassemblant les données de la base ASPE correspondant à une zone géographique identifiée. Il s'agit de constituer un jeu de données regroupant des réseaux, des sites ainsi que des opérations de pêches ciblés qui constiturons la base de nos données pour l'étude des tendances des séries temporelles qui sera réalisée par la suite. 
 
 
 # I. Installation : 

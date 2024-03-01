@@ -2,8 +2,8 @@ calcul_pourcentage_presence_station <- function(df,
                                                 var_esp_code_alternatif,
                                                 var_statut,
                                                 var_pop_id,
-                                                var_annee) {
-  
+                                                var_annee) 
+{
   var_esp_code_alternatif <- enquo(var_esp_code_alternatif)
   var_statut <- enquo(var_statut)
   var_pop_id <- enquo(var_pop_id)
