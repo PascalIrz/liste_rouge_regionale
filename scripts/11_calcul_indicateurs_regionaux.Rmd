@@ -30,23 +30,28 @@ library(dplyr)
 library(wesanderson)
 library(zoo)
 library(lemon)
+library(trend)
+
 
 ## Chargement des données ----
-load(file = "processed_data/selection_pop_ope.rda")
-load(file = "processed_data/pre_traitements_donnees_env.rda")
-load(file = "processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
-  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 load(rdata_tables)
 
 mei_table <- misc_nom_dernier_fichier(
-  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
 load(mei_table)
 
-source(file = "R/mk_st_by_group.R")
+source(file = "../R/mk_st_by_group.R")
+source(file = "../R/mann_kendall_sen.R")
+source(file = "../R/calcul_taux_evolution.R")
+source(file = "../R/calcul_pourcentage_presence_station.R")
 
 # Définition des couleurs de l'OFB en format RGB
 pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
@@ -54,30 +59,180 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 
 
 # II. Constitution du jeu de données : 
-## II.A : Application des choix inscrits dans les paramètres : 
+## II.A : Echelle régionale: 
 
-```{r}
+```{r, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 pop_indicateur <- ope_indicateur %>%
-  group_by(pop_id, esp_code_alternatif, annee, indicateur, statut) %>% # Est-ce que je conserve le statut ? 
+  group_by(esp_code_alternatif, annee, indicateur, statut) %>% # Est-ce que je conserve le statut ? 
   summarize(valeur = median(valeur)) %>%
   ungroup() %>% 
   distinct()
 
 
 
-# Représentation graphique de mes données : 
-mes_do <- sample(unique(pop_indicateur$esp_code_alternatif), 5) # Ech de 5 espèces
+# Représentation graphique des données : 
 graphique <- pop_indicateur %>% 
-  filter(esp_code_alternatif%in%mes_do) %>% 
   ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
   geom_line() +
-  facet_grid(indicateur ~ esp_code_alternatif , scales = "free") + 
+  facet_grid(esp_code_alternatif ~ indicateur , scales = "free") + 
   scale_color_manual(values= pal) +
-  labs(title = "Les différents indicateurs de tendances pour 5 espèces de poissons d'eau douce", 
+  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce", 
        x = "Années", 
        y = "Valeurs")
 print(graphique)
 
+```
+
+## II.C : Tendances globales : 
+Il s'agit d'observer les différentes tendances présentes sur les indicateurs précedement établis. 
+```{r, fig.height = 25, fig.width = 10}
+tendance_indicateur <- mk_st_by_group(ope_indicateur,
+                                      var_x = annee,
+                                      var_y = valeur,
+                                      esp_code_alternatif,
+                                      indicateur,
+                                      statut, 
+                                      pop_id)
+
+
+tendance_indicateur %>% 
+  group_by(indicateur,
+           trend,
+           statut,
+           esp_code_alternatif) %>% 
+  summarise (n = n_distinct (pop_id)) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ indicateur ~ esp_code_alternatif, 
+              scales = "free") +
+  labs(title = "Tendances indicateurs", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
+```
+
+
+
+## II.C.1 : Taux d'occurrence : 
+
+On calcul le taux d'occurrence des espèces : 
+```{r}
+ope_id <- unique(ope_indicateur$ope_id)
+esp_code_alternatif <- unique(ope_indicateur$esp_code_alternatif)
+statut <- unique(ope_indicateur$statut)
+
+annees <- ope_indicateur %>% 
+  ungroup() %>% 
+  select(ope_id,
+         annee) %>% 
+  distinct()
+
+tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
+
+densites_surface <- ope_indicateur %>% 
+  filter(indicateur == "densite_surface") 
+
+taux_occurrence_densite_surface <- tab_oc %>% 
+  left_join(densites_surface) %>% 
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(-indicateur,
+         -annee,
+         -pop_id) %>% 
+  left_join(annees) %>% 
+  group_by(esp_code_alternatif,
+           statut,
+           annee) %>% 
+  summarise(n_ope = n_distinct(ope_id),
+            n_oc = n_distinct(ope_id[valeur > 0]),
+            taux_oc = n_oc / n_ope) %>% 
+  mutate(indicateur = "taux_occurrence",
+         valeur = taux_oc) %>% 
+  select(-n_ope,
+         -n_oc,
+         -taux_oc)
+
+```
+
+
+## II.C.2 : Tendances des taux d'occurrence : 
+
+On observe maintenant les tendances sur les taux d'occurrence des espèces : 
+
+```{r, fig.height = 25, fig.width = 10}
+tendance_indicateur_t_oc_densite_surface <- mk_st_by_group(taux_occurrence_densite_surface,
+                                      var_x = annee,
+                                      var_y = valeur,
+                                      esp_code_alternatif,
+                                      indicateur,
+                                      statut)
+
+
+tendance_indicateur_t_oc_densite_surface %>% 
+  group_by(trend,
+           esp_code_alternatif,
+           statut) %>% 
+  summarise (n = mk_pvalue) %>% 
+  ggplot(mapping = aes(x = trend,
+                       y = n,
+                       fill = trend)) +
+  geom_bar(stat="identity") +
+  facet_grid( ~ statut ~ esp_code_alternatif, 
+              scales = "free") +
+  labs(title = "Tendances des taux d'occurrence", 
+       x = "Trend", 
+       y = "Valeurs") +
+  theme_bw() +
+  scale_color_manual(values = pal)
+
+```
+
+## II.D : Taux d'Evolution :
+
+On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
+
+```{r}
+# Taux d'évolution du taux d'occurence de densité de surface : 
+# FONCTION : 
+
+calcul_taux_evol_oc_densite_surface <- calcul_taux_evolution(taux_occurrence_densite_surface,
+                                                             annee,
+                                                             statut,
+                                                             esp_code_alternatif,
+                                                             valeur)
+
+# Représentation graphique :
+ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
+  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
+  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
+  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
+  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
+  # Ajoutez d'autres lignes pour chaque espèce souhaitées
+  labs(title = "Évolution des taux d'évolution par espèce",
+       x = "Année",
+       y = "Taux d'évolution") +
+  theme_minimal() +
+  scale_color_manual(values= pal)
+
+```
+
+
+
+
+## II.E : Pourcentage de station_esp :
+
+On cherche à calculer le pourcentage des stations pour laquelle une espèce est présente pour une année donnée
+
+
+```{r}
+#ATTENTION !!! La fonction ne marche pas ... 
+#calcul_pourcentage_presence_station <- calcul_pourcentage_presence_station(pop_indicateur,
+#                                                                           esp_code_alternatif,
+#                                                                           statut,
+#                                                                           pop_id,
+#                                                                           annee)
 ```
 
