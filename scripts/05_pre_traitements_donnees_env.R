@@ -19,7 +19,6 @@ library(lemon)
 library(ggthemes)
 library(tidyverse)
 library(aspe)
-library(ggplot2)
 library (khroma)
 
 
@@ -47,7 +46,7 @@ source(file = "R/calcul_biomasse.R")
 ########################### DONNEES ENVIRONNEMENTALES #########################
 
 
-# Je créer un tableau avec mes variables environnement : 
+# Je crée un tableau avec mes variables environnement : 
 
 ope_selection_param_env <- passerelle %>% 
   select(-lop_id,
@@ -70,19 +69,30 @@ ope_selection_param_env2 <- ope_selection_param_env %>%
 
 # Je fais apparaître mes NA dans mon jeu de données environnement : 
 
+env_median_par_pop <- ope_selection_param_env2 %>% 
+  group_by(pop_id, parametre) %>% 
+    summarise(mediane = median(valeur, na.rm = TRUE)) %>% 
+  ungroup()
 
-ope_selection_param_env3 <- left_join(ope_selection_param_env, 
-                                      ope_selection_param_env2,
-                                      by = "annee")
+ope_selection_param_env2 <- ope_selection_param_env2 %>% 
+  left_join(env_median_par_pop) %>% 
+  mutate(valeur = ifelse(is.na(valeur), mediane, valeur)) %>% 
+  select(-mediane)
+
+
+
+# ope_selection_param_env3 <- left_join(ope_selection_param_env, 
+#                                       ope_selection_param_env2,
+#                                       by = "annee")
 
 
 # Une fois que mes NA seront apparants : je remplace ces NA par les médianes :
 
-ope_selection_param_env3 %>% 
-  group_by(parametre, pop_id.x) %>% 
-  mutate (valeur = (ifelse (is.na (valeur), 
-                            yes = median (valeur, na.rm = TRUE), 
-                            no = valeur)))
+# ope_selection_param_env3 %>% 
+#   group_by(parametre, pop_id.x) %>% 
+#   mutate (valeur = (ifelse (is.na (valeur), 
+#                             yes = median (valeur, na.rm = TRUE), 
+#                             no = valeur)))
 
 
 
@@ -90,6 +100,7 @@ ope_selection_param_env3 %>%
 # Représentation de mes variables environnements (avec facet_wrap) : 
 
 mes_id <- sample(unique(ope_selection_param_env2$pop_id), 2)
+
 ope_selection_param_env2 %>% 
   filter(pop_id%in% mes_id) %>% 
   ggplot(aes(x=annee, y=valeur)) +
@@ -111,6 +122,7 @@ ope_selection_param_env2 %>%
 
 
 mes_id <- sample(unique(ope_selection_param_env2$pop_id), 2) 
+
 ope_selection_param_env2 %>% 
   filter(pop_id%in% mes_id) %>% 
   ggplot(mapping = aes(x = annee, y = valeur), scales = "free") +
@@ -123,5 +135,10 @@ ope_selection_param_env2 %>%
        y = "Valeurs") +
   theme_bw()
 
+ope_selection_param_env <- ope_selection_param_env2
 
+
+
+save(ope_selection_param_env,
+     file = "processed_data/ope_selection_param_env.rda")
 

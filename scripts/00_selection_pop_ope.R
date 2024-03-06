@@ -144,6 +144,8 @@ mes_ope <- passerelle %>%
   select(sta_id:ope_id, pro_libelle) %>% 
   distinct()
 
+passerelle <- passerelle %>% 
+  filter(ope_id %in% mes_ope$ope_id)
 
 
 ## Sélection des séries de pêches avec au moins 9 années de données (paramètres) ----
@@ -151,16 +153,21 @@ mes_ope <- passerelle %>%
 annee_de_donnees <- mes_ope %>%
   mef_ajouter_ope_date()
 
-bilan_annee_de_donnees <- annee_de_donnees %>% 
-  group_by (pop_id) %>% 
-  summarise(n_annee = n_distinct(annee), 
-            premier_annee=min(annee),dernier_annee=max(annee),duree=dernier_annee-premier_annee)
+bilan_annee_de_donnees <- annee_de_donnees %>%
+  group_by (pop_id) %>%
+  summarise(
+    nombre_annees_totales = n_distinct(annee),
+    premier_annee = min(annee),
+    dernier_annee = max(annee),
+    duree = dernier_annee - premier_annee
+  )
 
 mes_pop_id <- bilan_annee_de_donnees %>% 
-  filter(n_annee > n_mini_annees) %>%  # PARAMETRES
+  filter(nombre_annees_totales > n_mini_annees) %>%  # PARAMETRES
   pull(pop_id)
 
-colnames(bilan_annee_de_donnees)[2] <- "nombre_annees_totales"
+
+# colnames(bilan_annee_de_donnees)[2] <- "nombre_annees_totales"
 print(bilan_annee_de_donnees)
 
 
@@ -173,7 +180,7 @@ annee_de_donnees %>%
   ggplot(aes(x = as.character(pop_libelle),
              y = annee, 
              fill= pro_libelle)) + 
-  scale_fill_manual(values= pal) +
+  scale_fill_manual(values = pal) +
   geom_tile() +
   labs(title = "Les stations sélectionnées et les types de pêches associées",
        subtitle = "Région Bretagne",
@@ -220,7 +227,7 @@ ope_selection <- annee_de_donnees %>%
 
 # --- Enregistrement des opérations de pêches retenues dans la passerelle
 passerelle <- passerelle %>% 
-  filter(ope_id %in%ope_selection$ope_id)
+  filter(ope_id %in% ope_selection$ope_id)
 
 
 
