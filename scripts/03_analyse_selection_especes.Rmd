@@ -1,0 +1,125 @@
+---
+title: "03_analyse_selection_especes"
+author: "Léa Bouchet"
+date: "2024-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 03_analyse_selection_especes
+
+Pour les operations sélectionnées, on cherche à savoir quelles espèces seront sélectionnées pour les futures analyses. On souhaite réaliser un graphique bi_varié et de sélectionner les espèces à partir d'un seuil déterminé. 
+
+Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèce qui son trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qu isont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
+
+# I. Installation : 
+## I.A : Chargement des packages et des données : 
+
+```{r}
+## Chargement des packages ----
+
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library(zoo)
+library(lemon)
+
+
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
+
+
+Création d'un df contenant les données des mesures individuelles :
+
+```{r, fig.height = 55, fig.width = 10}
+#Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
+esp_selection <- passerelle %>% 
+  left_join(y=lot_poissons %>% 
+              select(lop_id,
+                     esp_id = lop_esp_id,
+                     lop_effectif)) %>% 
+  left_join (y= ref_espece %>% 
+               select(esp_id,
+                      esp_code_alternatif)) %>% 
+  left_join (y=operation %>% 
+               select (ope_id, 
+                       ope_surface_calculee,
+                       passage$pas_numero))
+
+
+esp_selection <- esp_selection %>% 
+  mef_ajouter_ope_date() %>% 
+  mef_ajouter_mei() %>% 
+  select(ope_id,
+         lop_effectif,
+         esp_code_alternatif,
+         mei_id,
+         annee,
+         ope_surface_calculee) %>% 
+  distinct()
+
+# On fixe une année limite
+annee_limite <- c(2013)  # Mon année limite est 2013
+esp_selection <- filter(esp_selection, annee >= annee_limite)
+
+
+######################    DENSITE DE SURFACE   ####################
+densite_moyenne <- esp_selection %>% 
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee) %>% 
+  summarise(effectif=sum(length(mei_id))) %>% 
+  ungroup() %>% 
+  mutate(indicateur= "densite_surface") %>% 
+  mutate(valeur = effectif/ope_surface_calculee)
+
+# Calcul de l'effectif total pour chaque espèce
+densite_moyenne <- densite_moyenne%>%
+  group_by(esp_code_alternatif) %>%
+  mutate(effectif_total = sum(effectif))
+
+# Calcul de la densité moyenne pour chaque espèce
+densite_moyenne_valeur <- densite_moyenne %>%
+  group_by(esp_code_alternatif) %>%
+  summarise(densite_moyenne = mean(valeur))
+
+donnees_graphique <- left_join(densite_moyenne_valeur, densite_moyenne, by = "esp_code_alternatif")
+
+
+# Définir le seuil de densité
+seuil <- 0.01
+
+donnees_graphique <- donnees_graphique %>%
+  mutate(couleur = ifelse(densite_moyenne >= seuil, 
+                          "Densité >= 0.01", 
+                          "Densité < 0.01"))
+
+
+# Visualisation du graphique avec ggplot2
+ggplot(donnees_graphique, aes(x = densite_moyenne, y = effectif_total, label = esp_code_alternatif, color = couleur)) +
+  geom_point(size = 3, shape = 16) +
+  geom_text(hjust = -0.4, vjust = 0.5, size = 3, fontface = "bold", color = "black") +
+  labs(x = "Densité moyenne sur les 10 dernières années",
+       y = "Effectif total",
+       title = "Densité moyenne vs Effectif total par espèce") +
+  scale_color_manual(values = c("Densité >= 0.01" = "#007844",
+                                "Densité < 0.01" = "#92D050")) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
