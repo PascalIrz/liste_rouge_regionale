@@ -2,7 +2,9 @@
 title: "10_calcul_indicateurs_par_ope"
 author: "Léa Bouchet"
 date: "2024-02-09"
-output: html_document
+output:
+  html_document:
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -143,11 +145,12 @@ ope_selection <- passerelle %>%
          tlo_libelle)
 
 # Suppression des espèces, des passages, des répétitions et des lots non souhaités du jeu de données ----
-ope_selection <- subset(ope_selection, !esp_code_alternatif %in% especes_a_retirer)
-ope_selection <- subset(ope_selection, !pas_numero %in% passage_a_retirer)
-ope_selection <- subset(ope_selection, pro_libelle %in% type_peche_a_inclure)
-ope_selection <- subset(ope_selection, !tyl_libelle%in% type_lot_a_retirer)
-ope_selection <- distinct(ope_selection)
+ope_selection <- ope_selection %>% 
+  filter(!esp_code_alternatif %in% especes_a_retirer,
+         !pas_numero %in% passage_a_retirer,
+         pro_libelle %in% type_peche_a_inclure,
+         !tyl_libelle%in% type_lot_a_retirer) %>% 
+  distinct()
 
 # Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
 ope_selection <- ope_selection %>% 
@@ -169,13 +172,21 @@ En complément de la base ASPE, un tableau indiquant por chaque espèce la maxim
 
 ```{r}
 ### Création df avec les mesures seuils d'adultes calculées ---- 
-tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1, taille_min_adu=vecteur2) #PARAMETRE
+tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1,
+                             taille_min_adu=vecteur2) #PARAMETRE
 
 ### Ajout de la colonne "taille_min_adulte" par espèces ----
-ope_selection <- merge(ope_selection, tab_ref_taille, by ="esp_code_alternatif")
+# ope_selection <- merge(ope_selection,
+#                        tab_ref_taille,
+#                        by ="esp_code_alternatif")
+ope_selection <- ope_selection %>% 
+  left_join(y = tab_ref_taille)
 
 # Ajout du statut par individus ----
-ope_selection$statut <- ifelse (ope_selection$mei_taille < ope_selection$taille_min_adu, "juvénile","adulte")
+ope_selection <- ope_selection %>% 
+  mutate(statut = ifelse(ope_selection$mei_taille < ope_selection$taille_min_adu,
+                         "juvénile",
+                         "adulte"))
 
 ```
 
@@ -265,13 +276,16 @@ verif_effectif <- ope_selection %>%
   group_by(lop_id,lop_effectif) %>% 
   summarise(nbr_lignes = n()) %>% 
   ungroup()
+
 resultat_verif_effectif <- verif_effectif %>% 
   filter(nbr_lignes!= lop_effectif)
+
 
 # Vérification JDD : Je n'ai qu'un mei_id par ligne (et pas de doublons) : 
 # "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
 nb_unique <- ope_selection %>% 
   summarise(nb_unique = n_distinct(mei_id))
+
 print(nb_unique)
 # ------------------------------------------------------------------------------
 # Ajout des effectifs dans un df ope_densite_statut ----
