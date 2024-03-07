@@ -24,17 +24,25 @@ n_max_manquant <- 2
 taille_buffer <- 1000
 
 
+#########################  Chargement de fonctions ###############################
 
-
-
+source(file = "R/calcul_biomasse.R")
 
 #########################  Chargement de données ###############################
+
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+
+load(rdata_tables)
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../projets/ASPE/raw_data/rdata",
   pattern="^mei")
 
 load(rdata_tables)
+
+
 
 
  # Vérification de la présence des tables dans l'environnement : 

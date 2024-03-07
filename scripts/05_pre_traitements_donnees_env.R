@@ -56,7 +56,10 @@ ope_selection_param_env <- passerelle %>%
   mef_ajouter_ope_date() %>% 
   select(-ope_date,
          -sta_id,
-         -distance_mer)
+         -distance_mer,
+         -obj_id,
+         -obj_libelle) %>% 
+  distinct()
 
 
 ope_selection_param_env2 <- ope_selection_param_env %>% 
@@ -135,10 +138,44 @@ ope_selection_param_env2 %>%
        y = "Valeurs") +
   theme_bw()
 
+#_______________________________________________________________________________
+#################### RECHERCHE DE DONNEES ABERRANTES ###########################
+#_______________________________________________________________________________
+
+# On va rechercher des valeurs improbables, c'est-à-dire :
+# - qui s'éloignent de moyenne +- 3 ecarts-types
+# - qui varient quand il devrait y avoir une valeur unique par pop
+
 ope_selection_param_env <- ope_selection_param_env2
 
+moy_et <- ope_selection_param_env %>% 
+  group_by(pop_id, parametre) %>% 
+  summarise(moy = mean(valeur),
+            et = sd(valeur),
+            n_val = n_distinct(valeur)) %>% 
+  ungroup() %>% 
+  mutate(mini = moy - 3 * et,
+         maxi = moy + 3 * et)
 
+# pops avec plusieurs valeurs sur un paramètre qui devrait être constant
+pops_n_val_suspects <- moy_et %>% 
+  filter(n_val > 1 & (!parametre %in% c("largeur", "profondeur")))
 
-save(ope_selection_param_env,
+# opes avec valeurs qui s'éloignent de moyenne +- 3 ecarts-types
+opes_valeurs_suspectes <- ope_selection_param_env %>% 
+  left_join(y = moy_et) %>% 
+  filter(valeur < mini | valeur > maxi, parametre %in% c("largeur", "profondeur")) %>% 
+  select(pop_id,
+         ope_id,
+         annee,
+         parametre,
+         valeur,
+         mini,
+         maxi)
+  
+  
+  
+  
+  save(ope_selection_param_env,
      file = "processed_data/ope_selection_param_env.rda")
 

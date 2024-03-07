@@ -22,6 +22,7 @@ library(aspe)
 library(ggplot2)
 
 load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/ope_selection_param_env.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
@@ -63,8 +64,9 @@ ope_selection <- passerelle %>%
 
 ```{r}
 ope_selection_surf <- ope_selection %>% 
-  left_join (y=operation %>% 
-               select (ope_id, ope_surface_calculee))
+  mef_ajouter_surf_calc()
+  # left_join (y=operation %>% 
+  #              select (ope_id, ope_surface_calculee))
 
 ```
 
@@ -76,7 +78,7 @@ ope_selection_surf <- ope_selection_surf %>%
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
-  summarise(effectif=sum(lop_effectif)) %>% 
+  summarise(effectif = sum(lop_effectif)) %>% 
   ungroup()
 ```
 
@@ -93,7 +95,7 @@ Création d'une nouvelle colonne "indicateur"
 
 ```{r}
 ope_selection_densite <- ope_selection_densite %>% 
-  mutate(indicateur= "densite_surfacique")
+  mutate(indicateur = "densite_surfacique")
 
 ```
 
@@ -105,13 +107,12 @@ ds_ope <- ope_selection_densite %>% #ds pour densité surfacique
   select(ope_id,
          esp_code_alternatif,
          indicateur,
-         valeur,
-         -effectif)
+         valeur)
 
 ```
 
 
-##Longueur médiane
+## Longueur médiane
 
 
 En partant de mes ope_selection je dois maintenant ajouter le tableau des mesures individuelles
@@ -156,21 +157,21 @@ Je créer un tableau avec mes variables environnement :
 
 
 ```{r}
-ope_selection_param_env <- passerelle %>% 
-  select(-lop_id,
-         -pre_id) %>% 
-  distinct() %>% 
-  mef_ajouter_ope_env() %>% 
-  mef_ajouter_ope_date() %>% 
-  select(-ope_date,
-         -sta_id,
-         -distance_mer)
-
-
-ope_selection_param_env2 <- ope_selection_param_env %>% 
-  pivot_longer(altitude:temp_janvier,
-               names_to = "parametre",
-               values_to= "valeur")
+# ope_selection_param_env <- passerelle %>% 
+#   select(-lop_id,
+#          -pre_id) %>% 
+#   distinct() %>% 
+#   mef_ajouter_ope_env() %>% 
+#   mef_ajouter_ope_date() %>% 
+#   select(-ope_date,
+#          -sta_id,
+#          -distance_mer)
+# 
+# 
+# ope_selection_param_env2 <- ope_selection_param_env %>% 
+#   pivot_longer(altitude:temp_janvier,
+#                names_to = "parametre",
+#                values_to= "valeur")
  
 ```
 
@@ -182,7 +183,7 @@ Représentation de mes variables avec facet_wrap et facet_grid
 # Représentation avec facet_wrap
 
 #mes_id <- sample(unique(ope_selection_param_env2$pop_id), 10)
-ope_selection_param_env2 %>% 
+ope_selection_param_env %>% 
 #  filter(pop_id%in% mes_id) %>% 
   ggplot(aes(x=annee, y=valeur)) +
   geom_bar(stat="identity") +
@@ -194,7 +195,7 @@ ope_selection_param_env2 %>%
 #Représentation avec facet_grid
 
 #mes_id <- sample(unique(ope_selection_param_env2$pop_id), 5) 
-ope_selection_param_env2 %>% 
+ope_selection_param_env %>% 
 #  filter(pop_id%in% mes_id) %>% 
   ggplot(mapping = aes(x = annee, y = valeur)) +
   geom_bar(stat="identity") +
