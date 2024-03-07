@@ -43,10 +43,20 @@ load(mei_table)
 
 ```
 
+Paramètres : 
+
+```{r}
+# Définir le seuil de densité
+seuil <- 0.01
+
+#On fixe une année limite 
+annee_limite <- c(2013)  # Mon année limite est 2013
+```
+
 
 Création d'un df contenant les données des mesures individuelles :
 
-```{r, fig.height = 55, fig.width = 10}
+```{r}
 #Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
 esp_selection <- passerelle %>% 
   left_join(y=lot_poissons %>% 
@@ -73,12 +83,13 @@ esp_selection <- esp_selection %>%
          ope_surface_calculee) %>% 
   distinct()
 
-# On fixe une année limite
-annee_limite <- c(2013)  # Mon année limite est 2013
+# On réduit le jeu de donnée à notre année limite (paramètre)
 esp_selection <- filter(esp_selection, annee >= annee_limite)
 
+```
 
-######################    DENSITE DE SURFACE   ####################
+On calcul notre densité moyenne d'espèce sur les 10 dernières années : 
+```{r}
 densite_moyenne <- esp_selection %>% 
   group_by(ope_id,
            esp_code_alternatif,
@@ -94,31 +105,62 @@ densite_moyenne <- densite_moyenne%>%
   mutate(effectif_total = sum(effectif))
 
 # Calcul de la densité moyenne pour chaque espèce
-densite_moyenne_valeur <- densite_moyenne %>%
+densite_moyenne <- densite_moyenne %>%
   group_by(esp_code_alternatif) %>%
-  summarise(densite_moyenne = mean(valeur))
+  mutate(densite_moyenne = mean(valeur))
+```
 
-donnees_graphique <- left_join(densite_moyenne_valeur, densite_moyenne, by = "esp_code_alternatif")
+On réalise le calcul du pourcentage d'occurrence qui se trouvera en ordonnée : 
+```{r}
+ope_id <- unique(esp_selection$ope_id)
+esp_code_alternatif <- unique(esp_selection$esp_code_alternatif)
+
+annees <- esp_selection %>% 
+  ungroup() %>% 
+  select(ope_id,
+         annee) %>% 
+  distinct()
+
+tab_oc <- crossing(ope_id, esp_code_alternatif) 
+
+#Calcul du pourcentage d'occurrence (nombre de pêches avec présence / nombre de pêches)
+taux_occurrence <- tab_oc %>% 
+  left_join(densite_moyenne) %>% 
+  mutate(valeur_oc = ifelse(is.na(valeur), 0, valeur)) %>% 
+  left_join(annees) %>% 
+  group_by(esp_code_alternatif,
+           annee) %>% 
+  summarise(n_ope = n_distinct(ope_id),
+            n_oc = n_distinct(ope_id[valeur_oc > 0]),
+            taux_oc = (n_oc / n_ope)*100) %>% 
+  group_by(esp_code_alternatif) %>% 
+  mutate(moy_taux_oc = mean(taux_oc))
 
 
-# Définir le seuil de densité
-seuil <- 0.01
+donnees_graphique <- left_join(densite_moyenne, taux_occurrence, by = "esp_code_alternatif")
+
 
 donnees_graphique <- donnees_graphique %>%
   mutate(couleur = ifelse(densite_moyenne >= seuil, 
                           "Densité >= 0.01", 
                           "Densité < 0.01"))
+```
 
 
+Représentation graphique des résultats : 
+
+```{r, fig.height = 25, fig.width = 20}
 # Visualisation du graphique avec ggplot2
-ggplot(donnees_graphique, aes(x = densite_moyenne, y = effectif_total, label = esp_code_alternatif, color = couleur)) +
+ggplot(donnees_graphique, aes(x = densite_moyenne, y = moy_taux_oc, label = esp_code_alternatif, color = couleur)) +
   geom_point(size = 3, shape = 16) +
   geom_text(hjust = -0.4, vjust = 0.5, size = 3, fontface = "bold", color = "black") +
   labs(x = "Densité moyenne sur les 10 dernières années",
-       y = "Effectif total",
-       title = "Densité moyenne vs Effectif total par espèce") +
+       y = "pourcentage d'occurrence",
+       title = "Densité moyenne vs Pourcentage d'occurrence par espèce") +
   scale_color_manual(values = c("Densité >= 0.01" = "#007844",
                                 "Densité < 0.01" = "#92D050")) +
+  scale_x_log10() +  # Mettre l'axe des x en échelle logarithmique
+  scale_y_log10() +  # Mettre l'axe des y en échelle logarithmique
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 ```
