@@ -51,6 +51,13 @@ seuil <- 0.01
 
 #On fixe une année limite 
 annee_limite <- c(2013)  # Mon année limite est 2013
+
+#Les espèces de la liste rouge régionale 2015
+vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
+              "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
+              "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
+              "SDF","PER","PES","PLI","PCH","PSR","ROT","SAN","SAT","SIL",
+              "SPI","TAN","TAC","TRF","VAI","VAR","VAN")
 ```
 
 
@@ -141,9 +148,7 @@ donnees_graphique <- left_join(densite_moyenne, taux_occurrence, by = "esp_code_
 
 
 donnees_graphique <- donnees_graphique %>%
-  mutate(couleur = ifelse(densite_moyenne >= seuil, 
-                          "Densité >= 0.01", 
-                          "Densité < 0.01"))
+  mutate(couleur = ifelse(densite_moyenne >= seuil, "Densité >= 0.01", "Densité < 0.01"))
 ```
 
 
@@ -151,17 +156,29 @@ Représentation graphique des résultats :
 
 ```{r, fig.height = 25, fig.width = 20}
 # Visualisation du graphique avec ggplot2
-ggplot(donnees_graphique, aes(x = densite_moyenne, y = moy_taux_oc, label = esp_code_alternatif, color = couleur)) +
-  geom_point(size = 3, shape = 16) +
-  geom_text(hjust = -0.4, vjust = 0.5, size = 3, fontface = "bold", color = "black") +
+ggplot(donnees_graphique, aes(x = densite_moyenne, 
+                              y = moy_taux_oc, label = esp_code_alternatif, 
+                              color = couleur)) +
+  geom_point(size = 3, 
+             shape = 16) +
+  geom_point(data = subset(donnees_graphique, esp_code_alternatif %in% vecteur1), 
+                     color = "red", 
+                     size = 5, 
+                     shape = 1) +
+  geom_text(hjust = -0.4, 
+            vjust = 1.3, 
+            size = 3, 
+            fontface = "bold", 
+            color = "black") +
   labs(x = "Densité moyenne sur les 10 dernières années",
        y = "pourcentage d'occurrence",
        title = "Densité moyenne vs Pourcentage d'occurrence par espèce") +
   scale_color_manual(values = c("Densité >= 0.01" = "#007844",
-                                "Densité < 0.01" = "#92D050")) +
+                                "Densité < 0.01" = "#92D050"),
+                     name = "Densités moyennes") +
   scale_x_log10() +  # Mettre l'axe des x en échelle logarithmique
   scale_y_log10() +  # Mettre l'axe des y en échelle logarithmique
   theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) 
 ```
 

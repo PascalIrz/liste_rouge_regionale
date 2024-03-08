@@ -123,7 +123,7 @@ annees <- ope_indicateur %>%
 tab_oc <- crossing(ope_id, esp_code_alternatif, statut) 
 
 densites_surface <- ope_indicateur %>% 
-  filter(indicateur == "densite_surface") 
+  filter(indicateur == "densite_surface")  
 
 taux_occurrence_densite_surface <- tab_oc %>% 
   left_join(densites_surface) %>% 
