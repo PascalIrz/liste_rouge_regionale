@@ -71,7 +71,7 @@ Identification des erreurs présentes dans la base de données ASPE, sur les sta
  * Exemple : Données environnementales aberrantes
  * Exemple : Stations / Points de prélèvements en doublons
 
-
+![](presentation_stage_files/figure-html/exemple anguille.png)
 ---
 
 # Construction d'un "Tableau de Bord"

@@ -1,12 +1,25 @@
 ---
-title: "03_analyse_selection_especes"
-author: "Léa Bouchet"
-date: "2024-03-07"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Sélection des espèces"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  annee_limite: 2013 # On fixe une année limite afin de calculer les densités
+  especes_lrr_2015: !r c("ABL","ALF","ANG","BRB","BRE","BRO","CCO","CHA","CHE",
+                         "EPI","EPT","FLE","GAR","GOU","ALA","LPP","LPR","LPM",
+                         "LOF","MUP","PER","ROT","SAT","TAN","TRF","VAI","VAR")
+  especes_a_retirer: !r c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC","PFL",
+                       "CCU","CAS") # Sélection des espèces à retirer du jeu de données initial
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 03_analyse_selection_especes
@@ -15,8 +28,8 @@ Pour les operations sélectionnées, on cherche à savoir quelles espèces seron
 
 Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèce qui son trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qu isont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
 
-# I. Installation : 
-## I.A : Chargement des packages et des données : 
+# Installation 
+## Chargement des packages et des données 
 
 ```{r}
 ## Chargement des packages ----
@@ -26,7 +39,6 @@ library(aspe)
 library(ggplot2)
 library(zoo)
 library(lemon)
-
 
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
@@ -43,25 +55,9 @@ load(mei_table)
 
 ```
 
-Paramètres : 
+# Constitution du jeu de données
 
-```{r}
-# Définir le seuil de densité
-seuil <- 0.01
-
-#On fixe une année limite 
-annee_limite <- c(2013)  # Mon année limite est 2013
-
-#Les espèces de la liste rouge régionale 2015
-vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
-              "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
-              "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
-              "SDF","PER","PES","PLI","PCH","PSR","ROT","SAN","SAT","SIL",
-              "SPI","TAN","TAC","TRF","VAI","VAR","VAN")
-```
-
-
-Création d'un df contenant les données des mesures individuelles :
+## Création d'un df contenant les données d'opérations et d'effectifs des années sélectionnées :
 
 ```{r}
 #Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
@@ -81,27 +77,36 @@ esp_selection <- passerelle %>%
 
 esp_selection <- esp_selection %>% 
   mef_ajouter_ope_date() %>% 
-  mef_ajouter_mei() %>% 
   select(ope_id,
          lop_effectif,
+         lop_id,
          esp_code_alternatif,
-         mei_id,
          annee,
          ope_surface_calculee) %>% 
   distinct()
 
 # On réduit le jeu de donnée à notre année limite (paramètre)
-esp_selection <- filter(esp_selection, annee >= annee_limite)
+esp_selection <- filter(esp_selection, annee >= params$annee_limite)
+
+
+# Je remplace les VAN par les VAR (vandoises Rostrées)
+esp_selection <- esp_selection %>% 
+  mutate(esp_code_alternatif = ifelse (test = esp_code_alternatif == "VAN",
+                                       yes = "VAR",
+                                       no = esp_code_alternatif)) %>% 
+  filter(!(esp_code_alternatif %in% params$especes_a_retirer))
 
 ```
 
-On calcul notre densité moyenne d'espèce sur les 10 dernières années : 
+On calcul notre densité moyenne d'espèce sur les 10 dernières années :
+
 ```{r}
+
 densite_moyenne <- esp_selection %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
-  summarise(effectif=sum(length(mei_id))) %>% 
+  summarise(effectif=sum(lop_effectif)) %>% 
   ungroup() %>% 
   mutate(indicateur= "densite_surface") %>% 
   mutate(valeur = effectif/ope_surface_calculee)
@@ -118,6 +123,7 @@ densite_moyenne <- densite_moyenne %>%
 ```
 
 On réalise le calcul du pourcentage d'occurrence qui se trouvera en ordonnée : 
+
 ```{r}
 ope_id <- unique(esp_selection$ope_id)
 esp_code_alternatif <- unique(esp_selection$esp_code_alternatif)
@@ -146,39 +152,57 @@ taux_occurrence <- tab_oc %>%
 
 donnees_graphique <- left_join(densite_moyenne, taux_occurrence, by = "esp_code_alternatif")
 
-
 donnees_graphique <- donnees_graphique %>%
-  mutate(couleur = ifelse(densite_moyenne >= seuil, "Densité >= 0.01", "Densité < 0.01"))
+  mutate(couleur = ifelse (esp_code_alternatif %in% params$especes_lrr_2015, 
+                           "Liste Rouge Régionale Bretagne 2015",
+                           "Présentes en Bretagne"))
+
 ```
 
 
-Représentation graphique des résultats : 
+# Représentation graphique des résultats 
 
-```{r, fig.height = 25, fig.width = 20}
+```{r, fig.height = 10, fig.width = 10}
+
 # Visualisation du graphique avec ggplot2
-ggplot(donnees_graphique, aes(x = densite_moyenne, 
-                              y = moy_taux_oc, label = esp_code_alternatif, 
-                              color = couleur)) +
-  geom_point(size = 3, 
+ggplot(
+  donnees_graphique,
+  aes(
+    x = densite_moyenne,
+    y = moy_taux_oc,
+    label = esp_code_alternatif,
+    color = couleur
+  )) +
+  geom_point(size = 3,
              shape = 16) +
-  geom_point(data = subset(donnees_graphique, esp_code_alternatif %in% vecteur1), 
-                     color = "red", 
-                     size = 5, 
-                     shape = 1) +
-  geom_text(hjust = -0.4, 
-            vjust = 1.3, 
-            size = 3, 
-            fontface = "bold", 
-            color = "black") +
-  labs(x = "Densité moyenne sur les 10 dernières années",
-       y = "pourcentage d'occurrence",
-       title = "Densité moyenne vs Pourcentage d'occurrence par espèce") +
-  scale_color_manual(values = c("Densité >= 0.01" = "#007844",
-                                "Densité < 0.01" = "#92D050"),
-                     name = "Densités moyennes") +
-  scale_x_log10() +  # Mettre l'axe des x en échelle logarithmique
-  scale_y_log10() +  # Mettre l'axe des y en échelle logarithmique
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5)) 
+  geom_text(
+    hjust = -0.4,
+    vjust = 1.3,
+    size = 3,
+    fontface = "bold",
+    color = "black"
+ ) +
+  labs(
+    title = "Densité moyenne vs Pourcentage d'occurrence par espèce",
+    subtitle = "Région Bretagne",
+    x = "Densité moyenne sur les 10 dernières années",
+    y = "Pourcentage d'occurrence") +
+  scale_color_manual(values = wesanderson::wes_palette("AsteroidCity1")[3:5],
+                     name = "Espèces") +
+  scale_x_log10() +  # axe des x en échelle logarithmique
+  scale_y_log10() +  # axe des y en échelle logarithmique
+  theme_light(base_size = 11) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+    panel.grid.minor = element_line(color = "#ffffff"),
+    panel.background = element_rect(fill = "#faf0e6"),
+    legend.position = "bottom") 
+```
+
+# Sauvegarde : 
+```{r}
+save(esp_selection,
+     file = "../processed_data/analyse_selection_especes.rda")
 ```
 

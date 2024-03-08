@@ -48,16 +48,20 @@ source(file = "R/calcul_densite_surface.R")
 #_______________________________________________________________________________
 
 ## Selection des espèces (vecteur 1) et de leurs tailles adultes minimum (vecteur 2) ----
+
 vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
               "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
               "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
               "SDF","PER","PES","PLI","PCH","PSR","ROT","SAN","SAT","SIL",
               "SPI","TAN","TAC","TRF","VAI","VAR","VAN","TRM","ASP","CMI",
               "GBT","CCU")
-vecteur2 <- c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,
+taille_maturite <- c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,
               35,40,215,30,68.5,110,400,57.5,300,150,250,700,55,285,270,150,80,
               270,200,52.5,200,300, 400,700,100,240,212.5,185,70,140,137,185,
               400,450,38,500)
+
+names(taille_maturite) <- vecteur1
+
 
 
 ## Sélection des espèces à retirer du jeu de données initial ----

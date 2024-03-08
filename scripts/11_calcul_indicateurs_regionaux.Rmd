@@ -1,12 +1,18 @@
 ---
-title: "11_calcul_indicateurs_regionaux"
-author: "Léa Bouchet"
-date: "2024-03-01"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Calcul des indicateurs régionaux"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
 
@@ -15,8 +21,9 @@ knitr::opts_chunk$set(echo = TRUE)
 Pour les indicateurs calculés au point, on agrège chaque année leur valeur à l'échelle régionale. Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale, comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
 
 
-# I. Installation : 
-## I.A : Chargement des packages, fonctions et des données : 
+# Installation 
+
+## Chargement des packages, fonctions et des données 
 
 ```{r}
 
@@ -58,8 +65,9 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 ```
 
 
-# II. Constitution du jeu de données : 
-## II.A : Echelle régionale: 
+# Constitution du jeu de données
+
+## Echelle régionale
 
 ```{r, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
@@ -84,7 +92,8 @@ print(graphique)
 
 ```
 
-## II.C : Tendances globales : 
+## Tendances globales 
+
 Il s'agit d'observer les différentes tendances présentes sur les indicateurs précedement établis. 
 ```{r, fig.height = 25, fig.width = 10}
 tendance_indicateur <- mk_st_by_group(ope_indicateur,
@@ -117,7 +126,7 @@ tendance_indicateur %>%
 
 
 
-## II.C.1 : Taux d'occurrence : 
+### Taux d'occurrence
 
 On calcul le taux d'occurrence des espèces : 
 ```{r}
@@ -158,7 +167,7 @@ taux_occurrence_densite_surface <- tab_oc %>%
 ```
 
 
-## II.C.2 : Tendances des taux d'occurrence : 
+### Tendances des taux d'occurrence 
 
 On observe maintenant les tendances sur les taux d'occurrence des espèces : 
 
@@ -190,7 +199,7 @@ tendance_indicateur_t_oc_densite_surface %>%
 
 ```
 
-## II.D : Taux d'Evolution :
+### Taux d'Evolution
 
 On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
 
@@ -222,7 +231,7 @@ ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
 
 
 
-## II.E : Pourcentage de station_esp :
+## Pourcentage de station_esp
 
 On cherche à calculer le pourcentage des stations pour laquelle une espèce est présente pour une année donnée
 

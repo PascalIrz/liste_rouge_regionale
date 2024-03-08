@@ -1,14 +1,26 @@
 ---
-title: "10_calcul_indicateurs_par_ope"
-author: "Léa Bouchet"
-date: "2024-02-09"
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Calcul des indicateurs par opérations"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  passage_a_retirer: !r c("2","3") # Sélection du nombre de passage souhaité ; Remarque : si je souhaite enlever les 1ers passages, sélection "0","1" 
+  type_lot_a_retirer: !r c("G") # Sélection des lots à retirer du jeu de données ; tyl_libelle  = G (cf ref_type_lot)
+  type_peche_a_inclure: !r c("Pêche complète à un ou plusieurs passages",
+                            "Pêche partielle par points (grand milieu)",
+                            "Pêche par ambiances",
+                            "Pêche partielle sur berge") # Selection des types de pêches à inclure au jeu de données (pro_libelle)
 output:
-  html_document:
+  bookdown::html_document2:
+    toc: true
+    toc_float: truetitle: "10_calcul_indicateurs_par_ope"
     number_sections: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 10_calcul_indicateurs_par_ope
@@ -18,8 +30,9 @@ Ce script permet de constituer les premiers tableaux de données nécessaires à
 préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvénils, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
 
 
-# I. Installation : 
-## I.A : Chargement des packages, fonctions et des données : 
+# Installation 
+
+## Chargement des packages, fonctions et des données
 
 ```{r}
 
@@ -55,7 +68,7 @@ source(file = "../R/calcul_densite_surface.R")
 ```
 
 
-## I.B : Paramètres : 
+## Paramètres 
 
 Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'étude. Ces paramètres sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres :
 
@@ -80,7 +93,6 @@ Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'
 ## Selection des espèces (vecteur 1) et de leurs tailles adultes minimum associée (vecteur 2) ----
 # ATTENTION : ici les tailles du vecteur2 ne sont pas définitives. Elles ont été calculées à partir de 4 sources différentes (1 et 2 : ouvrages d'identification des poissons d'eau douce de France); 3 : observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille du fichier ASPE ; 4 : les valeurs dans fishbase)
 
-
 vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
               "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
               "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
@@ -93,32 +105,11 @@ vecteur2 <- c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,
               400,450,38,500)
 
 
-## Sélection des espèces à retirer du jeu de données initial ----
-especes_a_retirer <- c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC",
-                       "PFL","CCU","CAS")
-
-
-# Selection du nombre de passage souhaité ----
-# Remarque : si je souhaite enlever les premiers passages je dois sélectionner"0" et "1" 
-passage_a_retirer <- c("2","3")
-
-
-# Selection des lots à retirer du jeu de données ----
-# tyl_libelle  = G (cf ref_type_lot)
-type_lot_a_retirer <- c("G")
-
-
-# Selection des types de pêches à inclure au jeu de données (pro_libelle) ---- 
-type_peche_a_inclure <- c("Pêche complète à un ou plusieurs passages",
-                          "Pêche partielle par points (grand milieu)",
-                          "Pêche par ambiances",
-                          "Pêche partielle sur berge")
-
-
 ```
 
-# II. Constitution du jeu de données : 
-## II.A : Application des choix inscrits dans les paramètres : 
+# Constitution du jeu de données 
+
+## Application des choix inscrits dans les paramètres
 
 ```{r}
 # Ajout des mesures individuelles en partant de mes ope_selection ----
@@ -159,10 +150,12 @@ ope_selection <- ope_selection %>%
 #Suppression des "NA" restants ----
 ope_selection <- na.omit(ope_selection)
 
+
+
 ```
 
 
-## II.B : Distinction des classes d'âges : 
+## Distinction des classes d'âges
 
 En complément de la base ASPE, un tableau indiquant por chaque espèce la maximale des 0+ est constitué (et donc la taille référence minimum adulte). On utilise donc la longueur du poisson comme proxy de son age.  Une distinction des classes d'âges est réalisée : a chaque espèce correspond alors 3 statuts différents : 
 - Adulte (individus dont la taille est supérieure à la taille_min_adulte)
@@ -191,10 +184,11 @@ ope_selection <- ope_selection %>%
 ```
 
 
-# III. Les indicateurs par opération de pêche : 
-## III.A : Indicateurs généraux par opération de pêche :
-### III.A.1 : Effectif total des espèces par opération de pêche :
+# Les indicateurs par opération de pêche 
 
+## Indicateurs généraux par opération de pêche
+
+### Effectif total des espèces par opération de pêche
 
 ```{r}
 ope_effectif_total_statut <- ope_selection %>% # Réalisation d'un df contenant les données d'effectifs selon les différents statuts (adulte / juvénile)
@@ -226,7 +220,7 @@ ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_es
 ```
 
 
-### III.A.2 : Biomasse des espèces par opération de pêche :
+### Biomasse des espèces par opération de pêche
 
 ```{r}
 # Calcul de la biomasse par opération : par espèce et par statut : 
@@ -257,7 +251,7 @@ ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
 ```
 
 
-### III.A.3 : Densité surfacique par opération :
+### Densité surfacique par opération
 
 
 ```{r}
@@ -310,7 +304,7 @@ ope_densite_surface_statut <- resultats_densite$df3
 ```
 
 
-### III.A.4 : Densité volumique par opération :
+### Densité volumique par opération
 
 !! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
 ```{r}
@@ -347,7 +341,7 @@ ope_densite_volume_esp <- ope_densite_vol %>%
 ```
 
 
-### III.A.5 : Pourcentage de juvéniles par opération :
+### Pourcentage de juvéniles par opération
 
 !! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
 ```{r}
@@ -395,8 +389,9 @@ ope_pourcentjuv <- bind_rows(ope_pourcentjuv_statut, ope_pourcentjuv_esp)
 ```
 
 
-## III.B : Indicateurs sur les mesures individuelles par opération de pêche : 
-### III.B.1 : Longueur médiane : 
+## Indicateurs sur les mesures individuelles par opération de pêche
+
+### Longueur médiane
 
 Calcul des longueurs médianes des tailles des individus par opération : Création de la fonction "calcul_50_percentile" : 
 ```{r}
@@ -408,7 +403,7 @@ ope_50_percentile_statut <- resultats_longueur_mediane$df3 # Construction d'un D
 ```
 
 
-### III.B.2 : Ecart interquartile : 
+### Ecart interquartile
 
 Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" : 
 ```{r}
@@ -421,7 +416,7 @@ ope_ecart_interqua_statut <- resultats_ecart_interquartile$df3 # Construction d'
 ```
 
 
-### III.B.3 : Percentiles 25 et 75 : 
+### Percentiles 25 et 75  
 
 Calcul des percentiles 25 et 75 des tailles des individus par opération : Création de la fonction "calcul_25_percentile" et "calcul_75_percentile" : 
 
@@ -441,7 +436,7 @@ ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un df d
 
 
 
-# IV. Création du tableau final empilé des indicateurs : 
+# Création du tableau final empilé des indicateurs
 
 ```{r}
 # Création du tableau pré-final avec tous les indicateurs calculés
