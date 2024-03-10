@@ -10,11 +10,6 @@ params:
                             "Pêche partielle par points (grand milieu)",
                             "Pêche par ambiances",
                             "Pêche partielle sur berge") # Selection des types de pêches à inclure au jeu de données (pro_libelle)
-output:
-  bookdown::html_document2:
-    toc: true
-    toc_float: truetitle: "10_calcul_indicateurs_par_ope"
-    number_sections: true
 ---
 
 ```{r setup, include=FALSE}

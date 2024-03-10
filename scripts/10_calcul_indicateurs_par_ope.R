@@ -137,7 +137,7 @@ ope_selection <- na.omit(ope_selection)
 #_______________________________________________________________________________
 
 ### Création df avec les mesures seuils d'adultes calculées ---- 
-tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1, taille_min_adu=vecteur2) #PARAMETRE
+tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1, taille_min_adu=taille_maturite) #PARAMETRE
 
 ### Ajout de la colonne "taille_min_adulte" par espèces ----
 ope_selection <- merge(ope_selection, tab_ref_taille, by ="esp_code_alternatif")

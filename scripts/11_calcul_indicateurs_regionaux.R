@@ -1,3 +1,4 @@
+
 #_______________________________________________________________________________
 ##################         INDICATEURS REGIONAUX        #######################
 #_______________________________________________________________________________
@@ -67,7 +68,6 @@ graphique <- pop_indicateur %>%
 print(graphique)
 
 
-
 ################################################################################
 ################### OBSERVATION DES TENDANCES GLOBALES #########################
 
@@ -103,9 +103,7 @@ tendance_indicateur %>%
   labs(title = "Tendances indicateurs", 
        x = "Trend", 
        y = "Valeurs") +
-  theme_bw() +
-  scale_color_manual(values = pal)
-
+  theme_bw()
 
 #_______________________________________________________________________________
 ##################### CALCUL DU TAUX D'OCCURRENCE ##############################
@@ -156,7 +154,7 @@ tendance_indicateur_t_oc_densite_surface <- mk_st_by_group(taux_occurrence_densi
                                       statut)
 
 
-mes_id_2 <- sample(unique(tendance_indicateur_t_oc_densite_surface$esp_code_alternatif), 9) 
+mes_id_2 <- sample(unique(tendance_indicateur_t_oc_densite_surface$esp_code_alternatif), 1) 
 tendance_indicateur_t_oc_densite_surface %>% 
   filter(esp_code_alternatif%in% mes_id_2) %>% 
   group_by(trend,
