@@ -65,17 +65,11 @@ esp_selection <- esp_selection %>%
 
 # Selection des codes alternatifs correspondant aux espèces ciblées (liste rouge regionale) : 
 
-especes_a_garder <- c("ABH","ABL","BBG","ALF","CTI",
-                      "ANG","ATB","BOU","BRB","BRO",
-                      "BRE","CAG","CAA","CCO","CHA",
-                      "CHE","EPI","EPT","FLE","GAH",
-                      "GAR","GOU","ALA","GRE","IDE",
-                      "LPP","LPR","LPM","LOF","MUP",
-                      "PER","PES","PLI","PCH","VAR",
-                      "PSR","ROT","SAN","SAT","SIL",
-                      "SPI","TAN","TAC","TRF","VAI",
-                      "SDF",
-                      "ASP","CCU","CMI","GBT","VAN","TRM"
+especes_a_garder <- c("ABL","ALF","ANG","BRB","BRO",
+                      "BRE","CCO","CHA","CHE","EPI","EPT","FLE",
+                      "GAR","GOU","ALA","LPP","LPR","LPM","LOF","MUP",
+                      "PER","VAR","ROT","SAT",
+                      "TAN","TRF","VAI"
                       )
 
 esp_selection_filtrer <- esp_selection %>%

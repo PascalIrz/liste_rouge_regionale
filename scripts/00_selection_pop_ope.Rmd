@@ -259,7 +259,6 @@ mes_ope %>%
 
 
 ```{r}
-
 ## Construction d'un nouveau dataframe avec toutes les opérations de pêches
 # présentes dans les stations retenues
 
@@ -270,13 +269,72 @@ ope_selection <- mes_ope %>%
          annee <= fin) %>% 
   select(-debut, -fin, -n_opes) %>% 
   ungroup()
+```
 
+
+
+## Sélection des opérations finale : Visualisation des efforts de pêches par station  
+
+On souhaite observer les efforts de pêches effectués sur chacune des stations. 
+
+```{r}
+ope_selection_sta <- ope_selection %>%
+  group_by(sta_id) %>% 
+  mutate(nombre_ope_sta = n_distinct(ope_id)) 
+
+
+# Afficher le tableau résumant le nombre d'"ope_id" par station
+  
+  # flextable::flextable() %>% 
+  # flextable::autofit() %>% 
+  # flextable::colformat_int(j = c(1, 2), big.mark = " ")
+  # ggplot(aes(x = as.factor(sta_id), 
+  #            y = nombre_ope_sta)) +
+  # geom_bar(stat = "identity") + 
+  # coord_flip()
+```
+
+## Visualisation des efforts de pêche par station dans l'aire géographique sélectionnée
+
+```{r}
+sta_ope_bzh <- ope_selection_sta %>%
+  select(sta_id, ope_id, pop_id, nombre_ope_sta) %>%
+  left_join(point_prelevement) %>% 
+  sf::st_as_sf(coords = c("pop_coordonnees_x", 
+                           "pop_coordonnees_y"),
+                crs = 2154) %>% 
+  aspe::geo_attribuer(bzh_buff)  
+
+
+# Pour la visualisation graphique je n'ai besoin que d'un seul exemple d'ope_id par station
+sta_ope_bzh_2 <- sta_ope_bzh %>% 
+  group_by(sta_id) %>% 
+  sample_n(1) %>% 
+  ungroup()
+
+
+mapview(list(bzh_buff, mes_depts),
+        layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
+        col.regions = list("#440154FF", "#FDE725FF")) + 
+  mapview(sta_ope_bzh_2,
+          layer.name = "Nombre operation par station", 
+          size_var = "nombre_ope_sta",
+          cex = "sta_id",
+          lwd = 0.2,
+          col.regions = "#D693E0",
+          alpha = 0.8,
+          legend = TRUE,
+          labels = list(text = sta_ope_bzh_2$nombre_ope_sta, cex = 1.5))
+          
+```
+
+
+```{r}
 # --- Enregistrement des opérations de pêches retenues dans la passerelle
 passerelle <- passerelle %>% 
   filter(ope_id %in% ope_selection$ope_id)
 
 ```
-
 
 
 
