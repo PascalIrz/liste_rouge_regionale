@@ -45,7 +45,7 @@ calcul_densite_surface <- function(df,
     summarise(effectif=sum(length(!!var_id_taille))) %>% 
     ungroup() %>% 
     mutate(indicateur= "densite_surface") %>% 
-    mutate (valeur = (1000*effectif / !!var_surface_calculee)) %>%
+    mutate (valeur = (effectif / !!var_surface_calculee)) %>%
     select(!!var_id_site,
            !!var_esp_code_alternatif,
            indicateur,
@@ -64,7 +64,7 @@ calcul_densite_surface <- function(df,
              !!var_id_site,
              !!var_statut, 
              indicateur) %>% 
-    summarise(valeur = (1000*effectif / !!var_surface_calculee)) %>% 
+    summarise(valeur = (effectif / !!var_surface_calculee)) %>% 
     select(!!var_id_site,
            !!var_esp_code_alternatif,
            indicateur,

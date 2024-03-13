@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-03-12" />
+<meta name="date" content="2024-03-13" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -1469,7 +1469,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Liste Rouge Régionale des poissons d’eau douce de Bretagne</h1>
 <h3 class="subtitle">Sélection des espèces</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-03-12</h4>
+<h4 class="date">2024-03-13</h4>
 
 </div>
 
@@ -1510,7 +1510,7 @@ load(mei_table)</code></pre>
 <div id="création-dun-df-contenant-les-données-dopérations-et-deffectifs-des-années-sélectionnées" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Création d’un df contenant les données d’opérations et d’effectifs des années sélectionnées :</h2>
 <pre class="r"><code>#Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
-esp_selection &lt;- passerelle %&gt;% 
+lop_esp_selection &lt;- passerelle %&gt;% 
   left_join(y=lot_poissons %&gt;% 
               select(lop_id,
                      esp_id = lop_esp_id,
@@ -1524,7 +1524,7 @@ esp_selection &lt;- passerelle %&gt;%
                        passage$pas_numero))
 
 
-esp_selection &lt;- esp_selection %&gt;% 
+lop_esp_selection &lt;- lop_esp_selection %&gt;% 
   mef_ajouter_ope_date() %&gt;% 
   select(ope_id,
          lop_effectif,
@@ -1534,18 +1534,18 @@ esp_selection &lt;- esp_selection %&gt;%
          ope_surface_calculee) %&gt;% 
   distinct()
 
-# On réduit le jeu de donnée à notre année limite (paramètre)
-esp_selection &lt;- filter(esp_selection, annee &gt;= params$annee_limite)
-
 
 # Je remplace les VAN par les VAR (vandoises Rostrées)
-esp_selection &lt;- esp_selection %&gt;% 
+lop_esp_selection &lt;- lop_esp_selection %&gt;% 
   mutate(esp_code_alternatif = ifelse (test = esp_code_alternatif == &quot;VAN&quot;,
                                        yes = &quot;VAR&quot;,
                                        no = esp_code_alternatif)) %&gt;% 
-  filter(!(esp_code_alternatif %in% params$especes_a_retirer))</code></pre>
+  filter(!(esp_code_alternatif %in% params$especes_a_retirer))
+
+# On réduit le jeu de donnée à notre année limite (paramètre)
+lop_esp_selection_calcul &lt;- filter(lop_esp_selection, annee &gt;= params$annee_limite)</code></pre>
 <p>On calcul notre densité moyenne d’espèce sur les 10 dernières années :</p>
-<pre class="r"><code>densite_moyenne &lt;- esp_selection %&gt;% 
+<pre class="r"><code>densite_moyenne &lt;- lop_esp_selection_calcul %&gt;% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %&gt;% 
@@ -1564,10 +1564,10 @@ densite_moyenne &lt;- densite_moyenne %&gt;%
   group_by(esp_code_alternatif) %&gt;%
   mutate(densite_moyenne = mean(valeur))</code></pre>
 <p>On réalise le calcul du pourcentage d’occurrence qui se trouvera en ordonnée :</p>
-<pre class="r"><code>ope_id &lt;- unique(esp_selection$ope_id)
-esp_code_alternatif &lt;- unique(esp_selection$esp_code_alternatif)
+<pre class="r"><code>ope_id &lt;- unique(lop_esp_selection_calcul$ope_id)
+esp_code_alternatif &lt;- unique(lop_esp_selection_calcul$esp_code_alternatif)
 
-annees &lt;- esp_selection %&gt;% 
+annees &lt;- lop_esp_selection_calcul %&gt;% 
   ungroup() %&gt;% 
   select(ope_id,
          annee) %&gt;% 
@@ -1637,7 +1637,7 @@ ggplot(
 </div>
 <div id="sauvegarde" class="section level1" number="5">
 <h1><span class="header-section-number">5</span> Sauvegarde :</h1>
-<pre class="r"><code>save(esp_selection,
+<pre class="r"><code>save(lop_esp_selection,
      file = &quot;../processed_data/analyse_selection_especes.rda&quot;)</code></pre>
 </div>
 

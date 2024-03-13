@@ -55,7 +55,7 @@ calcul_biomasse <- function(df,
     group_by(!!var_id_site,
              !!var_esp_code_alternatif,
              !!var_statut) %>%
-    summarize(valeur = sum(poids_tp, na.rm = TRUE))
+   summarize(valeur = sum(poids_tp, na.rm = TRUE))
 
   return(biomasse_par_site)
 

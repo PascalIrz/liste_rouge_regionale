@@ -37,11 +37,13 @@ library(aspe)
 library(ggplot2)
 library(ggthemes)
 library(dplyr)
+library(readxl)
 
 
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
@@ -60,6 +62,20 @@ source(file = "../R/calcul_ecart_interquartile.R")
 source(file = "../R/calcul_25_percentile.R")
 source(file = "../R/calcul_75_percentile.R")
 source(file = "../R/calcul_densite_surface.R")
+
+
+## Lire le fichier Excel contenant les tailles à maturité des espèces
+traits_biologiques <- read_excel("C:/Users/lea.bouchet/Documents/Artif/Artif/liste_rouge_regionale/scripts/taille_maturite_especes/traits_biologiques.xlsx")
+
+## Selection des tailles de maturité moyenne des espèces : ici les tailles de maturité ne sont pas définitives. Elles ont été calculées à partir de 5 sources différentes (1 et 2 : ouvrages d'identification des poissons d'eau douce de France); 3 : observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille du fichier ASPE ; 4 : les valeurs dans fishbase ; 5 : les valeurs de référence de l'occitanie)
+
+
+# On conserve seulement les lignes qui nous intéresse : 
+traits_biologiques <- traits_biologiques %>% 
+  select(esp_code_alternatif,
+         espece_presence_liste,
+         taille_maturite_moy)
+
 ```
 
 
@@ -79,28 +95,7 @@ Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'
 
 - Les types de pêches : Il existe de nombreux types de pêches : pêche partielle par point, pêche par ambiance,.... Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
 
-```{r}
 
-#_______________________________________________________________________________
-##############################  PARAMETRES #####################################
-#_______________________________________________________________________________
-
-## Selection des espèces (vecteur 1) et de leurs tailles adultes minimum associée (vecteur 2) ----
-# ATTENTION : ici les tailles du vecteur2 ne sont pas définitives. Elles ont été calculées à partir de 4 sources différentes (1 et 2 : ouvrages d'identification des poissons d'eau douce de France); 3 : observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille du fichier ASPE ; 4 : les valeurs dans fishbase)
-
-vecteur1 <- c("ABH","ABL","BBG","ALF","CTI","ANG","ATB","BOU","BRB","BRE",
-              "BRO","CAG","CAA","CCO","CHA","CHE","EPI","EPT","FLE","GAH",
-              "GAR","GOU","ALA","GRE","IDE","LPP","LPR","LPM","LOF","MUP",
-              "SDF","PER","PES","PLI","PCH","PSR","ROT","SAN","SAT","SIL",
-              "SPI","TAN","TAC","TRF","VAI","VAR","VAN","TRM","ASP","CMI",
-              "GBT","CCU")
-vecteur2 <- c(55,100, 137.5,490,775,425,50,40.5,200,275,330,300,200,475,65,250,
-              35,40,215,30,68.5,110,400,57.5,300,150,250,700,55,285,270,150,80,
-              270,200,52.5,200,300, 400,700,100,240,212.5,185,70,140,137,185,
-              400,450,38,500)
-
-
-```
 
 # Constitution du jeu de données 
 
@@ -130,13 +125,24 @@ ope_selection <- passerelle %>%
          annee,
          tlo_libelle)
 
-# Suppression des espèces, des passages, des répétitions et des lots non souhaités du jeu de données ----
+# Je dois maintenant sélectionner mes espèces dans mon tableau ope_selection à partir de mon tableau esp_selection (qui ne contient plus les espèces non souhaitées) et aussi avec mon tableau traits biologiques.
+
+lop_esp_selection <- lop_esp_selection %>% 
+  left_join(traits_biologiques) %>% 
+  filter(espece_presence_liste == "espece_lrr_2015")
+
+
+# Suppression des passages, des répétitions et des lots non souhaités du jeu de données ----
 ope_selection <- ope_selection %>% 
-  filter(!esp_code_alternatif %in% especes_a_retirer,
-         !pas_numero %in% passage_a_retirer,
-         pro_libelle %in% type_peche_a_inclure,
-         !tyl_libelle%in% type_lot_a_retirer) %>% 
-  distinct()
+  filter(!pas_numero %in% params$passage_a_retirer,
+         pro_libelle %in% params$type_peche_a_inclure,
+         !tyl_libelle%in% params$type_lot_a_retirer) %>% 
+  distinct() %>% 
+  left_join(lop_esp_selection) %>% 
+  mutate(lop_esp_code_alternatif = ifelse (test = esp_code_alternatif == "VAN",
+                                       yes = "VAR",
+                                       no = esp_code_alternatif))
+
 
 # Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
 ope_selection <- ope_selection %>% 
@@ -144,8 +150,6 @@ ope_selection <- ope_selection %>%
 
 #Suppression des "NA" restants ----
 ope_selection <- na.omit(ope_selection)
-
-
 
 ```
 
@@ -159,20 +163,9 @@ En complément de la base ASPE, un tableau indiquant por chaque espèce la maxim
 
 
 ```{r}
-### Création df avec les mesures seuils d'adultes calculées ---- 
-tab_ref_taille <- data.frame(esp_code_alternatif=vecteur1,
-                             taille_min_adu=vecteur2) #PARAMETRE
-
-### Ajout de la colonne "taille_min_adulte" par espèces ----
-# ope_selection <- merge(ope_selection,
-#                        tab_ref_taille,
-#                        by ="esp_code_alternatif")
-ope_selection <- ope_selection %>% 
-  left_join(y = tab_ref_taille)
-
 # Ajout du statut par individus ----
 ope_selection <- ope_selection %>% 
-  mutate(statut = ifelse(ope_selection$mei_taille < ope_selection$taille_min_adu,
+  mutate(statut = ifelse(ope_selection$mei_taille < ope_selection$taille_maturite_moy,
                          "juvénile",
                          "adulte"))
 
@@ -218,6 +211,7 @@ ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_es
 ### Biomasse des espèces par opération de pêche
 
 ```{r}
+source(file = "../R/calcul_biomasse.R")
 # Calcul de la biomasse par opération : par espèce et par statut : 
 ope_biomasse_statut <- calcul_biomasse(ope_selection,
                                        ope_id,
@@ -225,6 +219,7 @@ ope_biomasse_statut <- calcul_biomasse(ope_selection,
                                        statut,
                                        mei_taille,
                                        tlo_libelle)
+
 ope_biomasse_statut <- ope_biomasse_statut %>% 
   mutate(indicateur = "biomasse")
 
@@ -246,7 +241,7 @@ ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
 ```
 
 
-### Densité surfacique par opération
+### Densité surfacique par opération 
 
 
 ```{r}
@@ -276,6 +271,8 @@ nb_unique <- ope_selection %>%
   summarise(nb_unique = n_distinct(mei_id))
 
 print(nb_unique)
+
+
 # ------------------------------------------------------------------------------
 # Ajout des effectifs dans un df ope_densite_statut ----
 ope_densite_statut_eff <- ope_selection %>% 
@@ -283,7 +280,7 @@ ope_densite_statut_eff <- ope_selection %>%
            esp_code_alternatif,
            ope_surface_calculee,
            statut) %>% 
-  summarise(effectif=sum(length(mei_id))) %>% 
+  summarise(effectif= n_distinct(mei_id)) %>% 
   ungroup() %>% 
   mutate(indicateur= "densite_surface")
 

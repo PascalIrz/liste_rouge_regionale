@@ -29,6 +29,7 @@ library(aspe)
 library(ggplot2)
 library(zoo)
 library(lemon)
+library(ggh4x)
 
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
@@ -93,36 +94,22 @@ ope_selection_param_env <- ope_selection_param_env %>%
 
 Création d'une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données. 
 
-```{r, fig.height = 55, fig.width = 10}
+```{r, fig.height = 55, fig.width = 10, fig.cap="Variabilité inter-annuelle des paramètres environnementaux"}
 # Représentation de mes variables environnements (avec facet_wrap) : 
 ope_selection_param_env %>% 
   ggplot(aes(x=annee, y=valeur)) +
   geom_bar(stat="identity", fill = "darkcyan") +
-  facet_wrap(vars(pop_id, parametre),
-             ncol = 8,
-             scales="free_y") +
-  labs(title = "Diagrammes en baton des variables environnementales", 
-       x = "Années", 
-       y = "Valeurs") +
+  facet_grid2(pop_id ~ parametre,
+             scales="free_y",
+             independent = "y") +
+  labs(title = "Variabilité inter-annuelle des paramètres environnementaux", 
+       x = "Année", 
+       y = "Valeur") +
   theme(
     axis.title.y = element_text (color = "black"),
     axis.text.y.left = element_text (color = "black"),
-    strip.text = element_text(size = 8))
-
-
-
-# Représentation de mes variables environnements (avec facet_grid) : 
-# !!! ATTENTION !!! Ici problème d'échelle non résolu
-ope_selection_param_env %>% 
-  ggplot(mapping = aes(x = annee, y = valeur), scales = "free") +
-  geom_bar(stat="identity", fill = "darkcyan") +
-  facet_rep_grid(pop_id ~ parametre, 
-                 scales= "free", 
-                 repeat.tick.labels = TRUE) +
-  labs(title = "Diagrammes en baton des variables environnementales", 
-       x = "Années", 
-       y = "Valeurs") +
-  theme_bw()
+    strip.text = element_text(size = 8)) +
+  theme_void()
 
 ```
 

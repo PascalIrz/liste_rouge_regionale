@@ -29,6 +29,7 @@ Pour les operations sélectionnées, on cherche à savoir quelles espèces seron
 Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèce qui son trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qu isont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
 
 # Installation 
+
 ## Chargement des packages et des données 
 
 ```{r}
@@ -61,7 +62,7 @@ load(mei_table)
 
 ```{r}
 #Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
-esp_selection <- passerelle %>% 
+lop_esp_selection <- passerelle %>% 
   left_join(y=lot_poissons %>% 
               select(lop_id,
                      esp_id = lop_esp_id,
@@ -75,7 +76,7 @@ esp_selection <- passerelle %>%
                        passage$pas_numero))
 
 
-esp_selection <- esp_selection %>% 
+lop_esp_selection <- lop_esp_selection %>% 
   mef_ajouter_ope_date() %>% 
   select(ope_id,
          lop_effectif,
@@ -85,16 +86,16 @@ esp_selection <- esp_selection %>%
          ope_surface_calculee) %>% 
   distinct()
 
-# On réduit le jeu de donnée à notre année limite (paramètre)
-esp_selection <- filter(esp_selection, annee >= params$annee_limite)
-
 
 # Je remplace les VAN par les VAR (vandoises Rostrées)
-esp_selection <- esp_selection %>% 
+lop_esp_selection <- lop_esp_selection %>% 
   mutate(esp_code_alternatif = ifelse (test = esp_code_alternatif == "VAN",
                                        yes = "VAR",
                                        no = esp_code_alternatif)) %>% 
   filter(!(esp_code_alternatif %in% params$especes_a_retirer))
+
+# On réduit le jeu de donnée à notre année limite (paramètre)
+lop_esp_selection_calcul <- filter(lop_esp_selection, annee >= params$annee_limite)
 
 ```
 
@@ -102,7 +103,7 @@ On calcul notre densité moyenne d'espèce sur les 10 dernières années :
 
 ```{r}
 
-densite_moyenne <- esp_selection %>% 
+densite_moyenne <- lop_esp_selection_calcul %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
@@ -125,10 +126,10 @@ densite_moyenne <- densite_moyenne %>%
 On réalise le calcul du pourcentage d'occurrence qui se trouvera en ordonnée : 
 
 ```{r}
-ope_id <- unique(esp_selection$ope_id)
-esp_code_alternatif <- unique(esp_selection$esp_code_alternatif)
+ope_id <- unique(lop_esp_selection_calcul$ope_id)
+esp_code_alternatif <- unique(lop_esp_selection_calcul$esp_code_alternatif)
 
-annees <- esp_selection %>% 
+annees <- lop_esp_selection_calcul %>% 
   ungroup() %>% 
   select(ope_id,
          annee) %>% 
@@ -202,7 +203,7 @@ ggplot(
 
 # Sauvegarde : 
 ```{r}
-save(esp_selection,
+save(lop_esp_selection,
      file = "../processed_data/analyse_selection_especes.rda")
 ```
 

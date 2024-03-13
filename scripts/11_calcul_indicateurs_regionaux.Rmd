@@ -38,12 +38,14 @@ library(wesanderson)
 library(zoo)
 library(lemon)
 library(trend)
+library(ggh4x)
 
 
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
@@ -72,20 +74,22 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 ```{r, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 pop_indicateur <- ope_indicateur %>%
-  group_by(esp_code_alternatif, annee, indicateur, statut) %>% # Est-ce que je conserve le statut ? 
-  summarize(valeur = median(valeur)) %>%
-  ungroup() %>% 
+  group_by(esp_code_alternatif, annee, indicateur, statut) %>%
+  summarize(valeur = case_when(
+    indicateur == "pourcentage_juveniles" ~ mean(valeur),
+    TRUE ~ median(valeur)
+  )) %>%
+  ungroup() %>%
   distinct()
-
-
 
 # Représentation graphique des données : 
 graphique <- pop_indicateur %>% 
   ggplot(aes(x= annee, y =valeur, group = statut, color = statut)) + 
-  geom_line() +
-  facet_grid(esp_code_alternatif ~ indicateur , scales = "free") + 
+  geom_point() +
+  geom_smooth() +
+  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
   scale_color_manual(values= pal) +
-  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce", 
+  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs")
 print(graphique)
@@ -218,9 +222,8 @@ ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
   geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
   geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
   geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
-  geom_line(aes(y = Taux_evol_BOU, color = "BOU")) +
   # Ajoutez d'autres lignes pour chaque espèce souhaitées
-  labs(title = "Évolution des taux d'évolution par espèce",
+  labs(title = "Évolution des taux d'évolution de la densité de surface par espèce",
        x = "Année",
        y = "Taux d'évolution") +
   theme_minimal() +
