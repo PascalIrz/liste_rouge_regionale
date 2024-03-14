@@ -146,28 +146,31 @@ mei_ope_selection <- mei_ope_selection %>%
                select (ope_id, 
                        ope_surface_calculee,
                        passage$pas_numero))
+```
+
+Partie optionnelle : Vérification du Jeu De Données : Je vérifie que j'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30) : 
+
+```{r}
+# verif_effectif <- mei_ope_selection %>% 
+#   group_by(lop_id,lop_effectif) %>% 
+#   summarise(nbr_lignes = n()) %>% 
+#   ungroup()
+# 
+# resultat_verif_effectif <- verif_effectif %>% 
+#   filter(nbr_lignes!= lop_effectif)
+```
+
+Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
+
+```{r}
+#nb_unique <- mei_ope_selection %>% 
+#  summarise(nb_unique = n_distinct(mei_id))
+
+# print(nb_unique)
+```
 
 
-#!!!!! ATTENTION !!!!! ---------------------------------------------------------
-# Partie optionnelle : 
-# Vérification JDD : J'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30)
-verif_effectif <- mei_ope_selection %>% 
-  group_by(lop_id,lop_effectif) %>% 
-  summarise(nbr_lignes = n()) %>% 
-  ungroup()
-
-resultat_verif_effectif <- verif_effectif %>% 
-  filter(nbr_lignes!= lop_effectif)
-
-
-# Vérification JDD : Je n'ai qu'un mei_id par ligne (et pas de doublons) : 
-# "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
-nb_unique <- mei_ope_selection %>% 
-  summarise(nb_unique = n_distinct(mei_id))
-
-print(nb_unique)
-
-
+```{r}
 # ------------------------------------------------------------------------------
 # Ajout des effectifs dans un df ope_densite_statut ----
 ope_densite_statut_eff <- mei_ope_selection %>% 
