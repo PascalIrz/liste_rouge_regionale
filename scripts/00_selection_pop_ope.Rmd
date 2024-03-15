@@ -112,7 +112,6 @@ mes_depts <- departements_metro_geo %>%
 # Visualisation de la zone géographique sélectionnée ----
 mes_depts %>%
   mapview::mapview()
-
 ```
 
 
@@ -410,3 +409,12 @@ save(series,
      passerelle,
      file = "../processed_data/selection_pop_ope.rda")
 ```
+
+# Pour exporter mes objets vers QGIS : 
+
+```{r}
+#st_write(mes_depts, "../../liste_rouge_regionale/QGIS/mes_depts.shp")
+#st_write(pop_bzh, "../../liste_rouge_regionale/QGIS/pop_bzh.shp")
+#st_write(bzh_buff, "../../liste_rouge_regionale/QGIS/bzh_buff.shp")
+```
+
