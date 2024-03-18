@@ -164,7 +164,6 @@ mei_ope_selection <- mei_ope_selection %>%
   mutate(statut = ifelse(mei_ope_selection$mei_taille < mei_ope_selection$taille_maturite,
                          "juvénile",
                          "adulte"))
-
 ```
 
 
