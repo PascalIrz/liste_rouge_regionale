@@ -63,7 +63,7 @@ mei_table <- misc_nom_dernier_fichier(
 load(mei_table)
 
 ## Lire le fichier Excel contenant les tailles à maturité des espèces
-traits_biologiques <- read_excel("C:/Users/lea.bouchet/Documents/Artif/Artif/liste_rouge_regionale/scripts/taille_maturite_especes/traits_biologiques.xlsx")
+traits_biologiques <- read_excel("../raw_data/traits_biologiques.xlsx")
 
 ## Chargement des fonctions 
 source(file = "../R/calcul_seuils.R")
@@ -229,26 +229,13 @@ esp_lt_data <- mei_ope_selection %>%
          esp_code_alternatif == esp_code_alternatif)
 ```
 
-
-Réalisation de la fonction calcul_seuil : 
+Calcul des seuils de taille mini et maxi pour chaque espèce : 
 
 ```{r}
-
-source(file = "../R/calcul_seuils.R")
-
-test <- qtp_seuils2(df = esp_lt_data#,
-                      # var_taxon = esp_code_alternatif,
-                      # var_a_tester = mei_taille
-                    )
-
-mes_especes <- unique(esp_lt_data$esp_code_alternatif)
-
-test <- qtp_seuils2(df = esp_lt_data,
-            code_espece = mes_especes[1])
-
-test2 <- map(.x = mes_especes,
-                .f = qtp_seuils2,
-                df = esp_lt_data)
+mei_df_seuils <- aspeQual::qtp_seuils(df = esp_lt_data,
+                                      var_taxon = esp_code_alternatif,
+                                      var_a_tester = mei_taille,
+                                      seuil_densite = 0.001)
 ```
 
 
@@ -256,32 +243,32 @@ test2 <- map(.x = mes_especes,
 
 ```{r}
 # Création d'une liste pour stocker les données des seuils pour chaque espèce
-seuils_list <- list()
-
-# Boucle pour calculer les seuils min et max pour chaque espèce
-
-for (code in unique(esp_lt_data$esp_code_alternatif)) {
-  # Filtrer les données pour l'espèce actuelle
-  esp_data <- filter(esp_lt_data, esp_code_alternatif == code)
-  
-  # Calculer les seuils pour l'espèce actuelle
-  seuils <- aspeQual::qtp_seuils(
-    df = esp_data,
-    code_espece = code,
-    variable = "mei_taille",
-    seuil_densite = 0.001
-  )
-  
-  # Stocker les seuils min et max dans une liste
-  seuils_list[[code]] <- data.frame(
-    esp_code_alternatif = code,
-    seuil_min = min(seuils),
-    seuil_max = max(seuils)
-  )
-}
-
-# Combiner les données des seuils pour chaque espèce en un seul DataFrame
-mei_df_seuils <- do.call(rbind, seuils_list)
+# seuils_list <- list()
+# 
+# # Boucle pour calculer les seuils min et max pour chaque espèce
+# 
+# for (code in unique(esp_lt_data$esp_code_alternatif)) {
+#   # Filtrer les données pour l'espèce actuelle
+#   esp_data <- filter(esp_lt_data, esp_code_alternatif == code)
+#   
+#   # Calculer les seuils pour l'espèce actuelle
+#   seuils <- aspeQual::qtp_seuils(
+#     df = esp_data,
+#     code_espece = code,
+#     variable = "mei_taille",
+#     seuil_densite = 0.001
+#   )
+#   
+#   # Stocker les seuils min et max dans une liste
+#   seuils_list[[code]] <- data.frame(
+#     esp_code_alternatif = code,
+#     seuil_min = min(seuils),
+#     seuil_max = max(seuils)
+#   )
+# }
+# 
+# # Combiner les données des seuils pour chaque espèce en un seul DataFrame
+# mei_df_seuils <- do.call(rbind, seuils_list)
 
 # Joindre les seuils calculés avec le jeu de données principal
 mei_ope_selection <- mei_ope_selection %>%
@@ -290,10 +277,10 @@ mei_ope_selection <- mei_ope_selection %>%
 ```
 
 ```{r}
-detecter_erreurs <- function(mei_ope_selection) {
+detecter_erreurs <- function(df) {
   # Filtrer les données où les valeurs de mei_taille sont en dehors des seuils
-  erreurs <- filter(mei_ope_selection, mei_taille < seuil_min | mei_taille > seuil_max) %>% 
-    select(ope_id, esp_code_alternatif, mei_id, seuil_min, seuil_max, mei_taille)
+  erreurs <- filter(df, mei_taille < mini | mei_taille > maxi) %>% 
+    select(ope_id, esp_code_alternatif, mei_id, mini, maxi, mei_taille)
   
   if (nrow(erreurs) > 0) {
     message("Les données suivantes ont des valeurs de mei_taille en dehors des seuils :")
@@ -305,7 +292,7 @@ detecter_erreurs <- function(mei_ope_selection) {
   }
 }
 
-erreurs_df <- detecter_erreurs(mei_ope_selection)
+erreurs_df <- detecter_erreurs(df = mei_ope_selection)
 
 ```
 
