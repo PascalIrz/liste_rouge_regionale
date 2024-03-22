@@ -81,3 +81,48 @@ calcul_taux_evolution <- function(df,
   # Retourner le dataframe avec les taux d'évolution
   return(resultats_df1)
 }
+
+
+
+
+
+
+Travail avec pascal 22/03 : 
+
+
+
+mon_espece <- "ANG"
+mon_indicateur <- "biomasse"
+mon_annee_depart <- 1990
+
+df <- reg_indicateur %>% 
+  filter(esp_code_alternatif == mon_espece,
+         indicateur == mon_indicateur,
+         !annee %in% c(1991, 2000, 2001),
+         annee >= mon_annee_depart)
+
+test <- df %>% 
+  arrange(annee) %>% 
+  ungroup() %>% 
+  mutate(diff_annee = annee - dplyr::lag(annee, n = 1),
+         taux_annuel = (valeur / dplyr::lag(valeur, n = 1)) ^ (1 / diff_annee)) %>% 
+  filter(!is.na(taux_annuel)) %>% 
+  pull(taux_annuel)
+
+
+exp(mean(log(test)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

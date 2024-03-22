@@ -106,17 +106,14 @@ ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_es
 ### Biomasse des espèces par opération de pêche
 
 ```{r}
-source(file = "../R/calcul_biomasse.R")
 # Calcul de la biomasse par opération : par espèce et par statut : 
-ope_biomasse_statut <- calcul_biomasse(mei_ope_selection,
-                                       ope_id,
-                                       esp_code_alternatif,
-                                       statut,
-                                       mei_taille,
-                                       tlo_libelle)
+ope_biomasse_statut <- mei_ope_selection %>%
+    group_by(ope_id,
+             esp_code_alternatif,
+             statut) %>%
+   summarize(valeur = sum(poids_tp, na.rm = TRUE)) %>% 
+  mutate (indicateur = "biomasse")
 
-ope_biomasse_statut <- ope_biomasse_statut %>% 
-  mutate(indicateur = "biomasse")
 
 
 ope_biomasse_esp <- ope_biomasse_statut %>% # Réalisation d'un df contenant les données de biomasse par espèce tous statuts confondus
@@ -137,7 +134,6 @@ ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
 
 
 ### Densité surfacique par opération 
-
 
 ```{r}
 # Ajout des données de surfaces échantillonnées dans mei_ope_selection ----
@@ -235,49 +231,48 @@ ope_densite_volume_esp <- ope_densite_vol %>%
 
 !! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
 ```{r}
-
 ########################## POURCENTAGE DE JUVENILES ############################
 # Calcul des pourcentages de juvéniles pour les différents statuts des espèces (juvéniles / adultes) ----
 ope_pourcentage_juveniles_statut_eff <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
-           ope_surface_calculee,
            statut) %>% 
-  summarise(effectif=sum(length(mei_id))) %>% 
+  summarise(#effectif=sum(length(mei_id)),
+            #effectif2 = n_distinct(mei_id),
+            effectif = n()) %>% 
   ungroup() %>% 
-  mutate(indicateur = "densite_surface")
-
-ope_pourcentjuv_esp_eff <- ope_densite_statut_eff %>% 
-  group_by(ope_id, esp_code_alternatif) %>% 
-  summarise (total_effectif = mean(sum(effectif))) 
-
-ope_pourcentjuv_juv_eff <- ope_densite_statut_eff %>% 
-  filter(statut == "juvénile") %>% 
-  group_by(ope_id, esp_code_alternatif) %>% 
-  summarise(total_juveniles = mean(sum(effectif)))
-
-ope_pourcentjuv_esp <- left_join(ope_pourcentjuv_esp_eff, ope_pourcentjuv_juv_eff, by = c("ope_id", "esp_code_alternatif")) %>%
-  mutate(total_juveniles = coalesce(total_juveniles, 0)) %>% # Remplacer les NA par 0
-  mutate(valeur = round((total_juveniles / total_effectif) * 100,2)) %>%
-  mutate(statut = "toutes", indicateur ="pourcentage_juveniles") %>%
-  select(ope_id, esp_code_alternatif, indicateur, valeur, statut)
-
-# Ajout des pourcentages de juvéniles aux différents statuts des espèces (juvéniles / adultes) ----
-ope_pourcentjuv_statut <- ope_densite_statut_eff %>% 
-  select(ope_id, esp_code_alternatif, statut) %>% 
   mutate(indicateur = "pourcentage_juveniles")
 
-ope_pourcentjuv_esp_select <- ope_pourcentjuv_esp %>% 
-  select(ope_id, esp_code_alternatif, valeur)
+ope_pourcentage_juveniles_statut_eff2 <- mei_ope_selection %>%
+  group_by(ope_id,
+           esp_code_alternatif) %>% 
+  summarise(#effectif=sum(length(mei_id)),
+            #effectif2 = n_distinct(mei_id),
+            effectif = n()) %>% 
+  ungroup() %>% 
+  mutate(indicateur = "pourcentage_juveniles",
+         statut = "toutes") %>% 
+  select(names(ope_pourcentage_juveniles_statut_eff))
 
-ope_pourcentjuv_statut <- left_join(ope_pourcentjuv_statut, ope_pourcentjuv_esp_select, 
-                                    by = c("ope_id", "esp_code_alternatif"))
-
-# Construction d'un Df avec les pourcentages de juvéniles des espèces par opération toutes tailles confondues + des différents statuts (adultes et juvéniles) ----
-ope_pourcentjuv <- bind_rows(ope_pourcentjuv_statut, ope_pourcentjuv_esp)
-
+ope_pourcentage_juveniles_statut_eff <- ope_pourcentage_juveniles_statut_eff %>% 
+  rbind(ope_pourcentage_juveniles_statut_eff2)
 ```
 
+
+```{r}
+ope_pc_juv <- ope_pourcentage_juveniles_statut_eff %>% 
+  complete(ope_id,
+           esp_code_alternatif,
+           statut,
+           indicateur,
+           fill = list(effectif = 0)) %>% 
+    group_by(ope_id,
+             esp_code_alternatif) %>% 
+  mutate(valeur = effectif[statut == "juvénile"] / effectif[statut == "toutes"]) %>% 
+  filter(statut == "toutes",
+         !is.nan(valeur)) %>% 
+  select(-effectif)
+```
 
 ## Indicateurs sur les mesures individuelles par opération de pêche
 
@@ -336,7 +331,7 @@ ope_indicateur <- rbind(ope_50_percentile,
                         #ope_75_percentile,
                         ope_densite_surface,
                         ope_densite_vol,
-                        ope_pourcentjuv,
+                        ope_pc_juv,
                         ope_biomasse,
                         ope_effectif_total)
 
