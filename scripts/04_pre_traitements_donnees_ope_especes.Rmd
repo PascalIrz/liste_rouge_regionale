@@ -88,6 +88,8 @@ traits_biologiques <- traits_biologiques %>%
 
 Création d'un dataframe contenant les données individuelles relatives aux opérations contenues dans la passerelle et de ma sélection d'espèces (cf 00_selection_pop_ope et 03_analyse_selection_especes).  
 
+La taille des poissons est indiquée en mm et le poids en gramme. 
+
 ```{r creation_df_mei_ope_selection}
 # Ajout des mesures individuelles en partant de mes mei_ope_selection ----
 mei_ope_selection <- passerelle %>%

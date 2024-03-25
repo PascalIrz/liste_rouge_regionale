@@ -54,7 +54,6 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
-#source(file = "../R/calcul_taux_evolution.R")
 source(file = "../R/calcul_pourcentage_presence_station.R")
 
 # Définition des couleurs de l'OFB en format RGB
@@ -129,11 +128,13 @@ graphique <- reg_indicateur %>%
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs") +
+  theme_bw()+
   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        panel.grid.major = element_line(color="#ffffff", size = 0.1),
-        panel.grid.minor = element_line(color = "#ffffff"),
+        legend.position = "bottom",
         panel.background = element_rect(fill="#faf0e0"),
-        legend.position = "bottom")
+        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
 
 print(graphique)
 
@@ -248,25 +249,34 @@ On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'an
 ```{r}
 # Taux d'évolution du taux d'occurence de densité de surface : 
 # FONCTION : 
+#source(file = "../R/calcul_taux_evolution.R")
 
-calcul_taux_evol_oc_densite_surface <-
-  calcul_taux_evolution(df = taux_occ,
-                        var_annee = annee,
-                        var_stade = stade,
-                        var_esp_code_alternatif = esp_code_alternatif,
-                        var_valeur = valeur)
+#mon_annee_depart <- 1990
+# Utilisation de la fonction calcul_moyenne_geom
+#resultat <- calcul_moyenne_geom(reg_indicateur, 
+#                                annee, 
+#                                valeur,
+#                                mon_annee_depart,
+#                                esp_code_alternatif, 
+#                                stade, 
+#                                indicateur)
+#print(resultat)
+```
 
+
+
+```{r}
 # Représentation graphique :
-ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
-  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
-  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
-  geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
+#ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
+#  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
+#  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
+#   geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
   # Ajoutez d'autres lignes pour chaque espèce souhaitées
-  labs(title = "Évolution des taux d'évolution de la densité de surface par espèce",
-       x = "Année",
-       y = "Taux d'évolution") +
-  theme_minimal() +
-  scale_color_manual(values= pal)
+#  labs(title = "Évolution des taux d'évolution de la densité de surface par espèce",
+#       x = "Année",
+#       y = "Taux d'évolution") +
+#  theme_minimal() +
+#  scale_color_manual(values= pal)
 
 ```
 
