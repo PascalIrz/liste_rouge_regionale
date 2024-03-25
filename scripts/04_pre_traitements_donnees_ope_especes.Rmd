@@ -156,18 +156,18 @@ mei_ope_selection <- mei_ope_selection %>%
 
 ## Distinction des classes d'âges
 
-En complément de la base ASPE, un tableau indiquant por chaque espèce la maximale des 0+ est constitué (et donc la taille référence minimum adulte). On utilise donc la longueur du poisson comme proxy de son age.  Une distinction des classes d'âges est réalisée : a chaque espèce correspond alors 3 statuts différents : 
+En complément de la base ASPE, un tableau indiquant por chaque espèce la maximale des 0+ est constitué (et donc la taille référence minimum adulte). On utilise donc la longueur du poisson comme proxy de son age.  Une distinction des classes d'âges est réalisée : a chaque espèce correspond alors 3 stades différents : 
 - Adulte (individus dont la taille est supérieure à la taille_min_adulte)
 - Juvénile (individus dont la taille est inférieure à la taille_min_adulte)
 - Toutes : toute classe d'e taille'âge confondue
 
 
 ```{r distinction_classes_ages}
-# Ajout du statut par individus ----
+# Ajout du stade par individus ----
 mei_ope_selection <- mei_ope_selection %>% 
-  mutate(statut = ifelse(mei_ope_selection$mei_taille < mei_ope_selection$taille_maturite,
-                         "juvénile",
-                         "adulte"))
+  mutate(stade = ifelse(mei_ope_selection$mei_taille < mei_ope_selection$taille_maturite,
+                         "juv",
+                         "ad"))
 ```
 
 

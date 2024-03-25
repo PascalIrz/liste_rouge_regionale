@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 Ce script permet de constituer les premiers tableaux de données nécessaires à la
-préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvénils, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
+préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvéniles, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
 
 
 # Installation 
@@ -74,31 +74,31 @@ source(file = "../R/calcul_densite_surface.R")
 ### Effectif total des espèces par opération de pêche
 
 ```{r}
-ope_effectif_total_statut <- mei_ope_selection %>% # Réalisation d'un df contenant les données d'effectifs selon les différents statuts (adulte / juvénile)
+ope_effectif_total_stade <- mei_ope_selection %>% # Réalisation d'un df contenant les données d'effectifs selon les différents stades (ad / juv)
   group_by(ope_id,
            esp_code_alternatif,
-           statut) %>%
+           stade) %>%
   summarise(valeur=sum(length(mei_id))) %>% 
   mutate(indicateur= "effectif_total") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
-         statut)
+         stade)
   
-ope_effectif_total_esp <- ope_effectif_total_statut %>% # Réalisation d'un df contenant les données d'effectifs tous statuts confondus
+ope_effectif_total_esp <- ope_effectif_total_stade %>% # Réalisation d'un df contenant les données d'effectifs tous stades confondus
   group_by(ope_id,
            esp_code_alternatif) %>% 
   summarise(valeur=sum(valeur)) %>% 
   mutate(indicateur= "effectif_total") %>%
-  mutate (statut = "toutes") %>% 
+  mutate (stade = "ind") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
-         statut)
+         stade)
 
-ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_esp)
+ope_effectif_total <- bind_rows(ope_effectif_total_stade, ope_effectif_total_esp)
 
 ```
 
@@ -106,29 +106,29 @@ ope_effectif_total <- bind_rows(ope_effectif_total_statut, ope_effectif_total_es
 ### Biomasse des espèces par opération de pêche
 
 ```{r}
-# Calcul de la biomasse par opération : par espèce et par statut : 
-ope_biomasse_statut <- mei_ope_selection %>%
+# Calcul de la biomasse par opération : par espèce et par stade : 
+ope_biomasse_stade <- mei_ope_selection %>%
     group_by(ope_id,
              esp_code_alternatif,
-             statut) %>%
+             stade) %>%
    summarize(valeur = sum(poids_tp, na.rm = TRUE)) %>% 
   mutate (indicateur = "biomasse")
 
 
 
-ope_biomasse_esp <- ope_biomasse_statut %>% # Réalisation d'un df contenant les données de biomasse par espèce tous statuts confondus
+ope_biomasse_esp <- ope_biomasse_stade %>% # Réalisation d'un df contenant les données de biomasse par espèce tous stades confondus
   group_by(ope_id,
            esp_code_alternatif) %>% 
   summarise(valeur = sum(valeur)) %>% 
   mutate(indicateur= "biomasse") %>%
-  mutate (statut = "toutes") %>% 
+  mutate (stade = "ind") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
-         statut)
+         stade)
 
-ope_biomasse <- bind_rows(ope_biomasse_statut, ope_biomasse_esp)
+ope_biomasse <- bind_rows(ope_biomasse_stade, ope_biomasse_esp)
 
 ```
 
@@ -168,12 +168,12 @@ Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique
 
 ```{r}
 # ------------------------------------------------------------------------------
-# Ajout des effectifs dans un df ope_densite_statut ----
-ope_densite_statut_eff <- mei_ope_selection %>% 
+# Ajout des effectifs dans un df ope_densite_stade ----
+ope_densite_stade_eff <- mei_ope_selection %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee,
-           statut) %>% 
+           stade) %>% 
   summarise(effectif= n_distinct(mei_id)) %>% 
   ungroup() %>% 
   mutate(indicateur= "densite_surface")
@@ -181,12 +181,12 @@ ope_densite_statut_eff <- mei_ope_selection %>%
 resultats_densite <- calcul_densite_surface(mei_ope_selection,
                                             ope_surface_calculee,
                                             ope_id,esp_code_alternatif, 
-                                            statut,
+                                            stade,
                                             mei_id)
 
 ope_densite_surface <- resultats_densite$df1 
 ope_densite_surface_esp <- resultats_densite$df2 
-ope_densite_surface_statut <- resultats_densite$df3 
+ope_densite_surface_stade <- resultats_densite$df3 
 ```
 
 
@@ -216,13 +216,13 @@ ope_densite_vol<- left_join(ope_selection_param_profondeur, ope_densite_surface_
          esp_code_alternatif, 
          indicateur,
          valeur,
-         statut)
+         stade)
 
-ope_densite_volume_statut <- ope_densite_vol %>% 
-  filter (statut == "juvénile"| statut == "adulte")
+ope_densite_volume_stade <- ope_densite_vol %>% 
+  filter (stade == "juv"| stade == "ad")
 
 ope_densite_volume_esp <- ope_densite_vol %>% 
-  filter (statut == "toutes")
+  filter (stade == "ind")
 
 ```
 
@@ -232,18 +232,18 @@ ope_densite_volume_esp <- ope_densite_vol %>%
 !! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
 ```{r}
 ########################## POURCENTAGE DE JUVENILES ############################
-# Calcul des pourcentages de juvéniles pour les différents statuts des espèces (juvéniles / adultes) ----
-ope_pourcentage_juveniles_statut_eff <- mei_ope_selection %>%
+# Calcul des pourcentages de juvéniles pour les différents stades des espèces (juvéniles / adultes) ----
+ope_pc_juv_stade_eff <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
-           statut) %>% 
+           stade) %>% 
   summarise(#effectif=sum(length(mei_id)),
             #effectif2 = n_distinct(mei_id),
             effectif = n()) %>% 
   ungroup() %>% 
   mutate(indicateur = "pourcentage_juveniles")
 
-ope_pourcentage_juveniles_statut_eff2 <- mei_ope_selection %>%
+ope_pc_juv_stade_eff2 <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif) %>% 
   summarise(#effectif=sum(length(mei_id)),
@@ -251,25 +251,25 @@ ope_pourcentage_juveniles_statut_eff2 <- mei_ope_selection %>%
             effectif = n()) %>% 
   ungroup() %>% 
   mutate(indicateur = "pourcentage_juveniles",
-         statut = "toutes") %>% 
-  select(names(ope_pourcentage_juveniles_statut_eff))
+         stade = "ind") %>% 
+  select(names(ope_pc_juv_stade_eff))
 
-ope_pourcentage_juveniles_statut_eff <- ope_pourcentage_juveniles_statut_eff %>% 
-  rbind(ope_pourcentage_juveniles_statut_eff2)
+ope_pc_juv_stade_eff <- ope_pc_juv_stade_eff %>% 
+  rbind(ope_pc_juv_stade_eff2)
 ```
 
 
 ```{r}
-ope_pc_juv <- ope_pourcentage_juveniles_statut_eff %>% 
+ope_pc_juv <- ope_pc_juv_stade_eff %>% 
   complete(ope_id,
            esp_code_alternatif,
-           statut,
+           stade,
            indicateur,
            fill = list(effectif = 0)) %>% 
     group_by(ope_id,
              esp_code_alternatif) %>% 
-  mutate(valeur = effectif[statut == "juvénile"] / effectif[statut == "toutes"]) %>% 
-  filter(statut == "toutes",
+  mutate(valeur = effectif[stade == "juv"] / effectif[stade == "ind"]) %>% 
+  filter(stade == "ind",
          !is.nan(valeur)) %>% 
   select(-effectif)
 ```
@@ -280,10 +280,10 @@ ope_pc_juv <- ope_pourcentage_juveniles_statut_eff %>%
 
 Calcul des longueurs médianes des tailles des individus par opération : Création de la fonction "calcul_50_percentile" : 
 ```{r}
-resultats_longueur_mediane <- calcul_50_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_50_percentile <- resultats_longueur_mediane$df1 # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues + des différents statuts ----
+resultats_longueur_mediane <- calcul_50_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, stade)
+ope_50_percentile <- resultats_longueur_mediane$df1 # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues + des différents stades ----
 ope_50_percentile_esp <- resultats_longueur_mediane$df2 # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues ----
-ope_50_percentile_statut <- resultats_longueur_mediane$df3 # Construction d'un Df avec les longueurs médianes des différents statuts des espèces (juvéniles / adultes) ----
+ope_50_percentile_stade <- resultats_longueur_mediane$df3 # Construction d'un Df avec les longueurs médianes des différents stades des espèces (juvéniles / adultes) ----
 
 ```
 
@@ -293,10 +293,10 @@ ope_50_percentile_statut <- resultats_longueur_mediane$df3 # Construction d'un D
 Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" : 
 ```{r}
 #########################    ECART INTERQUARTILE   #############################
-resultats_ecart_interquartile <- calcul_ecart_interquartile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_ecart_interqua <- resultats_ecart_interquartile$df1 # Construction d'un Df avec les écarts interquartiles des espèces par opération toutes tailles confondues + des différents statuts ----
+resultats_ecart_interquartile <- calcul_ecart_interquartile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, stade)
+ope_ecart_interqua <- resultats_ecart_interquartile$df1 # Construction d'un Df avec les écarts interquartiles des espèces par opération toutes tailles confondues + des différents stades ----
 ope_ecart_interqua_esp <- resultats_ecart_interquartile$df2 # Construction d'un Df des écarts interquartiles des espèces par opération toutes tailles confondues ----
-ope_ecart_interqua_statut <- resultats_ecart_interquartile$df3 # Construction d'un df des écarts interquartiles des tailles des différents statuts des espèces (juvéniles / adultes) ----
+ope_ecart_interqua_stade <- resultats_ecart_interquartile$df3 # Construction d'un df des écarts interquartiles des tailles des différents stades des espèces (juvéniles / adultes) ----
 
 ```
 
@@ -306,16 +306,16 @@ ope_ecart_interqua_statut <- resultats_ecart_interquartile$df3 # Construction d'
 Calcul des percentiles 25 et 75 des tailles des individus par opération : Création de la fonction "calcul_25_percentile" et "calcul_75_percentile" : 
 
 ```{r}
-resultats_25_percentile <- calcul_25_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_25_percentile <- resultats_25_percentile$df1 # Construction d'un Df des percentiles 25 des espèces par opération toutes tailles confondues + des différents statuts ----
+resultats_25_percentile <- calcul_25_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, stade)
+ope_25_percentile <- resultats_25_percentile$df1 # Construction d'un Df des percentiles 25 des espèces par opération toutes tailles confondues + des différents stades ----
 ope_25_percentile_esp <- resultats_25_percentile$df2 # Construction d'un Df des percentiles 25 des espèces par opération toutes tailles confondues ----
-ope_25_percentile_statut <- resultats_25_percentile$df3 # Construction d'un df des percentiles 25 des tailles des différents statuts des espèces (juvéniles / adultes) ----
+ope_25_percentile_stade <- resultats_25_percentile$df3 # Construction d'un df des percentiles 25 des tailles des différents stades des espèces (juvéniles / adultes) ----
 
 
-resultats_75_percentile <- calcul_75_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, statut)
-ope_75_percentile <- resultats_75_percentile$df1 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues + des différents statuts ----
+resultats_75_percentile <- calcul_75_percentile(mei_ope_selection,mei_taille,ope_id,esp_code_alternatif, stade)
+ope_75_percentile <- resultats_75_percentile$df1 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues + des différents stades ----
 ope_75_percentile_esp <- resultats_75_percentile$df2 # Construction d'un Df des percentiles 75 des espèces par opération toutes tailles confondues ----
-ope_75_percentile_statut <- resultats_75_percentile$df3 # Construction d'un df des percentiles 75 des tailles des différents statuts des espèces (juvéniles / adultes) ----
+ope_75_percentile_stade <- resultats_75_percentile$df3 # Construction d'un df des percentiles 75 des tailles des différents stades des espèces (juvéniles / adultes) ----
 
 ```
 
@@ -350,7 +350,7 @@ ope_indicateur <- ope_indicateur %>%
          esp_code_alternatif,
          indicateur,
          valeur,
-         statut,
+         stade,
          pop_id,
          annee)
 

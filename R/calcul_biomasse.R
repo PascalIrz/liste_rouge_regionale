@@ -4,13 +4,13 @@
 calcul_biomasse <- function(df,
                             var_id_site,
                             var_esp_code_alternatif,
-                            var_statut,
+                            var_stade,
                             var_longueur,
                             var_type_longueur)
 {
   var_id_site <- enquo(var_id_site)
   var_esp_code_alternatif <- enquo(var_esp_code_alternatif)
-  var_statut <- enquo(var_statut)
+  var_stade <- enquo(var_stade)
   var_longueur <- enquo(var_longueur)
   var_type_longueur <- enquo(var_type_longueur)
 
@@ -50,11 +50,11 @@ calcul_biomasse <- function(df,
               by = c("esp_code_alternatif", "tlo_libelle")) %>%
     mutate(poids_tp = a * ((!!var_longueur / 10) ^ b)) # passage en cm de mei_taille => /10
   
-  # Calcul de la biomasse par site et par statut
+  # Calcul de la biomasse par site et par stade
   biomasse_par_site <- df %>%
     group_by(!!var_id_site,
              !!var_esp_code_alternatif,
-             !!var_statut) %>%
+             !!var_stade) %>%
    summarize(valeur = sum(poids_tp, na.rm = TRUE))
 
   return(biomasse_par_site)

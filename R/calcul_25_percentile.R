@@ -1,10 +1,10 @@
-#' Calculer les percentiles 25 des tailles des espèces par opération selon les statuts des individus
+#' Calculer les percentiles 25 des tailles des espèces par opération selon les stades des individus
 #'
 #' @param df Dataframe contenant les données
 #' @param var_taille Variable de taille
 #' @param var_id_site Variable d'identification du site
 #' @param var_esp_code_alternatif Variable d'identification de l'espèce de poisson
-#' @param var_statut Variable d'identification du statut de l'espèce (adulte / juvénile)
+#' @param var_stade Variable d'identification du stade de l'espèce (adulte / juvénile)
 #'
 #' @return 3 Dataframes avec une ligne par operation et par espèce et des colonnes indiquant le type d'indicateur "25_percentile", et la valeur associée
 #' @export
@@ -17,36 +17,36 @@
 #' var_taille = mei_taille,
 #' var_id_site = ope_id,
 #' var_esp_code_alternatif = esp_code_alternatif,
-#' var_statut = statut)
+#' var_stade = stade)
 #' }
 calcul_25_percentile <- function(df,
                                  var_taille,
                                  var_id_site,
                                  var_esp_code_alternatif,
-                                 var_statut)
+                                 var_stade)
 
   
 {
   var_taille <- enquo(var_taille)
   var_id_site <- enquo(var_id_site)
   var_esp_code_alternatif <- enquo (var_esp_code_alternatif)
-  var_statut <- enquo(var_statut)
+  var_stade <- enquo(var_stade)
   
 
- # Construction d'un df des 25 percentiles des tailles des différents statuts des espèces (juvéniles / adultes) ----
-  ope_25_percentile_statut <- df %>%
+ # Construction d'un df des 25 percentiles des tailles des différents stades des espèces (juvéniles / adultes) ----
+  ope_25_percentile_stade <- df %>%
     group_by(!!var_id_site,
              !!var_esp_code_alternatif,
-             !!var_statut) %>% 
+             !!var_stade) %>% 
     summarise(valeur=quantile(!!var_taille, probs = c(.25), na.rm=TRUE))
   
-  ope_25_percentile_statut <- ope_25_percentile_statut %>% 
+  ope_25_percentile_stade <- ope_25_percentile_stade %>% 
     mutate(indicateur="25_percentile") %>% 
     select(!!var_id_site,
            !!var_esp_code_alternatif,
            indicateur,
            valeur,
-           !!var_statut)
+           !!var_stade)
 
   
 # Construction d'un Df des 25 percentiles des espèces par opération toutes tailles confondues ----
@@ -57,20 +57,20 @@ calcul_25_percentile <- function(df,
   
   
   ope_25_percentile_esp <- ope_25_percentile_esp %>% 
-    mutate(indicateur="25_percentile", statut = "toutes") %>% 
+    mutate(indicateur="25_percentile", stade = "ind") %>% 
     select(!!var_id_site,
            !!var_esp_code_alternatif,
            indicateur,
            valeur,
-           !!var_statut)
+           !!var_stade)
   
 
   
-  # Construction d'un Df avec les 25 percentiles des espèces par opération toutes tailles confondues + des différents statuts ----
-  ope_25_percentile <- bind_rows(ope_25_percentile_statut, ope_25_percentile_esp)
+  # Construction d'un Df avec les 25 percentiles des espèces par opération toutes tailles confondues + des différents stades ----
+  ope_25_percentile <- bind_rows(ope_25_percentile_stade, ope_25_percentile_esp)
   
   list(df1 = ope_25_percentile, 
        df2 = ope_25_percentile_esp,
-       df3 = ope_25_percentile_statut)
+       df3 = ope_25_percentile_stade)
 } 
   
