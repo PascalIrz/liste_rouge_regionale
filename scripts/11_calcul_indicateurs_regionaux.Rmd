@@ -249,38 +249,95 @@ On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'an
 ```{r}
 # Taux d'évolution du taux d'occurence de densité de surface : 
 # FONCTION : 
-#source(file = "../R/calcul_taux_evolution.R")
+source(file = "../R/calcul_taux_evolution.R")
 
-#mon_annee_depart <- 1990
 # Utilisation de la fonction calcul_moyenne_geom
-#resultat <- calcul_moyenne_geom(reg_indicateur, 
-#                                annee, 
-#                                valeur,
-#                                mon_annee_depart,
-#                                esp_code_alternatif, 
-#                                stade, 
-#                                indicateur)
-#print(resultat)
+taux_evol <- calcul_taux_evol(df = reg_indicateur,
+                             var_x = annee,
+                             var_y = valeur,
+                             debut = 1990,
+                             esp_code_alternatif,
+                             stade,
+                             indicateur)
+print(taux_evol)
 ```
 
 
 
-```{r}
+```{r, fig.height = 25, fig.width = 10}
 # Représentation graphique :
-#ggplot(calcul_taux_evol_oc_densite_surface, aes(x = annee)) +
-#  geom_line(aes(y = Taux_evol_ANG, color = "ANG")) +
-#  geom_line(aes(y = Taux_evol_ABL, color = "ABL")) +
-#   geom_line(aes(y = Taux_evol_BRE, color = "BRE")) +
-  # Ajoutez d'autres lignes pour chaque espèce souhaitées
-#  labs(title = "Évolution des taux d'évolution de la densité de surface par espèce",
-#       x = "Année",
-#       y = "Taux d'évolution") +
-#  theme_minimal() +
-#  scale_color_manual(values= pal)
+
+df_classes_taux_evol <- data.frame(
+  cli_classe = c(1, 2, 3),
+  cli_libelle = c("croissant", "stable", "decroissant"),
+  cli_born_inf = c("1.01", "0.99", "0.00"),
+  cli_born_sup = c("2","1.01", "0.99"))
+
+intervals <- c(0, 0.989, 1.09, Inf)
+libelle <- c("croissant", "stable", "decroissant")
+labels <- c(1, 2, 3)
+taux_evol$cli_classe <- cut(taux_evol$mean_geom, breaks = intervals, labels = labels, include.lowest = TRUE)
+
+taux_evol$cli_libelle <- cut(taux_evol$mean_geom, breaks = intervals, labels = libelle, include.lowest = TRUE)
+
+source(file = "../R/taux_evol_classes_couleur.R")
+
+taux_evol <- taux_evol_classes_couleur(df = taux_evol,
+                          var_numero_classe = cli_classe,
+                          var_libelle_classe = cli_libelle)
+
+
+graph_taux_evol <- taux_evol %>%
+  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
+  geom_point(shape = 19) +
+  geom_line(aes(group = stade)) +
+  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
+  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill = "#faf0e0"),
+        legend.position = "bottom") + 
+  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
+                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+
+print(graph_taux_evol)
 
 ```
 
 
+```{r, fig.height = 25, fig.width = 10}
+
+library(ggplot2)
+
+# Définition des seuils et des couleurs correspondantes
+seuils <- c(0.35, 0.99, 1.01, 1.25)
+couleurs <- c("#CB2027", "#DDDDDD","#8fd175")
+n <- length(seuils)
+
+# Création du graphique
+graph_taux_evol <- taux_evol %>%
+  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
+  geom_point(shape = 19) +
+  geom_line(aes(group = stade)) +
+  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
+  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill = "#faf0e0"),
+        legend.position = "bottom") + 
+  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
+                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+
+for (i in 1:(n-1)) {
+  graph_taux_evol <- graph_taux_evol +
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.2)
+}
+
+print(graph_taux_evol)
+
+```
 
 
 ## Pourcentage de station_esp
