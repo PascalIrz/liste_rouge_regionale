@@ -266,27 +266,6 @@ print(taux_evol)
 
 ```{r, fig.height = 25, fig.width = 10}
 # Représentation graphique :
-
-df_classes_taux_evol <- data.frame(
-  cli_classe = c(1, 2, 3),
-  cli_libelle = c("croissant", "stable", "decroissant"),
-  cli_born_inf = c("1.01", "0.99", "0.00"),
-  cli_born_sup = c("2","1.01", "0.99"))
-
-intervals <- c(0, 0.989, 1.09, Inf)
-libelle <- c("croissant", "stable", "decroissant")
-labels <- c(1, 2, 3)
-taux_evol$cli_classe <- cut(taux_evol$mean_geom, breaks = intervals, labels = labels, include.lowest = TRUE)
-
-taux_evol$cli_libelle <- cut(taux_evol$mean_geom, breaks = intervals, labels = libelle, include.lowest = TRUE)
-
-source(file = "../R/taux_evol_classes_couleur.R")
-
-taux_evol <- taux_evol_classes_couleur(df = taux_evol,
-                          var_numero_classe = cli_classe,
-                          var_libelle_classe = cli_libelle)
-
-
 graph_taux_evol <- taux_evol %>%
   ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
   geom_point(shape = 19) +
@@ -332,7 +311,7 @@ graph_taux_evol <- taux_evol %>%
 
 for (i in 1:(n-1)) {
   graph_taux_evol <- graph_taux_evol +
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.2)
+    annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.1)
 }
 
 print(graph_taux_evol)

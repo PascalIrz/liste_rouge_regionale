@@ -27,19 +27,17 @@ Dans un premier temps, ce script a pour objectif de constituer un premier datafr
 
 ## Chargement des packages, fonctions et des données
 
-```{r}
+```{r Chargement des packages, données et fonctions}
 # Chargement des packages ----
 library(aspe)
 library(tidyverse)
 library(mapview)
 library(COGiter)
 library(sf)
-library(rmapshaper)
 library(wesanderson)
 
 # Chargement des fonctions ----
 source(file = "../R/borner_series.R")
-
 
 # Chargement des données ----
 rdata_tables <- misc_nom_dernier_fichier(
@@ -47,10 +45,10 @@ rdata_tables <- misc_nom_dernier_fichier(
   pattern = "^tables")
 load(rdata_tables)
 
-
 # Chargement de la palette de couleur ---- 
 pal <- wes_palette("AsteroidCity1")
 pal2 <- wes_palette("FantasticFox1")
+pal3 <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
 
 ```
 
@@ -69,7 +67,7 @@ Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'
 - Le nombre d'années manquantes consécutives maximum sur les séries de pêches : il s'agit de la période d'années manquantes consécutives maximum souhaitée dans l'analyse. 
 
 
-```{r}
+```{r Mise en place des paramètres}
 ## La taille du buffer (en mètres) ----
 taille_buffer <- 1000
 
@@ -85,7 +83,7 @@ mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages",
                    "Pêche partielle sur berge")
 
 ## Le nombre minimum d'années sur les séries de pêches  ----
-n_mini_annees <- 9 
+n_mini_annee <- 9 
 
 ## Le nombre d'années manquantes maximum sur cette série de pêches dans les données ----
 n_max_manquant <- 2
@@ -97,10 +95,13 @@ n_max_manquant <- 2
 
 ## Sélection de l'aire géographique
 
-```{r}
+```{r Création passerelle}
 ## Création d'une passerelle ----
 passerelle <- mef_creer_passerelle()
+```
 
+
+```{r Sélection aire géographique}
 ## Sélection de l'aire géographique : choix des départements ----
 # Exemple : La Bretagne (22, 29, 35, 56)
 mes_depts <- departements_metro_geo %>% 
@@ -108,7 +109,7 @@ mes_depts <- departements_metro_geo %>%
 ```
 
 
-```{r cartedepts, eval = FALSE}
+```{r Visualisation Carte depts, eval = FALSE}
 # Visualisation de la zone géographique sélectionnée ----
 mes_depts %>%
   mapview::mapview()
@@ -119,7 +120,7 @@ mes_depts %>%
 
 Notre étude se concentre dans cette exemple sur la Bretagne. Toutes les stations bretonnes sont alors retenues dans le jeu de données. Ici, il ne s’agit pas de réfléchir à l’échelle des bassins versants, leur limite n’étant pas toujours évidente. Cependant, un buffer est mis en place aux alentours des limites départementales afin de considérer les stations aux emplacements ambiguës et englober les stations frontalières aux limites départementales. La limite du buffer est donc à considérer en fonction de l'aire géographique considérée (cf I.B Paramètres). 
 
-```{r}
+```{r Mise en place buffer}
 ## Mise en place d'un buffer ----
 bzh_buff <- st_buffer(mes_depts, 
                       taille_buffer) # (I.B Paramètres)
@@ -128,9 +129,12 @@ bzh_buff <- st_buffer(mes_depts,
 mapview(
   list(bzh_buff, mes_depts),
   layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
-  col.regions = list("#440154FF", "#FDE725FF")
+  col.regions = list("#0A9F9D", "#FDE725FF")
 )
+```
 
+
+```{r Visualisation point prélèvements}
 # Visualisation des points de prélèvements présents dans l'aire géographique sélectionnée
 pop_bzh <- point_prelevement %>%
   sf::st_as_sf(coords = c("pop_coordonnees_x", 
@@ -138,12 +142,46 @@ pop_bzh <- point_prelevement %>%
                crs = 2154) %>% 
   aspe::geo_attribuer(bzh_buff) %>% 
   filter(!is.na(DEP))
+```
 
+
+
+
+
+```{r, fig.height = 10, fig.width = 15}
+
+# Dessiner la carte
+ggplot(regions_metro_geo) +
+  geom_sf(data = mes_depts) +
+  geom_sf(data = bzh_buff) +
+  geom_sf(data = pop_bzh, aes(color = DEP), size = 2) +
+  scale_color_manual(values = pal3) +
+  theme_bw() +
+  # Ajouter une légende pour la variable DEP
+  labs(color = "Département")
+```
+
+
+
+
+
+```{r Visualisation point prélèvements}
+# Plot des points avec ggplot2
+ggplot() +
+  geom_sf(data = mes_depts) +
+  geom_sf(data = bzh_buff) +
+  geom_sf(data = pop_bzh, aes(color = DEP), size = 1) +
+  scale_color_manual(values = pal3) +
+  theme_minimal()
+```
+
+
+```{r Visualisation point prélèvements}
 mapview(
   list(bzh_buff, mes_depts),
   layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
-  col.regions = list("#440154FF", "#FDE725FF")
-) + mapview (pop_bzh, color = "darkred", lwd =3)
+  col.regions = list("#0A9F9D", "#FDE725FF")
+) + mapview (pop_bzh, shape = 20, color = "darkred", lwd =1)
 
 ```
 
@@ -156,26 +194,32 @@ Rappel : Dans le choix des données, il est nécessaire de sélectionner les ré
 En effet, ces 3 réseaux n’ont pas les mêmes objectifs : les RCS et RHP mesurent les impacts anthropiques (elles sont soumises aux perturbations anthropiques). Le réseau RRP est un « témoin » susceptible d'évaluer les tendances engendrées par le changement climatique. Ces différents réseaux présentent des particularités pouvant biaiser les résultats des tendances générales. 
 
 
-```{r}
-
+```{r Sauvegarde pop_id}
 # Sauvegarde des points de prélèvements sélectionnés dans la passerelle ----
 passerelle <- passerelle %>%
   filter(pop_id %in% pop_bzh$pop_id)
+```
 
 
+```{r Sélection réseaux de pêches} 
 ## Sélection des réseaux de pêches ---- 
 passerelle <- passerelle %>%
   mef_ajouter_objectif() %>% 
   filter(obj_libelle %in% mes_reseaux)   #(I.B Paramètres)
+```
 
 
+```{r Sélection types de pêches}
 ## Création d'un dataframe "mes_ope" et sélection des types de pêches ---- 
 mes_ope <- passerelle %>% 
   mef_ajouter_type_protocole() %>%
   filter(pro_libelle %in% mes_types_de_peche) %>%  #(I.B Paramètres)
   select(sta_id:ope_id, pro_libelle) %>% 
   distinct()
+```
 
+
+```{r Sélection nombre de pêches}
 ## Sélection d'une seule pêche par années, par station ----
 # (pour le cas des sites avec plusieurs pêches la même année, on sélectionne par défaut
 # la pêche la plus tardive)
@@ -183,7 +227,6 @@ mes_ope <- mes_ope %>%
   mef_ajouter_ope_date() %>% 
   group_by(pop_id, annee) %>% 
   filter(ope_date == max(ope_date))
-
 
 ```
 
@@ -195,9 +238,9 @@ Après avoir sélectionné les réseaux et les types de pêches, nous souhaitons
 Afin d’obtenir une robustesse statistique suffisante, une sauvegarde des stations avec au moins 10 années de données sur un même point de prélèvement est appliquée. Une sélection est ensuite réalisée au niveau des séries de pêches avec au moins 9 années de données sans que les opérations successives soient éloignées de plus de 2 ans. 
 
 
-```{r}
+```{r Création séries temporelles 1}
 ## Sélection des séries de pêches avec au moins 9 années de données (paramètres) ----
-bilan_annee_de_donnees <- mes_ope %>%
+pop_serie_1 <- mes_ope %>%
   group_by (pop_id) %>%
   summarise(
     nombre_annees_totales = n_distinct(annee),
@@ -206,20 +249,21 @@ bilan_annee_de_donnees <- mes_ope %>%
     duree = dernier_annee - premier_annee
   )
 
-mes_pop_id <- bilan_annee_de_donnees %>% 
-  filter(nombre_annees_totales > n_mini_annees) %>%  #(I.B Paramètres)
+mes_pop_id <- pop_serie_1 %>%
+  filter(nombre_annees_totales > n_mini_annee) %>%  #(I.B Paramètres)
   pull(pop_id)
+```
 
 
+```{r Création séries temporelles 2}
 ## Sélection des stations ayant 2 années maximum de suivis consécutifs manquants par station ----
-
-series <- mes_ope %>% 
+pop_serie_2 <- mes_ope %>%
   borner_series(var_id_site = pop_id,     #Utilisation de la fonction "borner_serie"
                 var_temp = annee,
                 max_nb_obs_manquantes = n_max_manquant) # (I.B Paramètres)
 
-series <- series %>% 
-  filter(n_opes > n_mini_annees) %>% # PARAMETRE
+pop_serie_2 <- pop_serie_2 %>%
+  filter(n_opes > n_mini_annee) %>% # PARAMETRE
   select(-annee_mini)
 
 ```
@@ -227,7 +271,7 @@ series <- series %>%
 
 ## Représentation graphique finale des séries temporelles sélectionnées et des types de pêches associées aux stations
 
-```{r, fig.height = 10, fig.width = 15}
+```{r Représentation séries temporelles, fig.height = 10, fig.width = 15}
 ## Représentation graphique des stations sélectionnées et des types de pêches associées ----
 
 mes_ope %>% 
@@ -254,15 +298,15 @@ mes_ope %>%
 ```
 
 
-## Construction du dataframe de sélection des opérations finale 
+## Construction du dataframe de sélection des opérations finales 
 
 
-```{r}
+```{r Sélection operations finales}
 ## Construction d'un nouveau dataframe avec toutes les opérations de pêches
 # présentes dans les stations retenues
 
 ope_selection <- mes_ope %>% 
-  left_join(series) %>% 
+  left_join(pop_serie_2) %>% 
   filter(!is.na(debut),
          annee >= debut,
          annee <= fin) %>% 
@@ -272,11 +316,11 @@ ope_selection <- mes_ope %>%
 
 
 
-## Sélection des opérations finale : Visualisation des efforts de pêches par station  
+## Sélection des opérations finales : Visualisation des efforts de pêches par station  
 
 On souhaite observer les efforts de pêches effectués sur chacune des stations. 
 
-```{r}
+```{r Sélection operations finales visualisation}
 ope_selection_sta <- ope_selection %>%
   group_by(sta_id) %>% 
   mutate(nombre_ope_sta = n_distinct(ope_id)) 
@@ -295,18 +339,20 @@ ope_selection_sta <- ope_selection %>%
 
 ## Visualisation des efforts de pêche par station dans l'aire géographique sélectionnée
 
-```{r}
-sta_ope_bzh <- ope_selection_sta %>%
+```{r Préparation visualisation efforts pêche}
+ope_selection_sta <- ope_selection_sta %>%
   select(sta_id, ope_id, pop_id, nombre_ope_sta) %>%
   left_join(point_prelevement) %>% 
   sf::st_as_sf(coords = c("pop_coordonnees_x", 
                            "pop_coordonnees_y"),
                 crs = 2154) %>% 
-  aspe::geo_attribuer(bzh_buff)  
+  aspe::geo_attribuer(bzh_buff)
+```
 
 
+```{r Visualisation efforts pêche}
 # Pour la visualisation graphique je n'ai besoin que d'un seul exemple d'ope_id par station
-sta_ope_bzh_2 <- sta_ope_bzh %>% 
+ope_selection_sta_n <- ope_selection_sta %>% 
   group_by(sta_id) %>% 
   sample_n(1) %>% 
   ungroup()
@@ -315,7 +361,7 @@ sta_ope_bzh_2 <- sta_ope_bzh %>%
 mapview(list(bzh_buff, mes_depts),
         layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
         col.regions = list("#440154FF", "#FDE725FF")) + 
-  mapview(sta_ope_bzh_2,
+  mapview(ope_selection_sta_n,
           layer.name = "Nombre operation par station", 
           size_var = "nombre_ope_sta",
           cex = "sta_id",
@@ -323,12 +369,12 @@ mapview(list(bzh_buff, mes_depts),
           col.regions = "#D693E0",
           alpha = 0.8,
           legend = TRUE,
-          labels = list(text = sta_ope_bzh_2$nombre_ope_sta, cex = 1.5))
+          labels = list(text = ope_selection_sta_n$nombre_ope_sta, cex = 1.5))
           
 ```
 
 
-```{r}
+```{r Enregistrement passerelle}
 # --- Enregistrement des opérations de pêches retenues dans la passerelle
 passerelle <- passerelle %>% 
   filter(ope_id %in% ope_selection$ope_id)
@@ -350,17 +396,17 @@ Remarque : l’idée étant d’obtenir les séries chronologiques les plus long
 Il s'agit également d'identifier pour chaque point de prélèvement combien de station sont combinées (le résultat devant être égale à 1, sinon une erreur est probable).
 
 
-```{r}
+```{r Recherche erreur 1}
 ### Recherche erreur : 1 point de prélèvement = 1 seule station ----
 
-df1 <- mes_ope %>% 
+pop_plusieurs_sta <- mes_ope %>% 
   mef_ajouter_libelle_site(origine_libelle = "station_sandre") %>% 
   rename(sta_libelle = sta_libelle_sandre) %>%  
   mef_ajouter_libelle_site(origine_libelle = "auto") %>% 
   select(-pro_libelle, -ope_id) %>% 
   distinct()
 
-pop_plusieurs_sta <- df1 %>% 
+pop_plusieurs_sta <- pop_plusieurs_sta %>% 
   group_by(pop_id) %>% 
   summarise(n_sta = n_distinct(sta_id)) %>% 
   filter(n_sta>1, !is.na(pop_id)) %>% 
@@ -370,30 +416,30 @@ pop_plusieurs_sta <- df1 %>%
 
 Nombre de points (`pop_id`) correspondant à plusieurs stations (`sta_id`) : `r pop_plusieurs_sta`
 
-```{r}
+```{r Recherche erreur 2}
 ### Recherche erreur : 1 station = ? opération(s) (vérification doublons) ----
-df <- mes_ope %>% 
+sta_plusieurs_pop <- mes_ope %>% 
   mef_ajouter_libelle_site(origine_libelle = "station_sandre") %>% 
   rename(sta_libelle = sta_libelle_sandre) %>%  
   mef_ajouter_libelle_site(origine_libelle = "auto") %>% 
   select(-pro_libelle, -ope_id) %>% 
   distinct()
 
-sta_plusieurs_pop <- df %>% 
+sta_plusieurs_pop_1 <- sta_plusieurs_pop %>% 
   group_by(sta_id) %>% 
   summarise(n_pop = n_distinct(pop_id)) %>% 
   filter(n_pop>1, !is.na(sta_id)) %>% 
   pull(sta_id) %>% 
   unique()
 
-df <- df %>% 
+sta_plusieurs_pop <- sta_plusieurs_pop %>% 
   ungroup() %>% 
-  filter(sta_id %in% sta_plusieurs_pop) %>% 
+  filter(sta_id %in% sta_plusieurs_pop_1) %>% 
   dplyr::select (sta_id, sta_libelle, pop_id, pop_libelle) %>% 
   dplyr::distinct() %>% 
   arrange(sta_libelle)
 
-df %>% 
+sta_plusieurs_pop %>% 
   flextable::flextable() %>% 
   flextable::autofit() %>% 
   flextable::colformat_int(j = c(1, 3), big.mark = " ")
@@ -402,9 +448,10 @@ df %>%
 
 
 # Sauvegarde : 
-```{r}
+
+```{r Sauvegarde}
 # SAUVEGARDE ----
-save(series,
+save(pop_serie_2,
      ope_selection,
      passerelle,
      file = "../processed_data/selection_pop_ope.rda")

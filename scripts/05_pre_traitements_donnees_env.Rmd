@@ -99,17 +99,15 @@ Création d'une représentation graphique permettant de remarquer facilement les
 ope_selection_param_env %>% 
   ggplot(aes(x=annee, y=valeur)) +
   geom_bar(stat="identity", fill = "darkcyan") +
-  facet_grid2(pop_id ~ parametre,
+  facet_grid2( ~ pop_id ~ parametre ,
              scales="free_y",
              independent = "y") +
   labs(title = "Variabilité inter-annuelle des paramètres environnementaux", 
        x = "Année", 
        y = "Valeur") +
-  theme(
-    axis.title.y = element_text (color = "black"),
-    axis.text.y.left = element_text (color = "black"),
-    strip.text = element_text(size = 8)) +
-  theme_void()
+  theme_bw() +
+  theme(strip.text = element_text(size = 8),
+        axis.text.x = element_text(angle = 45))
 
 ```
 
