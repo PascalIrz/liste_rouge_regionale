@@ -25,7 +25,7 @@ Pour les indicateurs calculés au point, on agrège chaque année leur valeur à
 
 ## Chargement des packages, fonctions et des données 
 
-```{r}
+```{r Chargement des packages, données}
 
 ## Chargement des packages ----
 library(ggthemes)
@@ -54,7 +54,6 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
-source(file = "../R/calcul_pourcentage_presence_station.R")
 
 # Définition des couleurs de l'OFB en format RGB
 pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
@@ -252,14 +251,27 @@ On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'an
 source(file = "../R/calcul_taux_evolution.R")
 
 # Utilisation de la fonction calcul_moyenne_geom
-taux_evol <- calcul_taux_evol(df = reg_indicateur,
+taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
                              var_y = valeur,
                              debut = 1990,
                              esp_code_alternatif,
                              stade,
                              indicateur)
-print(taux_evol)
+print(taux_evol_1990)
+
+
+
+# Utilisation de la fonction calcul_moyenne_geom
+taux_evol_2005 <- calcul_taux_evol(df = reg_indicateur,
+                             var_x = annee,
+                             var_y = valeur,
+                             debut = 2005,
+                             esp_code_alternatif,
+                             stade,
+                             indicateur)
+print(taux_evol_2005)
+
 ```
 
 
@@ -281,6 +293,25 @@ graph_taux_evol <- taux_evol %>%
                      name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
 
 print(graph_taux_evol)
+```
+
+
+```{r, fig.height = 25, fig.width = 10}
+graph_taux_evol_1 <- taux_evol_2005 %>%
+  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
+  geom_point(shape = 19) +
+  geom_line(aes(group = stade)) +
+  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
+  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill = "#faf0e0"),
+        legend.position = "bottom") + 
+  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
+                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+
+print(graph_taux_evol_1)
 
 ```
 
@@ -317,19 +348,3 @@ for (i in 1:(n-1)) {
 print(graph_taux_evol)
 
 ```
-
-
-## Pourcentage de station_esp
-
-On cherche à calculer le pourcentage des stations pour laquelle une espèce est présente pour une année donnée
-
-
-```{r}
-#ATTENTION !!! La fonction ne marche pas ... 
-#calcul_pourcentage_presence_station <- calcul_pourcentage_presence_station(pop_indicateur,
-#                                                                           esp_code_alternatif,
-#                                                                           stade,
-#                                                                           pop_id,
-#                                                                           annee)
-```
-

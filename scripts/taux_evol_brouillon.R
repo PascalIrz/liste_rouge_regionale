@@ -39,14 +39,14 @@ print(result_df)
 
 
 # Partie faite avec pascal vendredi
-mon_espece <- "ANG"
-mon_indicateur <- "biomasse"
+mon_espece <- "ABL"
+mon_indicateur <- "densite_surf"
 mon_annee_depart <- 1990
 
 df <- reg_indicateur %>% 
   filter(esp_code_alternatif == mon_espece,
          indicateur == mon_indicateur,
-         !annee %in% c(1991, 2000, 2001),
+         # !annee %in% c(1991, 2000, 2001),
          annee >= mon_annee_depart)
 
 
@@ -60,4 +60,36 @@ test <- df %>%
 
 
 exp(mean(log(test)))
+
+
+
+graph_taux_evol <- taux_evol_2005 %>%
+  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
+  geom_point(shape = 19) +
+  geom_line(aes(group = stade)) +
+  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
+  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill = "#faf0e0"),
+        legend.position = "bottom") + 
+  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
+                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+
+print(graph_taux_evol)
+
+
+
+combinaison <- expand.grid(esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
+                           ope_id = unique(ope_indicateur$ope_id),
+                           stade = unique (ope_indicateur$stade))
+
+ope_indicateur_2 <- combinaison %>% 
+  left_join(ope_indicateur %>%
+              filter (indicateur == "densite_surface")) %>%
+  replace_na(list(valeur = 0 , y = "unknown")) %>% 
+  group_by(ope_id,
+           esp_code_alternatif) %>% 
+  mutate (test = (valeur[stade == "ind"] == (valeur[stade == "ad"] + valeur[stade == "juv"])))
 

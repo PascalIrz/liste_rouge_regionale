@@ -319,6 +319,25 @@ ope_75_percentile_stade <- resultats_75_percentile$df3 # Construction d'un df de
 
 ```
 
+On calcul le pourcentage des sites prospectés où l'espèce a été trouvée
+```{r}
+combinaisons <- expand.grid(esp_code_alternatif = unique(ope_biomasse_esp$esp_code_alternatif),
+                            ope_id = unique(ope_biomasse_esp$ope_id))
+
+# Fusionner les combinaisons avec le dataframe initial
+reg_pc_presence_esp <- combinaisons %>%
+  left_join(ope_biomasse_esp, by = c("esp_code_alternatif", "ope_id")) %>%
+  mutate(present = !is.na(indicateur)) %>%
+  group_by(esp_code_alternatif) %>%
+  mutate(stade = "ind",
+         indicateur = "pourcentage_presence_esp",
+         valeur = sum(present) / n_distinct(ope_id) * 100) %>% 
+  select(-present)
+  
+
+# Affichage du résultat
+print(reg_pc_presence_esp)
+```
 
 
 # Création du tableau final empilé des indicateurs
@@ -333,7 +352,8 @@ ope_indicateur <- rbind(ope_50_percentile,
                         ope_densite_vol,
                         ope_pc_juv,
                         ope_biomasse,
-                        ope_effectif_total)
+                        ope_effectif_total,
+                        reg_pc_presence_esp)
 
 # Ajout des années d'opération au site et à l'année (pop_id) et (ope_date)
 ope_indicateur <- ope_indicateur %>% 
