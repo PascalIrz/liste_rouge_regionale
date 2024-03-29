@@ -19,11 +19,11 @@
 #' var_esp_code_alternatif = esp_code_alternatif,
 #' var_stade = stade)
 #' }
-calcul_ecart_interquartile <- function(df,
-                                    var_taille,
-                                    var_id_site,
-                                    var_esp_code_alternatif,
-                                    var_stade)
+calcul_ecart_inter <- function(df,
+                               var_taille,
+                               var_id_site,
+                               var_esp_code_alternatif,
+                               var_stade)
 {
   var_taille <- enquo(var_taille)
   var_id_site <- enquo(var_id_site)
@@ -63,8 +63,5 @@ summarise(valeur=IQR(!!var_taille, na.rm=TRUE))
 
   # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues + des différents stades ----
   ope_interqua <- bind_rows(ope_interqua_stade, ope_interqua_esp)
-
-  list(df1 = ope_interqua, 
-       df2 = ope_interqua_esp,
-       df3 = ope_interqua_stade)
+  return (ope_interqua)
 } 

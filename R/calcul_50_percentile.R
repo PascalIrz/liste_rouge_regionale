@@ -63,9 +63,7 @@ calcul_50_percentile <- function(df,
   # Construction d'un Df avec les longueurs médianes des espèces par opération toutes tailles confondues + des différents stades ----
   ope_50_percentile <- bind_rows(ope_50_percentile_stade, ope_50_percentile_esp)
   
-  list(df1 = ope_50_percentile, 
-       df2 = ope_50_percentile_esp,
-       df3 = ope_50_percentile_stade)
+ return(ope_50_percentile)
   } 
   
   

@@ -75,9 +75,6 @@ calcul_densite_surface <- function(df,
   # Construction d'un Df avec les densités des espèces par opération toutes tailles confondues + des différents statuts ----
   ope_densite_surface <- bind_rows(ope_densite_surface_stade, ope_densite_surface_esp)
 
-  
-  list(df1 = ope_densite_surface, 
-       df2 = ope_densite_surface_esp,
-       df3 = ope_densite_surface_stade)
+  return(ope_densite_surface)
 } 
   

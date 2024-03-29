@@ -19,11 +19,11 @@
 #' var_esp_code_alternatif = esp_code_alternatif,
 #' var_stade = stade)
 #' }
-calcul_25_percentile <- function(df,
-                                 var_taille,
-                                 var_id_site,
-                                 var_esp_code_alternatif,
-                                 var_stade)
+calcul_p25 <- function(df,
+                       var_taille,
+                       var_id_site,
+                       var_esp_code_alternatif,
+                       var_stade)
 
   
 {
@@ -67,10 +67,7 @@ calcul_25_percentile <- function(df,
 
   
   # Construction d'un Df avec les 25 percentiles des espèces par opération toutes tailles confondues + des différents stades ----
-  ope_25_percentile <- bind_rows(ope_25_percentile_stade, ope_25_percentile_esp)
-  
-  list(df1 = ope_25_percentile, 
-       df2 = ope_25_percentile_esp,
-       df3 = ope_25_percentile_stade)
+  ope_p25 <- bind_rows(ope_25_percentile_stade, ope_25_percentile_esp)
+  return (ope_p25)
 } 
   

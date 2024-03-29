@@ -25,7 +25,7 @@ Pour les indicateurs calculés au point, on agrège chaque année leur valeur à
 
 ## Chargement des packages, fonctions et des données 
 
-```{r Chargement des packages, données}
+```{r Chargement des packages, données et fonctions}
 
 ## Chargement des packages ----
 library(ggthemes)
@@ -54,20 +54,19 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
+source(file = "../R/calcul_taux_evolution.R")
 
 # Définition des couleurs de l'OFB en format RGB
 pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
 ```
 
-
 # Constitution du jeu de données
-
 
 ### Taux d'occurrence
 
 On calcul le taux d'occurrence des espèces : 
 
-```{r}
+```{r Calcul taux occurrence}
 occur <- ope_indicateur %>% 
   filter(stade == "ind",
          indicateur == "effectif_total",
@@ -91,7 +90,7 @@ taux_occ <- occur %>%
 
 ## Echelle régionale
 
-```{r, fig.height = 55, fig.width = 10}
+```{r Calcul ope_ind à l'échelle régionale, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 reg_indicateur <- ope_indicateur %>%
   group_by(esp_code_alternatif, annee, indicateur, stade) %>%
@@ -153,6 +152,7 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
                                       stade, 
                                       pop_id)
 ```
+
 
 
 ```{r, fig.height = 25, fig.width = 10}
@@ -247,10 +247,7 @@ On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'an
 
 ```{r}
 # Taux d'évolution du taux d'occurence de densité de surface : 
-# FONCTION : 
-source(file = "../R/calcul_taux_evolution.R")
 
-# Utilisation de la fonction calcul_moyenne_geom
 taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
                              var_y = valeur,
@@ -259,18 +256,6 @@ taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              stade,
                              indicateur)
 print(taux_evol_1990)
-
-
-
-# Utilisation de la fonction calcul_moyenne_geom
-taux_evol_2005 <- calcul_taux_evol(df = reg_indicateur,
-                             var_x = annee,
-                             var_y = valeur,
-                             debut = 2005,
-                             esp_code_alternatif,
-                             stade,
-                             indicateur)
-print(taux_evol_2005)
 
 ```
 
@@ -348,3 +333,48 @@ for (i in 1:(n-1)) {
 print(graph_taux_evol)
 
 ```
+
+
+```{r}
+indicateur_sel <- "effectif_total"
+
+taux_evol_eff <- taux_evol_1990 %>% 
+  filter (indicateur == indicateur_sel,
+          stade == "ind")
+
+
+
+tendance_indicateur_eff <- tendance_indicateur %>% 
+  filter (indicateur == indicateur_sel,
+          stade == "ind") %>% 
+  select(-pop_id) %>% 
+  group_by(esp_code_alternatif) %>% 
+  mutate(med_Sen = median(sens_slope))
+
+tendance_indicateur_eff <- tendance_indicateur_eff %>% 
+  left_join(taux_evol_eff) %>% 
+  select (esp_code_alternatif,
+          mean_geom,
+          med_Sen) %>% 
+  unique()
+```
+
+
+Observation de ce qu'il se passe au niveau des taux d'évol
+```{r}
+tendance_indicateur_gra <- tendance_indicateur_eff %>% 
+  filter(!esp_code_alternatif %in% c("FLE", "MUP", "PLI", "LPR", "ALF" )) %>%  # On retire les espèces qui ont trop peu de données pour être évaluées
+  ggplot(aes(x = mean_geom, y = med_Sen,  label = esp_code_alternatif)) +
+  geom_smooth(method = "lm", se = TRUE) + 
+  geom_point() + 
+  geom_hline(yintercept = 0,
+             linetype = "dotted")+
+  geom_vline(xintercept = 1,
+             linetype = "dotted")+
+ # geom_text(hjust = 0.5, vjust = 1.3) + 
+  ggrepel::geom_text_repel()
+ 
+
+print(tendance_indicateur_gra)
+```
+
