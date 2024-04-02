@@ -262,56 +262,13 @@ print(taux_evol_1990)
 
 
 ```{r, fig.height = 25, fig.width = 10}
-# Représentation graphique :
-graph_taux_evol <- taux_evol %>%
-  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
-  geom_point(shape = 19) +
-  geom_line(aes(group = stade)) +
-  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
-  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
-        panel.grid.minor = element_line(color = "#ffffff"),
-        panel.background = element_rect(fill = "#faf0e0"),
-        legend.position = "bottom") + 
-  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
-
-print(graph_taux_evol)
-```
-
-
-```{r, fig.height = 25, fig.width = 10}
-graph_taux_evol_1 <- taux_evol_2005 %>%
-  ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
-  geom_point(shape = 19) +
-  geom_line(aes(group = stade)) +
-  facet_grid(~ esp_code_alternatif ~ indicateur, scales = "free") +
-  labs(title = "Taux évolution", x = "Stade", y = "Moyenne Géométrique") +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
-        panel.grid.minor = element_line(color = "#ffffff"),
-        panel.background = element_rect(fill = "#faf0e0"),
-        legend.position = "bottom") + 
-  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
-
-print(graph_taux_evol_1)
-
-```
-
-
-```{r, fig.height = 25, fig.width = 10}
-
-library(ggplot2)
-
 # Définition des seuils et des couleurs correspondantes
 seuils <- c(0.35, 0.99, 1.01, 1.25)
 couleurs <- c("#CB2027", "#DDDDDD","#8fd175")
 n <- length(seuils)
 
-# Création du graphique
-graph_taux_evol <- taux_evol %>%
+# Représentation graphique :
+graph_taux_evol <- taux_evol_1990 %>%
   ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
   geom_point(shape = 19) +
   geom_line(aes(group = stade)) +
@@ -324,6 +281,8 @@ graph_taux_evol <- taux_evol %>%
         legend.position = "bottom") + 
   scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
                      name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+
+
 
 for (i in 1:(n-1)) {
   graph_taux_evol <- graph_taux_evol +
@@ -331,7 +290,6 @@ for (i in 1:(n-1)) {
 }
 
 print(graph_taux_evol)
-
 ```
 
 
@@ -376,5 +334,30 @@ tendance_indicateur_gra <- tendance_indicateur_eff %>%
  
 
 print(tendance_indicateur_gra)
+```
+
+
+
+Je travail ici sur des modèles linéiares généralisés :
+
+```{r}
+data <- ope_selection %>% 
+  select(ope_id,
+         pro_libelle)
+
+ope_indicateur <- ope_indicateur %>% 
+  left_join(data)
+
+
+glm <- calcul_glm(ope_indicateur,
+                  var_x = annee,
+                  var_y = valeur,
+                  var_z = pro_libelle,
+                  log = TRUE, 
+                  esp_code_alternatif, 
+                  indicateur)
+
+
+
 ```
 
