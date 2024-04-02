@@ -348,6 +348,7 @@ data <- ope_selection %>%
 ope_indicateur <- ope_indicateur %>% 
   left_join(data)
 
+source(file = "../R/glm.R") 
 
 glm <- calcul_glm(ope_indicateur,
                   var_x = annee,
