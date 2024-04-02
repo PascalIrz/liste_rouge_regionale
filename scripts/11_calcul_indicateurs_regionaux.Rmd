@@ -343,22 +343,26 @@ Je travail ici sur des modèles linéiares généralisés :
 ```{r}
 data <- ope_selection %>% 
   select(ope_id,
-         pro_libelle)
+         pro_libelle) 
 
 ope_indicateur <- ope_indicateur %>% 
+  mutate (valeur_l = ifelse (grepl("densite", indicateur),
+                               log(1 + valeur),
+                               valeur)) %>%  
   left_join(data)
 
-source(file = "../R/glm.R") 
+source(file = "../R/calcul_glm.R") 
 
-glm <- calcul_glm(ope_indicateur,
-                  var_x = annee,
-                  var_y = valeur,
-                  var_z = pro_libelle,
-                  log = TRUE, 
-                  esp_code_alternatif, 
-                  indicateur)
+mon_espece <- "ANG"
+mon_stade <- "ind"
+mon_indicateur <- "densite_surface"
 
+test_data <- ope_indicateur %>% 
+  ungroup() %>% 
+  filter(indicateur == mon_indicateur,
+         esp_code_alternatif == mon_espece,
+         stade == mon_stade)
 
-
+test <- calcul_glm_non_groupe(test_data)
 ```
 
