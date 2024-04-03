@@ -60,7 +60,7 @@ Plusieurs paramètres sont fixés au début de chacun des scripts relatifs à l'
 
 - Les réseaux de pêches : Il s'agit des types de réseaux sélectionnés. Parmi eux se trouvent le RCS - Réseau de Contrôle de Surveillance ; le RRP - Réseaux de Référence Pérenne ; le RHP - Réseau Hydrobiologique Piscicole ; le RCA - Réseau de contrôle additionnel ; le RCO – Réseau Contrôle opérationnel. Dans notre étude, seul les trois premiers réseaux seront utilisés. Ces réseaux seront tester ensemble puis individuellement afin d'écarter un risque de biais d'objectifs. En effet, les réseaux n'ayant pas les mêmes "objectifs d'observations", un biais peut apparaïtre (ex. le réseaux RPP est un réseau "témoin", qui ne doit pas subir d'influences extérieures, il doit seulement informer des potentiels effets provoqué par le changement climatique). 
 
-- Les types de pêches : Il existe de nombreux types de pêches : pêche partielle par point, pêche par ambiance,.... Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
+- Les types de pêches : Il existe de nombreux types de pêches : pêche partielle par point, pêche par ambiance, pêche partielle sur berge, pêche complète à un ou plusieurs passages. Ce paramètre permet de sélectionner les types de pêches souhaitées dans l'étude. 
 
 - Le nombre minimum d'années sur les séries de pêches : il s'agit de la période minimum souhaitée. 
 
@@ -165,7 +165,7 @@ ggplot(regions_metro_geo) +
 
 
 
-```{r Visualisation point prélèvements}
+```{r Visualisation point prélèvements 2}
 # Plot des points avec ggplot2
 ggplot() +
   geom_sf(data = mes_depts) +
@@ -176,7 +176,7 @@ ggplot() +
 ```
 
 
-```{r Visualisation point prélèvements}
+```{r Visualisation point prélèvements 3}
 mapview(
   list(bzh_buff, mes_depts),
   layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),

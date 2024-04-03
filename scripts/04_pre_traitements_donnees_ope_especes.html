@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-03-25" />
+<meta name="date" content="2024-04-03" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -355,7 +355,7 @@ douce de Bretagne</h1>
 <h3 class="subtitle">Prétraitement des données opération et des données
 individuelles des espèces</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-03-25</h4>
+<h4 class="date">2024-04-03</h4>
 
 </div>
 
@@ -366,7 +366,7 @@ Bretagne - 04_pre_traitements_donnees_ope_especes</h1>
 <p>Il s’agit ici de réaliser une étape de pré-traitement sur la
 sélection des opérations et sur les données des espèces propres à
 chacune des opérations. Il s’agit notamment d’observer les valeurs
-abérrantes contenues dans les mesures individuelles des différentes
+aberrantes contenues dans les mesures individuelles des différentes
 espèces de poissons d’eau douce. Il s’agit donc également d’une mise en
 qualité des données (tailles / poids) par individu de poissons
 pêchés.</p>
@@ -421,13 +421,12 @@ traits_biologiques &lt;- read_excel(&quot;../raw_data/traits_biologiques.xlsx&qu
 <h1>Constitution du jeu de données</h1>
 <div id="selection-des-tailles-de-maturité-des-espèces" class="section level2">
 <h2>Selection des tailles de maturité des espèces :</h2>
-<p>ATTENTION : Ici les tailles de maturité ne sont pas définitives
-(vérif Thibault). Elles ont été calculées à partir de 5 sources
-différentes (1 et 2 : ouvrages d’identification des poissons d’eau douce
-de France); 3 : observation des courbes de tailles dans le fichier R
-“estimation_taille_0+” à partir des données de taille du fichier ASPE ;
-4 : les valeurs dans fishbase ; 5 : les valeurs de référence de
-l’occitanie).</p>
+<p>ATTENTION : Ici les tailles de maturité ont été calculées à partir de
+5 sources différentes (1 et 2 : ouvrages d’identification des poissons
+d’eau douce de France); 3 : observation des courbes de tailles dans le
+fichier R “estimation_taille_0+” à partir des données de taille du
+fichier ASPE ; 4 : les valeurs dans fishbase ; 5 : les valeurs de
+référence de l’Occitanie).</p>
 <pre class="r"><code># Construction d&#39;un dataframe contenant les tailles de maturité calculées : 
 traits_biologiques &lt;- traits_biologiques %&gt;% 
   select(esp_code_alternatif,
@@ -439,6 +438,7 @@ traits_biologiques &lt;- traits_biologiques %&gt;%
 <p>Création d’un dataframe contenant les données individuelles relatives
 aux opérations contenues dans la passerelle et de ma sélection d’espèces
 (cf 00_selection_pop_ope et 03_analyse_selection_especes).</p>
+<p>La taille des poissons est indiquée en mm et le poids en gramme.</p>
 <pre class="r"><code># Ajout des mesures individuelles en partant de mes mei_ope_selection ----
 mei_ope_selection &lt;- passerelle %&gt;%
   mef_ajouter_ope_date() %&gt;% 
@@ -502,7 +502,7 @@ Une distinction des classes d’âges est réalisée : a chaque espèce
 correspond alors 3 stades différents : - Adulte (individus dont la
 taille est supérieure à la taille_min_adulte) - Juvénile (individus dont
 la taille est inférieure à la taille_min_adulte) - Toutes : toute classe
-d’e taille’âge confondue</p>
+d’âge confondue</p>
 <pre class="r"><code># Ajout du stade par individus ----
 mei_ope_selection &lt;- mei_ope_selection %&gt;% 
   mutate(stade = ifelse(mei_ope_selection$mei_taille &lt; mei_ope_selection$taille_maturite,

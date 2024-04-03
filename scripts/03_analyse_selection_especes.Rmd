@@ -24,9 +24,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 03_analyse_selection_especes
 
-Pour les operations sélectionnées, on cherche à savoir quelles espèces seront sélectionnées pour les futures analyses. On souhaite réaliser un graphique bi_varié et de sélectionner les espèces à partir d'un seuil déterminé. 
+Pour les opérations sélectionnées, on cherche à savoir quelles espèces seront sélectionnées pour les futures analyses. On souhaite réaliser un graphique bi_varié et de sélectionner les espèces à partir d'un seuil déterminé. 
 
-Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèce qui son trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qu isont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
+Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèces qui sont trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qui sont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
 
 # Installation 
 
