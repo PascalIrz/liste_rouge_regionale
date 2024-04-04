@@ -267,6 +267,8 @@ ope_p75 <- calcul_p75(mei_ope_selection,
 ```
 
 
+# Echelle régionale (pre-données)
+
 On calcul le pourcentage des sites prospectés où l'espèce a été trouvée :
 
 ```{r Calcul pourcentage présence especes}

@@ -166,7 +166,7 @@ tendance_indicateur %>%
                        y = n,
                        fill = trend)) +
   geom_bar(stat="identity") +
-  facet_grid(~esp_code_alternatif ~ stade ~ indicateur  , 
+  facet_grid(~esp_code_alternatif ~ stade ~ indicateur, 
               scales = "free") +
   labs(title = "Tendances indicateurs - Adulte", 
        x = "Tendance", 
@@ -339,24 +339,48 @@ print(tendance_indicateur_gra)
 
 Je travail ici sur des modèles linéiares généralisés :
 
+Je réalise des pré-traitement pour : 
+1) Transformer les valeurs de densités (surface et volume) en log : 
+
 ```{r}
 data <- ope_selection %>% 
   select(ope_id,
          pro_libelle) 
 
-ope_indicateur <- ope_indicateur %>% 
+test_ope_indicateur <- ope_indicateur %>% 
   mutate (valeur_l = ifelse (grepl("densite", indicateur),
                                log(1 + valeur),
                                valeur)) %>%  
   left_join(data)
+```
 
-source(file = "../R/calcul_glm.R") 
+
+2) Exclure du jeu de données les lignes avec moins de 5 années de données : 
+
+
+```{r}
+
+nb_annee_glm <- 5
+
+
+test_ope_indicateur <- test_ope_indicateur %>%
+  group_by(esp_code_alternatif, indicateur, stade) %>%
+  filter(n_distinct(annee) >= nb_annee_glm) %>%
+  ungroup() %>% 
+  select(-valeur)
+
+```
+
+Je fais un essaye individuel : 
+
+```{r}
+source(file = "../R/calcul_glm.R")
 
 mon_espece <- "ANG"
 mon_stade <- "ind"
-mon_indicateur <- "densite_surface"
+mon_indicateur <- "densite_volumique"
 
-test_data_ang_ind <- ope_indicateur %>% 
+test_data_ang_ind <- test_ope_indicateur %>% 
   ungroup() %>% 
   filter(indicateur == mon_indicateur,
          esp_code_alternatif == mon_espece,
@@ -366,173 +390,65 @@ test_ang_ind <- calcul_glm_non_groupe(test_data_ang_ind)
 test_ang_ind <- test_ang_ind %>% 
   mutate(esp_code_alternatif = "ANG",
          stade = "ind",
-         indicateur = "densite_surface")
-
-
-
-mon_espece <- "ABL"
-mon_stade <- "ind"
-mon_indicateur <- "densite_surface"
-
-test_data_abl_ind <- ope_indicateur %>% 
-  ungroup() %>% 
-  filter(indicateur == mon_indicateur,
-         esp_code_alternatif == mon_espece,
-         stade == mon_stade)
-
-test_abl_ind <- calcul_glm_non_groupe(test_data_abl_ind)
-test_abl_ind <- test_abl_ind %>% 
-  mutate(esp_code_alternatif = "ABL",
-         stade = "ind",
-         indicateur = "densite_surface")
-
-
-
-mon_espece <- "BRB"
-mon_stade <- "ind"
-mon_indicateur <- "densite_surface"
-
-test_data_brb_ind <- ope_indicateur %>% 
-  ungroup() %>% 
-  filter(indicateur == mon_indicateur,
-         esp_code_alternatif == mon_espece,
-         stade == mon_stade)
-
-test_brb_ind <- calcul_glm_non_groupe(test_data_brb_ind)
-test_brb_ind <- test_brb_ind %>% 
-  mutate(esp_code_alternatif = "BRB",
-         stade = "ind",
-         indicateur = "densite_surface")
-
-
-
-mon_espece <- "BRB"
-mon_stade <- "ind"
-mon_indicateur <- "densite_surface"
-
-test_data_brb_ind <- ope_indicateur %>% 
-  ungroup() %>% 
-  filter(indicateur == mon_indicateur,
-         esp_code_alternatif == mon_espece,
-         stade == mon_stade)
-
-test_brb_ind <- calcul_glm_non_groupe(test_data_brb_ind)
-test_brb_ind <- test_brb_ind %>% 
-  mutate(esp_code_alternatif = "BRB",
-         stade = "ind",
-         indicateur = "densite_surface")
+         indicateur = "densite_volumique")
 
 ```
 
 
-Je fais tourner des modèles linéaires simples (ou glm) sur ope_indicateur : 
-
+Je le fais pour tous : 
 ```{r}
+library(purrr)
 
-calcul_glm_non_groupe <- function(df) {
-  # Vérifier si le nombre d'observations est suffisant pour ajuster le modèle
-  if (nrow(df) < 2) {
-    return(NULL)  # Retourner NULL si le nombre d'observations est insuffisant
-  }
-  
-  # Ajuster le modèle GLM
-  model <- glm(formula = valeur_l ~ annee,
-               data = df,
-               family = "gaussian")
-  
-  # Autres opérations comme l'élimination des outliers
-  
-  # Vérifier si le modèle a convergé avec succès et que les coefficients sont valides
-  if (inherits(model$coefficients, "numeric") && length(model$coefficients) == 2) {
-    # Le modèle a convergé avec succès et a des coefficients valides
-    result <- data.frame(
-      intercept = model$coefficients[["(Intercept)"]],
-      annee = ifelse(model$coefficients[["annee"]] != 0, model$coefficients[["annee"]], "Nul"),
-      pvalue = as.data.frame(summary(model)$coefficients) %>%
-        rownames_to_column() %>%
-        filter(rowname == "annee") %>%
-        pull(`Pr(>|t|)`)
-    )
-  } else {
-    # Le modèle n'a pas convergé ou les coefficients sont invalides
-    result <- data.frame(
-      intercept = NA,
-      annee = NA,
-      pvalue = NA
-    )
-  }
-  
-  return(result)
-}
+combinaisons <- unique(select(test_ope_indicateur, esp_code_alternatif, stade, indicateur))
 
-# Fonction pour calculer les GLM pour chaque combinaison d'espèce, indicateur et stade
-calcul_glm_par_groupe <- function(ope_indicateur) {
-  ope_indicateur %>%
-    group_by(esp_code_alternatif, 
-             indicateur,
-             stade) %>%
-    summarize(glm_result = if(n() >= 2) list(calcul_glm_non_groupe(cur_data())) else NULL)
-}
-
-# Appliquer la fonction à votre dataframe
-resultats <- calcul_glm_par_groupe(ope_indicateur)
-
-# Maintenant, resultats contient les résultats des modèles GLM pour chaque combinaison d'espèce, indicateur et stade
-# Vous pouvez accéder aux résultats comme suit :
-resultats
-
-
+# Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
+resultats_glm <- combinaisons %>%
+  pmap_dfr(~calcul_glm_non_groupe(test_ope_indicateur %>%
+                                    filter(esp_code_alternatif == ..1 & stade == ..2 & indicateur == ..3)) %>%
+             mutate(esp_code_alternatif = ..1, 
+                     stade = ..2, 
+                     indicateur = ..3)) %>% 
+  rename (glm_intercept = intercept,
+          glm_pvalue = pvalue,
+          glm_annee = annee) %>% 
+  select (esp_code_alternatif,
+          stade,
+          indicateur,
+          glm_intercept, 
+          glm_annee,
+          glm_pvalue)
 
 ```
 
 
-ici c'est une version où tout apparait directement dans un dataframe
+Représentation des résultats de "resultats_glm" : 
 
-```{r}
+```{r, fig.height = 25, fig.width = 10}
+resultats_glm <- resultats_glm %>%
+  pivot_longer(cols = starts_with("glm_"), 
+               names_to = "glm_data",
+               values_to = "glm_valeur") 
 
-library(dplyr)
 
-# Fonction pour calculer les GLM pour chaque combinaison d'espèce, indicateur et stade
-calcul_glm_par_groupe <- function(ope_indicateur) {
-  resultats1 <- lapply(split(ope_indicateur, list(ope_indicateur$esp_code_alternatif, ope_indicateur$indicateur, ope_indicateur$stade)), function(df) {
-    # Vérifier si le nombre d'observations est suffisant pour ajuster le modèle
-    if (nrow(df) < 2) {
-      return(NULL)  # Retourner NULL si le nombre d'observations est insuffisant
-    }
-    
-    # Ajuster le modèle GLM
-    model <- glm(formula = valeur_l ~ annee,
-                 data = df,
-                 family = "gaussian")
-    
-    # Autres opérations comme l'élimination des outliers
-    
-    # Récupérer les résultats du modèle
-    result <- data.frame(
-      esp_code_alternatif = unique(df$esp_code_alternatif),
-      stade = unique(df$stade),
-      indicateur = unique(df$indicateur),
-      intercept = ifelse(length(model$coefficients) > 0, model$coefficients[["(Intercept)"]], NA),
-      annee = ifelse(length(model$coefficients) > 1, model$coefficients[["annee"]], NA),
-      pvalue = ifelse(length(model$coefficients) > 1, summary(model)$coefficients["annee", "Pr(>|t|)"], NA)
-    )
-    return(result)
-  })
+graph_glm <- resultats_glm %>% 
+  ggplot(aes(x= esp_code_alternatif, 
+             y = glm_valeur,
+             fill = esp_code_alternatif,
+             colour = esp_code_alternatif)) +
+  geom_boxplot(alpha=0.5, outlier.alpha=0) +
+  geom_jitter() +
+  facet_grid2(indicateur ~ glm_data, 
+              scales = "free", 
+              independent = "y") +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill="#faf0e0"),
+        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
   
-  # Filtrer les résultats pour enlever les valeurs NULL
-  resultats1 <- Filter(function(x) !is.null(x), resultats1)
-  
-  # Convertir la liste en dataframe
-  resultats1 <- do.call(rbind, resultats1)
-  
-  return(resultats1)
-}
 
-# Appliquer la fonction à votre dataframe
-resultats1 <- calcul_glm_par_groupe(ope_indicateur)
-
-# Maintenant, resultats contient les résultats des modèles GLM pour chaque combinaison d'espèce, indicateur et stade
-resultats1
-
+print(graph_glm)
 ```
+
 
