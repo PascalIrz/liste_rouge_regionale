@@ -338,6 +338,7 @@ print(tendance_indicateur_gra)
 
 
 Je travail ici sur des modèles linéiares généralisés :
+Distribution de Y : Gaussienne
 
 Je réalise des pré-traitement pour : 
 1) Transformer les valeurs de densités (surface et volume) en log : 
@@ -371,7 +372,7 @@ test_ope_indicateur <- test_ope_indicateur %>%
 
 ```
 
-Je fais un essaye individuel : 
+Je fais un essaie individuel : 
 
 ```{r}
 source(file = "../R/calcul_glm.R")
@@ -420,17 +421,35 @@ resultats_glm <- combinaisons %>%
 
 ```
 
+```{r}
+resultats_glm <- resultats_glm %>%
+  mutate(significativité = case_when(
+    glm_pvalue <= 0.001 ~ '***',
+    glm_pvalue <= 0.01 ~ '**',
+    glm_pvalue <= 0.05 ~ '*',
+    glm_pvalue <= 0.1 ~ '.',
+    TRUE ~ ' '
+  ))
+
+
+resultats_glm_test <- resultats_glm %>% 
+  filter(significativité == "***")
+
+
+```
 
 Représentation des résultats de "resultats_glm" : 
 
 ```{r, fig.height = 25, fig.width = 10}
-resultats_glm <- resultats_glm %>%
+resultats_glm_test <- resultats_glm_test %>%
   pivot_longer(cols = starts_with("glm_"), 
                names_to = "glm_data",
-               values_to = "glm_valeur") 
+               values_to = "glm_valeur") %>% 
+  select (- significatif,
+          significativité)
 
 
-graph_glm <- resultats_glm %>% 
+graph_glm <- resultats_glm_test %>% 
   ggplot(aes(x= esp_code_alternatif, 
              y = glm_valeur,
              fill = esp_code_alternatif,
