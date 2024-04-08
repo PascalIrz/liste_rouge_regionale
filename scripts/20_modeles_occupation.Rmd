@@ -1,0 +1,75 @@
+---
+title: "20_modeles_occupation"
+author: "Léa Bouchet"
+date: "2024-04-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Modèles d'occupation
+
+La première étape est de transformer le jeu de données en détection / non détection (présence / absence d'un espèce : TRUE / FALSE) sur un site donné. Le premier modèle tester est un modèle d'occupation d'une seule espèce (donc à l'espèce).
+
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages, données et fonctions}
+
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(lemon)
+library(trend)
+library(ggh4x)
+library(spOccupancy)
+library(coda)
+library(stars)
+
+
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+
+
+
+# Définition des couleurs de l'OFB en format RGB
+pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
+```
+
+# Constitution du jeu de données
+
+On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
+
+```{r}
+
+# Pivoter les données pour avoir une colonne par espèce
+lop_esp_large <- lop_esp_selection %>%
+  pivot_wider(names_from = esp_code_alternatif, values_from = lop_effectif, values_fill = 0) %>% 
+  select(-ope_surface_calculee,
+         -lop_id) 
+
+colonnes_a_ne_pas_modifier <- c("annee", "ope_id")
+
+
+lop_esp_large <- lop_esp_large %>%
+  mutate_at(vars(-one_of(colonnes_a_ne_pas_modifier)), ~ifelse(. >= 1, 1, 0))
+
+```
+
+
+
+

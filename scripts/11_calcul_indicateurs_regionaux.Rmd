@@ -90,7 +90,7 @@ taux_occ <- occur %>%
 
 ## Echelle régionale
 
-```{r Calcul ope_ind à l'échelle régionale, fig.height = 55, fig.width = 10}
+```{r, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 reg_indicateur <- ope_indicateur %>%
   group_by(esp_code_alternatif, annee, indicateur, stade) %>%
@@ -111,16 +111,16 @@ reg_indicateur <- reg_indicateur %>%
 
 ```
 
-```{r, fig.height = 55, fig.width = 10}
+```{r, fig.height = 6, fig.width = 10}
 # Représentation graphique des données : 
 
-graphique <- reg_indicateur %>% 
+graphique <- reg_indicateur %>%
   ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
   geom_point() +
   geom_smooth(se = FALSE) +
   facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
   scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile")) +
+                     name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs") +
@@ -153,7 +153,7 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r, fig.height = 5, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "ad") %>% 
@@ -182,7 +182,7 @@ tendance_indicateur %>%
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r, fig.height = 5, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "juv") %>% 
@@ -211,9 +211,10 @@ tendance_indicateur %>%
 ```
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r, fig.height = 5, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
+         indicateur!="pourcentage_presence_esp",
          stade == "ind") %>% 
   group_by(indicateur,
            trend,
@@ -226,7 +227,7 @@ tendance_indicateur %>%
   geom_bar(stat="identity") +
   facet_grid(~esp_code_alternatif ~ stade ~ indicateur  , 
               scales = "free") +
-  labs(title = "Tendances indicateurs - Indéterminé", 
+  labs(title = "Tendances indicateurs - Indifférencié", 
        x = "Tendance", 
        y = "Valeur pop_id") +
   scale_fill_manual(values = c("Decrease" = "red","Increase" = "#92D080", "No trend" ="lightgrey"),
@@ -235,6 +236,7 @@ tendance_indicateur %>%
         panel.grid.major = element_line(color="#ffffff", size = 0.1),
         panel.grid.minor = element_line(color = "#ffffff"),
         panel.background = element_rect(fill="#faf0e0"),
+        axis.text.x = element_text(angle = 45),
         legend.position = "bottom") 
 ```
 
@@ -259,9 +261,9 @@ print(taux_evol_1990)
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r, fig.height = 5, fig.width = 10}
 # Définition des seuils et des couleurs correspondantes
-seuils <- c(0.35, 0.99, 1.01, 1.25)
+seuils <- c(0.55, 0.99, 1.01, 1.25)
 couleurs <- c("#CB2027", "#DDDDDD","#8fd175")
 n <- length(seuils)
 
@@ -278,14 +280,14 @@ graph_taux_evol <- taux_evol_1990 %>%
         panel.background = element_rect(fill = "#faf0e0"),
         legend.position = "bottom") + 
   scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indeterminé", "Juvénile"))
+                     name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile"))
 
 
 
-for (i in 1:(n-1)) {
-  graph_taux_evol <- graph_taux_evol +
-    annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.1)
-}
+ for (i in 1:(n-1)) {
+   graph_taux_evol <- graph_taux_evol +
+     annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.1)
+ }
 
 print(graph_taux_evol)
 
@@ -307,6 +309,7 @@ tendance_indicateur_eff <- tendance_indicateur %>%
   select(-pop_id) %>% 
   group_by(esp_code_alternatif) %>% 
   mutate(med_Sen = median(sens_slope))
+
 
 tendance_indicateur_eff <- tendance_indicateur_eff %>% 
   left_join(taux_evol_eff) %>% 
@@ -354,6 +357,7 @@ test_ope_indicateur <- ope_indicateur %>%
                                valeur)) %>%  
   left_join(data)
 ```
+
 
 
 2) Exclure du jeu de données les lignes avec moins de 5 années de données : 
@@ -421,8 +425,10 @@ resultats_glm <- combinaisons %>%
 
 ```
 
-```{r}
+```{r, fig.height = 5, fig.width = 10}
+
 resultats_glm <- resultats_glm %>%
+  filter(esp_code_alternatif %in% c("LOF", "ANG", "BRO")) %>%
   mutate(significativité = case_when(
     glm_pvalue <= 0.001 ~ '***',
     glm_pvalue <= 0.01 ~ '**',
@@ -432,42 +438,56 @@ resultats_glm <- resultats_glm %>%
   ))
 
 
-resultats_glm_test <- resultats_glm %>% 
-  filter(significativité == "***")
+# resultats_glm_test <- resultats_glm %>% 
+#   select(-glm_pvalue) %>% 
+#   filter(significativité == "***")
+
+
+library(gt)
+
+resultats_glm %>%
+  gt() %>%
+  tab_header(
+    title = "Résultats des modèles GLM",
+    subtitle = "Tableau synthétique des coefficients, années et p-values"
+  ) %>%
+  fmt_number(
+    columns = vars(glm_intercept, glm_annee, glm_pvalue),
+    decimals = 3
+  )
 
 
 ```
 
-Représentation des résultats de "resultats_glm" : 
 
 ```{r, fig.height = 25, fig.width = 10}
-resultats_glm_test <- resultats_glm_test %>%
-  pivot_longer(cols = starts_with("glm_"), 
-               names_to = "glm_data",
-               values_to = "glm_valeur") %>% 
-  select (- significatif,
-          significativité)
-
-
-graph_glm <- resultats_glm_test %>% 
-  ggplot(aes(x= esp_code_alternatif, 
-             y = glm_valeur,
-             fill = esp_code_alternatif,
-             colour = esp_code_alternatif)) +
-  geom_boxplot(alpha=0.5, outlier.alpha=0) +
-  geom_jitter() +
-  facet_grid2(indicateur ~ glm_data, 
-              scales = "free", 
-              independent = "y") +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill="#faf0e0"),
-        panel.grid.major = element_line(color="lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45))
-  
-
-print(graph_glm)
+# resultats_glm_test <- resultats_glm_test %>%
+#   pivot_longer(cols = starts_with("glm_"), 
+#                names_to = "glm_data",
+#                values_to = "glm_valeur") %>% 
+#   select (- significatif,
+#           significativité)
+# 
+# 
+# graph_glm <- resultats_glm_test %>% 
+#   ggplot(aes(x= esp_code_alternatif, 
+#              y = glm_valeur,
+#              fill = esp_code_alternatif,
+#              colour = esp_code_alternatif)) +
+#   geom_boxplot(alpha=0.5, outlier.alpha=0) +
+#   geom_jitter() +
+#   facet_grid2(indicateur ~ glm_data, 
+#               scales = "free", 
+#               independent = "y") +
+#   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+#         legend.position = "bottom",
+#         panel.background = element_rect(fill="#faf0e0"),
+#         panel.grid.major = element_line(color="lightgrey", size = 0.1),
+#         panel.grid.minor = element_line(color = "lightgrey"),
+#         axis.text.x = element_text(angle = 45))
+#   
+# 
+# print(graph_glm)
 ```
 
 
