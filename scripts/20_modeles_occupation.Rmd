@@ -180,38 +180,13 @@ out <- PGOcc(occ.formula = ang.occ.formula,
 
 
 ```{r}
-# Chargement des packages nécessaires
-library(spOccupancy)
-
-# Chargement de ton jeu de données transformé (lop_long)
-# Assure-toi d'avoir préalablement transformé tes données comme indiqué précédemment
-
-# Exemple de nom de colonnes : annee pour l'année, species pour le nom de l'espèce, presence_absence pour la présence/absence
-
-# Spécification des formules du modèle
-occ.formula <- ~ 1  # Occurrence en fonction d'une constante (intercept)
-det.formula <- ~ 1   # Détection en fonction d'une constante (intercept)
-
-# Lancement du modèle
-out <- spPGOcc(occ.formula = occ.formula,
-               det.formula = det.formula,
-               data = lop_esp_ANG,  # Utilisation de ton jeu de données transformé
-               n.batch = 400,
-               batch.length = 25,
-               accept.rate = 0.43,
-               cov.model = "exponential",
-               NNGP = TRUE,
-               n.neighbors = 5,
-               n.burn = 2000,
-               n.thin = 4,
-               n.chains = 3,
-               verbose = FALSE,
-               k.fold = 2)
-
-# Affichage du résumé du modèle
 summary(out)
-
 ```
 
-
+```{r}
+plot(out, 'beta', density = FALSE) # Occupancy parameters.
+```
+```{r}
+plot(out, 'alpha', density = FALSE) # Detection parameters.
+```
 
