@@ -55,21 +55,79 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
 
 ```{r}
+point_prelevement_t <- point_prelevement %>% 
+  select(pop_id,
+         pop_coordonnees_x,
+         pop_coordonnees_y) %>% 
+  rename (V1 = pop_coordonnees_x,
+          V2 = pop_coordonnees_y)
+
+ope_ind <- ope_indicateur %>% 
+  select (ope_id,
+          annee,
+          esp_code_alternatif
+           ) %>% 
+  unique() %>% 
+  mutate (presence = 1) %>% 
+  left_join(y=operation %>% 
+              select(ope_id,
+                     pop_id= ope_pop_id,
+                     ope_date)) %>% 
+  left_join(y=point_prelevement_t)
+
 
 # Pivoter les données pour avoir une colonne par espèce
-lop_esp_large <- lop_esp_selection %>%
-  pivot_wider(names_from = esp_code_alternatif, values_from = lop_effectif, values_fill = 0) %>% 
-  select(-ope_surface_calculee,
-         -lop_id) 
-
-colonnes_a_ne_pas_modifier <- c("annee", "ope_id")
-
-
-lop_esp_large <- lop_esp_large %>%
-  mutate_at(vars(-one_of(colonnes_a_ne_pas_modifier)), ~ifelse(. >= 1, 1, 0))
+lop_esp_large <- ope_ind %>%
+  pivot_wider(names_from = esp_code_alternatif, values_from = presence, values_fill = 0)
 
 ```
 
+
+```{r}
+lop_esp_ANG <- lop_esp_large %>% 
+  select(ope_id,
+         annee, 
+         ANG) %>% 
+  unique() %>% 
+  rename(y = ope_id)
+
+```
+
+
+
+```{r}
+# Chargement des packages nécessaires
+library(spOccupancy)
+
+# Chargement de ton jeu de données transformé (lop_long)
+# Assure-toi d'avoir préalablement transformé tes données comme indiqué précédemment
+
+# Exemple de nom de colonnes : annee pour l'année, species pour le nom de l'espèce, presence_absence pour la présence/absence
+
+# Spécification des formules du modèle
+occ.formula <- ~ 1  # Occurrence en fonction d'une constante (intercept)
+det.formula <- ~ 1   # Détection en fonction d'une constante (intercept)
+
+# Lancement du modèle
+out <- spPGOcc(occ.formula = occ.formula,
+               det.formula = det.formula,
+               data = lop_esp_ANG,  # Utilisation de ton jeu de données transformé
+               n.batch = 400,
+               batch.length = 25,
+               accept.rate = 0.43,
+               cov.model = "exponential",
+               NNGP = TRUE,
+               n.neighbors = 5,
+               n.burn = 2000,
+               n.thin = 4,
+               n.chains = 3,
+               verbose = FALSE,
+               k.fold = 2)
+
+# Affichage du résumé du modèle
+summary(out)
+
+```
 
 
 
