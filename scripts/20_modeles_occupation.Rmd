@@ -88,7 +88,7 @@ y <- mes_combinaisons %>%
                      )) %>% 
               select(-ope_id) %>% 
               distinct() %>% 
-  mutate(annee = paste0("a_", annee)) %>% 
+#  mutate(annee = paste0("a_", annee)) %>% 
   filter(esp_code_alternatif == mon_espece) %>% 
   select(-esp_code_alternatif) %>% 
   arrange(annee) %>% 
@@ -103,25 +103,32 @@ occ.covs <- ope_selection_param_env %>%
   ungroup() %>% 
   mutate(valeur = log10(valeur)) %>% 
   pivot_wider(names_from = parametre,
-              values_from = valeur)
+              values_from = valeur) %>% 
+  arrange(pop_id)
   
 
 test <- ope_selection %>% 
   mutate(jour = lubridate::yday(ope_date)) %>% 
+  mutate(protocole = as.factor(pro_libelle),
+         protocole = as.integer(protocole)) %>% 
   select(pop_id,
          annee,
          jour,
-         pro_libelle)
+         protocole)
 
 jour <- test %>% 
-  select(-pro_libelle) %>% 
+  select(-protocole) %>% 
+  arrange(annee) %>% 
   pivot_wider(names_from = annee,
-              values_from = jour)
+              values_from = jour) %>% 
+  arrange(pop_id)
 
 protocole <- test %>% 
   select(-jour) %>% 
+  arrange(annee) %>% 
   pivot_wider(names_from = annee,
-              values_from = pro_libelle)
+              values_from = protocole) %>% 
+  arrange(pop_id)
 
 modele_ang <- list()
 
