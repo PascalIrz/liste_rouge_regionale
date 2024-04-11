@@ -1,0 +1,211 @@
+---
+title: "10_assemblage_tab_par_ope"
+author: "Léa Bouchet"
+date: "2024-02-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Installation
+## Chargement des packages et des données
+
+```{r}
+
+# if necessary
+# devtools::install_github("pascalirz/aspe")
+
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/ope_selection_param_env.rda")
+
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+
+load(mei_table)
+
+
+source(file = "../R/calcul_biomasse.R")
+
+
+```
+
+
+## Densités surfaciques
+
+Je complète mon df ope_selection pour calculer mes surfaces échantillonnées
+
+```{r}
+ope_selection <- passerelle %>% 
+  left_join(y=lot_poissons %>% 
+              select(lop_id,
+                     esp_id = lop_esp_id,
+                     lop_effectif)) %>% 
+  left_join (y=  ref_espece %>% 
+               select(esp_id,
+                      esp_code_alternatif)) %>% 
+  select(-esp_id)
+
+```
+
+# Calcul des surfaces échantillonnées
+
+```{r}
+ope_selection_surf <- ope_selection %>% 
+  mef_ajouter_surf_calc()
+  # left_join (y=operation %>% 
+  #              select (ope_id, ope_surface_calculee))
+
+```
+
+Agrégation par opération et par espèces (somme des effectifs par espèce pour chaque opération)
+
+
+```{r}
+ope_selection_surf <- ope_selection_surf %>% 
+  group_by(ope_id,
+           esp_code_alternatif,
+           ope_surface_calculee) %>% 
+  summarise(effectif = sum(lop_effectif)) %>% 
+  ungroup()
+```
+
+Calcul des densités (en individus pour 1000 m²)
+
+```{r}
+ope_selection_densite <- ope_selection_surf %>% 
+  mutate (valeur = 1000*effectif / ope_surface_calculee) %>% 
+  select (-ope_surface_calculee)
+```
+
+
+Création d'une nouvelle colonne "indicateur"
+
+```{r}
+ope_selection_densite <- ope_selection_densite %>% 
+  mutate(indicateur = "densite_surfacique")
+
+```
+
+
+Création de mon df ds_ope (qui correspond à mes densite surfacique)
+
+```{r}
+ds_ope <- ope_selection_densite %>% #ds pour densité surfacique
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur)
+
+```
+
+
+## Longueur médiane
+
+
+En partant de mes ope_selection je dois maintenant ajouter le tableau des mesures individuelles
+
+
+```{r}
+ope_selection_lm <- passerelle %>% 
+  mef_ajouter_mei() %>%
+  mef_ajouter_lots() %>% 
+  mef_ajouter_esp() %>% 
+  mef_ajouter_type_longueur() %>% 
+  select(ope_id,
+         lop_id,
+         esp_code_alternatif,
+         mei_id,
+         sta_id,
+         pop_id,
+         mei_taille)
+```
+
+
+Je cherche maintenant à calculer les longueurs mediannes
+
+
+```{r}
+ope_selection_lmed <- ope_selection_lm %>% 
+  group_by(ope_id,esp_code_alternatif) %>% 
+  summarise(valeur=median(mei_taille, na.rm=TRUE))
+
+lm_ope <- ope_selection_lmed %>% 
+  mutate(indicateur="longueur_medianne") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur)
+```
+
+
+## Données environnementales
+
+Je créer un tableau avec mes variables environnement : 
+
+
+```{r}
+# ope_selection_param_env <- passerelle %>% 
+#   select(-lop_id,
+#          -pre_id) %>% 
+#   distinct() %>% 
+#   mef_ajouter_ope_env() %>% 
+#   mef_ajouter_ope_date() %>% 
+#   select(-ope_date,
+#          -sta_id,
+#          -distance_mer)
+# 
+# 
+# ope_selection_param_env2 <- ope_selection_param_env %>% 
+#   pivot_longer(altitude:temp_janvier,
+#                names_to = "parametre",
+#                values_to= "valeur")
+ 
+```
+
+Représentation de mes variables avec facet_wrap et facet_grid
+
+
+```{r, fig.height = 45, fig.width = 10}
+
+# Représentation avec facet_wrap
+
+#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 10)
+ope_selection_param_env %>% 
+#  filter(pop_id%in% mes_id) %>% 
+  ggplot(aes(x=annee, y=valeur)) +
+  geom_bar(stat="identity") +
+  facet_wrap(vars(pop_id, parametre),
+             ncol = 8,
+               scales="free_y")
+
+
+#Représentation avec facet_grid
+
+#mes_id <- sample(unique(ope_selection_param_env2$pop_id), 5) 
+ope_selection_param_env %>% 
+#  filter(pop_id%in% mes_id) %>% 
+  ggplot(mapping = aes(x = annee, y = valeur)) +
+  geom_bar(stat="identity") +
+  facet_grid(pop_id ~ parametre, 
+             scales= "free_y")
+  
+```
+
+
+
+
+
+
