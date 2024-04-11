@@ -1,0 +1,121 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Pré-traitements des données environnementales"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 05_pre_traitements_donnees_env
+
+Il s’agit de réaliser les pré-traitements des données environnementales utilisées pour l’étude. Cette partie permet notamment d’observer les erreurs ou incohérences présentes dans le jeu de données relatif aux variables environnementales. Il s'agit d'un travail de mise en qualité des données. Il s'agit également de s’occuper des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, des données peuvent être non renseignées d’une année à l’autre et la valeur étant, pour certains paramètres, non changeante d’une année à l’autre, ces dernières sont remplacées par les données médianes des mêmes stations. 
+
+# Installation 
+## Chargement des packages, fonctions et des données
+```{r}
+
+## Chargement des packages ----
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library(zoo)
+library(lemon)
+library(ggh4x)
+
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
+
+# Constitution du jeu de données
+
+## Création d'un dataframe
+
+Création d'un dataframe contenant les variables environnementales relatives aux opérations contenues dans la passerelle (cf 00_selection_pop_ope).  
+
+```{r}
+# Création du dataframe : 
+ope_selection_param_env <- passerelle %>% 
+  select(-lop_id,
+         -pre_id) %>% 
+  mef_ajouter_ope_env() %>% 
+  mef_ajouter_ope_date() %>% 
+  select(-ope_date,
+         -sta_id,
+         -distance_mer,
+         -obj_libelle,
+         -obj_id)%>%
+  distinct() %>% 
+  pivot_longer(altitude:temp_janvier,
+               names_to = "parametre",
+               values_to= "valeur") %>% 
+  distinct()
+  
+```
+
+## Gestion des "NA"
+
+Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des autres données relatives aux points de prélèvements. 
+
+```{r}
+# Les NA sont indiquées dans un nouveau jeu de données : 
+N_A <- which(apply(is.na(ope_selection_param_env), 1, any)) 
+print(ope_selection_param_env[N_A, ]) # Observation des NA
+
+
+
+ope_selection_param_env <- ope_selection_param_env %>% 
+  arrange(parametre, annee)%>%  # Tri des données environnementales globales
+  group_by(parametre,pop_id) %>%
+  mutate(valeur = ifelse(is.na(valeur), # NA remplacées par les médianes
+                         zoo::na.aggregate(valeur, median), valeur))
+
+```
+
+# Représentation graphique 
+
+Création d'une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données. 
+
+```{r, fig.height = 55, fig.width = 10, fig.cap="Variabilité inter-annuelle des paramètres environnementaux"}
+# Représentation de mes variables environnements (avec facet_wrap) : 
+ope_selection_param_env %>% 
+  ggplot(aes(x=annee, y=valeur)) +
+  geom_bar(stat="identity", fill = "darkcyan") +
+  facet_grid2( ~ pop_id ~ parametre ,
+             scales="free_y",
+             independent = "y") +
+  labs(title = "Variabilité inter-annuelle des paramètres environnementaux", 
+       x = "Année", 
+       y = "Valeur") +
+  theme_bw() +
+  theme(strip.text = element_text(size = 8),
+        axis.text.x = element_text(angle = 45))
+
+```
+
+
+
+# Sauvegarde : 
+```{r}
+save(ope_selection_param_env,
+     file = "../processed_data/pre_traitements_donnees_env.rda")
+```
+

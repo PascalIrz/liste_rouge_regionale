@@ -1,0 +1,343 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Calcul des indicateurs par opérations"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  passage_a_retirer: !r c("2","3") # Sélection du nombre de passage souhaité ; Remarque : si je souhaite enlever les 1ers passages, sélection "0","1" 
+  type_lot_a_retirer: !r c("G") # Sélection des lots à retirer du jeu de données ; tyl_libelle  = G (cf ref_type_lot)
+  type_peche_a_inclure: !r c("Pêche complète à un ou plusieurs passages",
+                            "Pêche partielle par points (grand milieu)",
+                            "Pêche par ambiances",
+                            "Pêche partielle sur berge") # Selection des types de pêches à inclure au jeu de données (pro_libelle)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 10_calcul_indicateurs_par_ope
+
+
+Ce script permet de constituer les premiers tableaux de données nécessaires à la
+préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvéniles, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données
+
+```{r Chargement des packages, données et fonctions}
+
+## Chargement des packages ----
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(readxl)
+
+
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+load(file = "../processed_data/pre_traitements_donnees_especes.rda")
+
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+## Chargement des fonctions ----
+source(file = "../R/calcul_biomasse.R")
+source(file = "../R/calcul_50_percentile.R")
+source(file = "../R/calcul_ecart_interquartile.R")
+source(file = "../R/calcul_25_percentile.R")
+source(file = "../R/calcul_75_percentile.R")
+source(file = "../R/calcul_densite_surface.R")
+
+```
+
+
+# Les indicateurs par opération de pêche 
+
+## Indicateurs généraux par opération de pêche
+
+### Effectif total des espèces par opération de pêche
+
+```{r Création tableau effectif total par ope}
+ope_effectif <- mei_ope_selection %>%
+  group_by(ope_id,
+           esp_code_alternatif,
+           stade) %>%
+  summarise(valeur=sum(length(mei_id))) %>% 
+  mutate(indicateur= "effectif_total") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         stade)
+
+ope_effectif <- ope_effectif %>% 
+  bind_rows(ope_effectif %>%
+      filter(stade %in% c("ad", "juv")) %>%
+      group_by(indicateur, ope_id, esp_code_alternatif) %>%
+      summarise(stade = "ind", valeur = sum(valeur)))
+
+```
+
+
+### Biomasse des espèces par opération de pêche
+
+```{r Création tableau biomasse totale par ope}
+# Calcul de la biomasse par opération : par espèce et par stade : 
+
+ope_biomasse <- mei_ope_selection %>%
+  group_by(ope_id,
+           esp_code_alternatif,
+           stade) %>%
+  summarise(valeur=sum(poids_tp, na.rm = TRUE)) %>% 
+  mutate(indicateur= "biomasse") %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         stade) 
+
+ope_biomasse <- ope_biomasse %>%
+  bind_rows(ope_biomasse %>%
+      filter(stade %in% c("ad", "juv")) %>%
+      group_by(indicateur, ope_id, esp_code_alternatif) %>%
+      summarise(stade = "ind", valeur = sum(valeur)))
+
+```
+
+
+### Densité surfacique par opération 
+
+```{r Ajout des données de surfaces calculées}
+# Ajout des données de surfaces échantillonnées dans mei_ope_selection ----
+mei_ope_selection <- mei_ope_selection %>% 
+  left_join (y=operation %>% 
+               select (ope_id, 
+                       ope_surface_calculee,
+                       passage$pas_numero))
+```
+
+Partie optionnelle : Vérification du Jeu De Données : Je vérifie que j'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30) : 
+
+```{r Vérification effectif 1}
+# verif_effectif <- mei_ope_selection %>%
+#   group_by(lop_id,lop_effectif) %>%
+#   summarise(nbr_lignes = n()) %>%
+#   ungroup()
+# 
+# resultat_verif_effectif <- verif_effectif %>%
+#   filter(nbr_lignes!= lop_effectif)
+```
+
+Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
+
+```{r Vérification effectif 2}
+# nb_unique <- mei_ope_selection %>%
+#   summarise(nb_unique = n_distinct(mei_id))
+# 
+# print(nb_unique)
+```
+
+
+```{r Calcul densités surfaces}
+ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
+                                            ope_surface_calculee,
+                                            ope_id,esp_code_alternatif, 
+                                            stade,
+                                            mei_id)
+```
+
+
+### Densité volumique par opération
+
+ 
+```{r Création df profondeur}
+#Ajout des données de profondeurs :
+ope_param_profondeur <- ope_selection_param_env %>% 
+  filter(parametre == "profondeur") %>% 
+  select(ope_id,
+         valeur) %>% 
+  rename(profondeur=valeur) %>% 
+  distinct()
+```
+
+
+!! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction !
+
+```{r Calcul densités volumiques}
+densite_surf <- ope_densite_surf %>% 
+  rename(valeur_ds = valeur)
+
+ope_densite_vol<- left_join(ope_param_profondeur, densite_surf, by = "ope_id") %>% 
+  mutate(valeur = valeur_ds /profondeur) %>%
+  ungroup() %>% 
+  mutate(indicateur = "densite_volumique") %>% 
+  select(ope_id, 
+         esp_code_alternatif, 
+         indicateur,
+         valeur,
+         stade)
+```
+
+
+### Pourcentage de juvéniles par opération
+
+!! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
+```{r Création dataframe pour l'indicateur pourcentage_juv}
+ope_pc_juv <- ope_effectif %>%
+  mutate(indicateur = "pourcentage_juveniles")
+```
+
+
+```{r Calcul pourcentage juvéniles}
+ope_pc_juv <- ope_pc_juv %>% 
+  ungroup() %>% 
+  complete(ope_id,
+           esp_code_alternatif,
+           stade,
+           indicateur,
+           fill = list(valeur = 0)) %>% 
+    group_by(ope_id,
+             esp_code_alternatif) %>% 
+  mutate(valeur = (valeur [stade == "juv"] / valeur [stade == "ind"])*100) %>% 
+  filter(stade == "ind",
+         !is.nan(valeur))
+```
+
+
+## Indicateurs sur les mesures individuelles par opération de pêche
+
+### Longueur médiane
+
+Calcul des longueurs médianes des tailles des individus par opération : Création de la fonction "calcul_50_percentile" : 
+```{r Calcul longueur médiane mei}
+ope_lm <- calcul_50_percentile(mei_ope_selection,
+                               mei_taille,
+                               ope_id,
+                               esp_code_alternatif, 
+                               stade)
+```
+
+
+### Ecart interquartile
+
+Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" : 
+```{r Calcul Ecart interquartile longueurs médianes}
+ope_ecart_inter <- calcul_ecart_inter(mei_ope_selection,
+                                      mei_taille,ope_id,
+                                      esp_code_alternatif, 
+                                      stade)
+```
+
+
+### Percentiles 25 et 75  pour les longueurs médianes :
+
+Calcul des percentiles 25 et 75 des tailles des individus par opération : Création de la fonction "calcul_25_percentile" et "calcul_75_percentile" : 
+
+```{r Calcul p25 longueurs médianes}
+ope_p25 <- calcul_p25(mei_ope_selection,
+                      mei_taille,
+                      ope_id,
+                      esp_code_alternatif, 
+                      stade)
+```
+
+
+```{r Calcul p75 longueurs médianes}
+ope_p75 <- calcul_p75(mei_ope_selection,
+                      mei_taille,
+                      ope_id,
+                      esp_code_alternatif, 
+                      stade)
+```
+
+
+# Echelle régionale (pre-données)
+
+On calcul le pourcentage des sites prospectés où l'espèce a été trouvée :
+
+```{r Calcul pourcentage présence especes}
+
+ope_biomasse1 <- ope_biomasse %>% 
+  filter (stade == "ind")
+
+combinaisons <- expand.grid(esp_code_alternatif = unique(ope_biomasse1$esp_code_alternatif),
+                            ope_id = unique(ope_biomasse1$ope_id))
+
+# Fusionner les combinaisons avec le dataframe initial
+reg_pc_presence_esp <- combinaisons %>%
+  left_join(ope_biomasse1, by = c("esp_code_alternatif", "ope_id")) %>%
+  mutate(present = !is.na(indicateur)) %>%
+  group_by(esp_code_alternatif) %>%
+  mutate(stade = "ind",
+         indicateur = "pourcentage_presence_esp",
+         valeur = sum(present) / n_distinct(ope_id) *100) %>% 
+  select(-present)
+  
+
+# Affichage du résultat
+print(reg_pc_presence_esp)
+```
+
+
+# Création du tableau final empilé des indicateurs
+
+```{r Création df final "ope_indicateur"}
+# Création du tableau pré-final avec tous les indicateurs calculés
+ope_indicateur <- rbind(ope_lm,
+                        ope_densite_surf,
+                        ope_densite_vol,
+                        ope_pc_juv,
+                        ope_biomasse,
+                        ope_effectif,
+                        reg_pc_presence_esp)
+```
+
+
+```{r Ajout données année et pop_id}
+# Ajout des années d'opération au site et à l'année (pop_id) et (ope_date)
+ope_indicateur <- ope_indicateur %>% 
+  ungroup() %>%   
+  left_join(y=operation %>% 
+              select(ope_id,
+                     pop_id= ope_pop_id,
+                     ope_date)) %>% 
+  mef_ajouter_ope_date() %>% 
+    select(ope_id, 
+         esp_code_alternatif,
+         indicateur,
+         valeur,
+         stade,
+         pop_id,
+         annee)
+```
+
+
+```{r Visualisation tableau "ope_indicateur"}
+#Représentation graphique du tableau 
+ope_indicateur%>%
+  DT::datatable(rownames = FALSE)
+```
+
+# Sauvegarde
+
+```{r Sauvegarde}
+# SAUVEGARDE ----
+save(ope_indicateur,
+     file = "../processed_data/assemblage_tab_par_ope.rda")
+```
