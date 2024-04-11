@@ -111,7 +111,7 @@ reg_indicateur <- reg_indicateur %>%
 
 ```
 
-```{r, fig.height = 6, fig.width = 10}
+```{r, fig.height = 26, fig.width = 10}
 # Représentation graphique des données : 
 
 graphique <- reg_indicateur %>%
@@ -153,7 +153,7 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
 
 
 
-```{r, fig.height = 5, fig.width = 10}
+```{r, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "ad") %>% 
@@ -182,7 +182,7 @@ tendance_indicateur %>%
 
 
 
-```{r, fig.height = 5, fig.width = 10}
+```{r, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "juv") %>% 
@@ -211,7 +211,7 @@ tendance_indicateur %>%
 ```
 
 
-```{r, fig.height = 5, fig.width = 10}
+```{r, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          indicateur!="pourcentage_presence_esp",
@@ -261,7 +261,7 @@ print(taux_evol_1990)
 
 
 
-```{r, fig.height = 5, fig.width = 10}
+```{r, fig.height = 25, fig.width = 10}
 # Définition des seuils et des couleurs correspondantes
 seuils <- c(0.55, 0.99, 1.01, 1.25)
 couleurs <- c("#CB2027", "#DDDDDD","#8fd175")
