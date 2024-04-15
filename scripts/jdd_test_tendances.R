@@ -117,6 +117,16 @@ don_an <- mef_filtrer_obs(don_operation,
 don_popid <- don_an %>% distinct()
 
 
+
+###########
+# J'ai un problème avec les poids (valeurs manquantes au niveau de l'estimation des poids des lots estimés)
+# Blocage pour la suite des traitements ; en + il manque des ope_id mais je ne sais pas pourquoi ! 
+
+
+
+
+
+
 #############################################################################################
 ## Etape 4 : préparation du jeux de données - capture de l'ensemble de la population
 #############################################################################################
@@ -150,11 +160,6 @@ don_capture <- don_popid %>%
   # ajouter les protocoles de pêche et imputer les valeurs manquantes
   mef_ajouter_type_protocole() %>%
   mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="pro_libelle") 
-
-
-
-# Supprimer les lignes avec des valeurs NA dans la colonne esp_code_alternatif
-don_capture <- na.omit(don_capture[!is.na(don_capture$ope_id), ])
 
 
 # Modélisation de la croissance à partir des effectifs
