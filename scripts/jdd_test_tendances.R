@@ -22,6 +22,11 @@ rdata_tables <- misc_nom_dernier_fichier(
   pattern = "^tables")
 load(rdata_tables)
 
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
 
 #############################################################################################
 ## Etape 1 : chargement et sélection des données 
@@ -31,7 +36,8 @@ load(rdata_tables)
 # (seulement 3 espèces,1 seul stade (indifférencié), et un seul indicateur (densité surface))
 
 mes_especes <- c("ANG", "LOF", "BRO")
-mes_stations <- c("12436", "11290", "12402","11743", "12291")
+mes_stations <- c("12436", "11290", "12402","11743", "12291",
+                  "10468","10734")
 
 ope_indicateur_reduit <- ope_indicateur %>% 
   filter (esp_code_alternatif %in% mes_especes,
@@ -169,9 +175,9 @@ mcmc.out <- mod_popgrow(don_capture,
                         var_tax = "esp_code_alternatif",
                         var_cnt = "effectif",
                         var_surf = "ope_surface_calculee",
-                        n_iter = 10,
-                        n_thin = 1,
-                        n_burnin = 1)
+                        n_iter = 10200,
+                        n_thin = 100,
+                        n_burnin = 2000)
 
 # Modélisation de la croissance à partir des effectifs et de la biomasse
 mcmc.out <- mod_popgrow(don_capture, 
@@ -230,3 +236,4 @@ don_capture_adt <- don_popid %>%
   # ajouter les protocoles de pêche et imputer les valeurs manquantes
   mef_ajouter_type_protocole() %>%
   mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="pro_libelle") 
+
