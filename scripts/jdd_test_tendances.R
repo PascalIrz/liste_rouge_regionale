@@ -179,14 +179,6 @@ mcmc.out <- mod_popgrow(don_capture,
                         n_thin = 100,
                         n_burnin = 2000)
 
-# Modélisation de la croissance à partir des effectifs et de la biomasse
-mcmc.out <- mod_popgrow(don_capture, 
-                        var_id = "pop_id",
-                        var_tmp = "annee",
-                        var_tax = "esp_code_alternatif",
-                        var_cnt = "effectif",
-                        var_wei = "biomasse",
-                        var_surf = "ope_surface_calculee")
 
 #--------------------------------------------------------------------------------------------
 ## Sous-échantillonnage des points de prélèvement pour la biomasse
@@ -199,6 +191,14 @@ don_biomasse <- don_capture %>%
                        var_obs = biomasse) 
 
 
+# Modélisation de la croissance à partir des effectifs et de la biomasse
+mcmc.out <- mod_popgrow(don_biomasse, 
+                        var_id = "pop_id",
+                        var_tmp = "annee",
+                        var_tax = "esp_code_alternatif",
+                        var_cnt = "effectif",
+                        var_wei = "biomasse",
+                        var_surf = "ope_surface_calculee")
 
 
 
