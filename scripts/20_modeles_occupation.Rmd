@@ -54,6 +54,141 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 
 On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
 
+Pour le Brochet : 
+
+```{r}
+
+
+mon_espece <- "BRO"
+
+point_prelevement_t <- point_prelevement %>% 
+  select(pop_id,
+         pop_coordonnees_x,
+         pop_coordonnees_y) %>% 
+  rename (V1 = pop_coordonnees_x,
+          V2 = pop_coordonnees_y)
+
+ope_ind <- ope_indicateur %>% 
+  filter(indicateur == "densite_surface") %>% 
+  select (ope_id,
+          esp_code_alternatif
+           ) %>% 
+  unique() %>% 
+  mutate (presence = 1)
+
+
+mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
+  distinct() %>% 
+  rename(ope_id = Var1,
+         esp_code_alternatif = Var2)
+
+
+y <- mes_combinaisons %>% 
+  left_join(y = ope_ind) %>% 
+  mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
+  left_join(y = ope_selection %>% 
+              select(ope_id,
+                     pop_id,
+                     annee
+                    # ope_date
+                     )) %>% 
+              select(-ope_id) %>% 
+              distinct() %>% 
+#  mutate(annee = paste0("a_", annee)) %>% 
+  filter(esp_code_alternatif == mon_espece) %>% 
+  select(-esp_code_alternatif) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = presence) %>% 
+  arrange(pop_id)
+
+
+occ.covs <- ope_selection_param_env %>% 
+  group_by(pop_id, parametre) %>% 
+  summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(valeur = log10(valeur)) %>% 
+  pivot_wider(names_from = parametre,
+              values_from = valeur) %>% 
+  arrange(pop_id)
+  
+
+test <- ope_selection %>% 
+  mutate(jour = lubridate::yday(ope_date)) %>% 
+  mutate(protocole = as.factor(pro_libelle),
+         protocole = as.integer(protocole)) %>% 
+  select(pop_id,
+         annee,
+         jour,
+         protocole)
+
+jour <- test %>% 
+  select(-protocole) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = jour) %>% 
+  arrange(pop_id)
+
+protocole <- test %>% 
+  select(-jour) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = protocole) %>% 
+  arrange(pop_id)
+
+modele_bro <- list()
+
+modele_bro$y <- y
+modele_bro$occ.covs <- occ.covs
+modele_bro$det.covs$jour <- jour
+modele_bro$det.covs$protocole <- protocole
+```
+
+
+```{r}
+bro.occ.formula <- ~ scale(profondeur) + scale(pente) + scale(temp_juillet)
+bro.det.formula <- ~ scale(jour) + scale(protocole) + I(scale(jour)^2)
+```
+
+```{r}
+bro.inits <- list(alpha = 0, 
+                   beta = 0, 
+                   z = apply(modele_bro$y, 1, max, na.rm = TRUE))
+```
+
+```{r}
+bro.priors <- list(alpha.normal = list(mean = 0, var = 2.72), 
+                    beta.normal = list(mean = 0, var = 2.72))
+```
+
+```{r}
+n.samples <- 5000
+n.burn <- 3000
+n.thin <- 2
+n.chains <- 3
+```
+
+```{r}
+out <- PGOcc(occ.formula = bro.occ.formula, 
+             det.formula = bro.det.formula, 
+             data = modele_bro, 
+             inits = bro.inits, 
+             n.samples = n.samples, 
+             priors = bro.priors, 
+             n.omp.threads = 1, 
+             verbose = TRUE, 
+             n.report = 1000, 
+             n.burn = n.burn, 
+             n.thin = n.thin, 
+             n.chains = n.chains)
+```
+
+
+
+
+Pour l'anguille : 
+
+
 ```{r}
 mon_espece <- "ANG"
 
@@ -64,11 +199,6 @@ point_prelevement_t <- point_prelevement %>%
   rename (V1 = pop_coordonnees_x,
           V2 = pop_coordonnees_y)
 
-mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
-  distinct() %>% 
-  rename(ope_id = Var1,
-         esp_code_alternatif = Var2)
-
 ope_ind <- ope_indicateur %>% 
   filter(indicateur == "densite_surface") %>% 
   select (ope_id,
@@ -76,6 +206,13 @@ ope_ind <- ope_indicateur %>%
            ) %>% 
   unique() %>% 
   mutate (presence = 1)
+
+
+mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
+  distinct() %>% 
+  rename(ope_id = Var1,
+         esp_code_alternatif = Var2)
+
 
 y <- mes_combinaisons %>% 
   left_join(y = ope_ind) %>% 
@@ -138,44 +275,108 @@ modele_ang$det.covs$jour <- jour
 modele_ang$det.covs$protocole <- protocole
 ```
 
+Pour la loche : 
+
 
 ```{r}
-ang.occ.formula <- ~ scale(profondeur) + scale(pente) + scale(temp_juillet)
-ang.det.formula <- ~ scale(jour) + scale(protocole) + I(scale(jour)^2)
+mon_espece <- "LOF"
+
+point_prelevement_t <- point_prelevement %>% 
+  select(pop_id,
+         pop_coordonnees_x,
+         pop_coordonnees_y) %>% 
+  rename (V1 = pop_coordonnees_x,
+          V2 = pop_coordonnees_y)
+
+ope_ind <- ope_indicateur %>% 
+  filter(indicateur == "densite_surface") %>% 
+  select (ope_id,
+          esp_code_alternatif
+           ) %>% 
+  unique() %>% 
+  mutate (presence = 1)
+
+
+mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
+  distinct() %>% 
+  rename(ope_id = Var1,
+         esp_code_alternatif = Var2)
+
+
+y <- mes_combinaisons %>% 
+  left_join(y = ope_ind) %>% 
+  mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
+  left_join(y = ope_selection %>% 
+              select(ope_id,
+                     pop_id,
+                     annee
+                    # ope_date
+                     )) %>% 
+              select(-ope_id) %>% 
+              distinct() %>% 
+#  mutate(annee = paste0("a_", annee)) %>% 
+  filter(esp_code_alternatif == mon_espece) %>% 
+  select(-esp_code_alternatif) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = presence) %>% 
+  arrange(pop_id)
+
+
+occ.covs <- ope_selection_param_env %>% 
+  group_by(pop_id, parametre) %>% 
+  summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(valeur = log10(valeur)) %>% 
+  pivot_wider(names_from = parametre,
+              values_from = valeur) %>% 
+  arrange(pop_id)
+  
+
+test <- ope_selection %>% 
+  mutate(jour = lubridate::yday(ope_date)) %>% 
+  mutate(protocole = as.factor(pro_libelle),
+         protocole = as.integer(protocole)) %>% 
+  select(pop_id,
+         annee,
+         jour,
+         protocole)
+
+jour <- test %>% 
+  select(-protocole) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = jour) %>% 
+  arrange(pop_id)
+
+protocole <- test %>% 
+  select(-jour) %>% 
+  arrange(annee) %>% 
+  pivot_wider(names_from = annee,
+              values_from = protocole) %>% 
+  arrange(pop_id)
+
+modele_lof <- list()
+
+modele_lof$y <- y
+modele_lof$occ.covs <- occ.covs
+modele_lof$det.covs$jour <- jour
+modele_lof$det.covs$protocole <- protocole
 ```
 
-```{r}
-ang.inits <- list(alpha = 0, 
-                   beta = 0, 
-                   z = apply(modele_ang$y, 1, max, na.rm = TRUE))
-```
 
-```{r}
-ang.priors <- list(alpha.normal = list(mean = 0, var = 2.72), 
-                    beta.normal = list(mean = 0, var = 2.72))
-```
 
-```{r}
-n.samples <- 5000
-n.burn <- 3000
-n.thin <- 2
-n.chains <- 3
-```
 
-```{r}
-out <- PGOcc(occ.formula = ang.occ.formula, 
-             det.formula = ang.det.formula, 
-             data = modele_ang, 
-             inits = ang.inits, 
-             n.samples = n.samples, 
-             priors = ang.priors, 
-             n.omp.threads = 1, 
-             verbose = TRUE, 
-             n.report = 1000, 
-             n.burn = n.burn, 
-             n.thin = n.thin, 
-             n.chains = n.chains)
-```
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -188,5 +389,34 @@ plot(out, 'beta', density = FALSE) # Occupancy parameters.
 ```
 ```{r}
 plot(out, 'alpha', density = FALSE) # Detection parameters.
+```
+
+
+
+```{r}
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+  select(-a,
+         -b,
+         -source,
+         -tyl_libelle,
+         -tlo_libelle,
+         -espece_presence_lrr_2015,
+         -taille_maturite,
+         -n_etudes,
+         -mini,
+         -maxi,
+         -ope_id_wama,
+         -ope_code_wama,
+         -ope_pop_id)
+```
+
+
+```{r}
+save(ope_indicateur,
+     mei_ope_selection_t,
+     modele_ang,
+     modele_bro,
+     modele_lof,
+     file = "../processed_data/modeles_occupation.rda")
 ```
 

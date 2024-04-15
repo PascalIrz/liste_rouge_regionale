@@ -328,6 +328,28 @@ ope_indicateur <- ope_indicateur %>%
 ```
 
 
+
+Partie à supprimer après travail emmanuelle 
+```{r}
+
+mei_ope_selection_t <- mei_ope_selection %>% 
+  mef_ajouter_ope_date() %>% 
+  mef_ajouter_ope_saison() 
+
+
+
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+    left_join(y=prelevement_elementaire %>% 
+              select(pre_id,
+                     ope_id = pre_ope_id))
+```
+
+
+
+
+
+
+
 ```{r Visualisation tableau "ope_indicateur"}
 #Représentation graphique du tableau 
 ope_indicateur%>%
@@ -339,5 +361,6 @@ ope_indicateur%>%
 ```{r Sauvegarde}
 # SAUVEGARDE ----
 save(ope_indicateur,
+     mei_ope_selection_t,
      file = "../processed_data/assemblage_tab_par_ope.rda")
 ```
