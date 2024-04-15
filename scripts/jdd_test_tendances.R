@@ -180,6 +180,8 @@ mcmc.out <- mod_popgrow(don_capture,
                         n_burnin = 2000)
 
 
+plot(mcmc.out$mcmc_chain$chain1)
+
 #--------------------------------------------------------------------------------------------
 ## Sous-échantillonnage des points de prélèvement pour la biomasse
 don_biomasse <- don_capture %>%
@@ -192,7 +194,7 @@ don_biomasse <- don_capture %>%
 
 
 # Modélisation de la croissance à partir des effectifs et de la biomasse
-mcmc.out <- mod_popgrow(don_biomasse, 
+mcmc.out2 <- mod_popgrow(don_biomasse, 
                         var_id = "pop_id",
                         var_tmp = "annee",
                         var_tax = "esp_code_alternatif",
