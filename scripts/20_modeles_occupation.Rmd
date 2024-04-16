@@ -9,14 +9,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Modèles d'occupation
+# Modèles d'occupation
 
-La première étape est de transformer le jeu de données en détection / non détection (présence / absence d'un espèce : TRUE / FALSE) sur un site donné. Le premier modèle tester est un modèle d'occupation d'une seule espèce (donc à l'espèce).
+On souhaite ici appliquer le package "spOccupancy": On souhaite structurer notre jeu de données de la même manière afin de pouvoir réaliser les mêmes analyses avec nos données ASPE Bretagne.La première étape est de transformer le jeu de données en détection / non détection (présence / absence d'un espèce : TRUE / FALSE) sur un site donné. Le premier modèle tester est un modèle d'occupation d'une seule espèce (donc à l'espèce).
 
 
-# Installation 
+## Installation 
 
-## Chargement des packages, fonctions et des données 
+### Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
 ## Chargement des packages ----
@@ -55,18 +55,14 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 # Constitution du jeu de données
 
 On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
-Réalisation pour le Brochet (BRO) : 
+Réalisation pour le Brochet (BRO) dans un premier temps: "Extract Detection-nondetection Data"
 
-```{r ABS PRE pour BRO}
+```{r Paramétrage ABS PRE espèce}
 mon_espece <- "BRO"
+```
 
-point_prelevement_t <- point_prelevement %>% 
-  select(pop_id,
-         pop_coordonnees_x,
-         pop_coordonnees_y) %>% 
-  rename (V1 = pop_coordonnees_x,
-          V2 = pop_coordonnees_y)
 
+```{r Pré-traitements création df ABS PRE pour BRO}
 ope_ind <- ope_indicateur %>% 
   filter(indicateur == "densite_surface") %>% 
   select (ope_id,
@@ -80,8 +76,10 @@ mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>%
   distinct() %>% 
   rename(ope_id = Var1,
          esp_code_alternatif = Var2)
+```
 
 
+```{r Création df ABS PRE pour BRO}
 y <- mes_combinaisons %>% 
   left_join(y = ope_ind) %>% 
   mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
@@ -100,8 +98,14 @@ y <- mes_combinaisons %>%
   pivot_wider(names_from = annee,
               values_from = presence) %>% 
   arrange(pop_id)
+```
 
 
+## Covariables d'occurrence : 
+
+Les covariables d’occurrence sont stockées sous forme de matrice ou de base de données, avec des lignes correspondant aux sites et des colonnes correspondant aux différentes covariables que nous souhaitons inclure dans le modèle. Ici, nous avons une seule covariable (elev) et nous la convertissons en une base de données dans le bloc de code suivant.
+
+```{r Détermination co-variables occurrence part 1}
 occ.covs <- ope_selection_param_env %>% 
   group_by(pop_id, parametre) %>% 
   summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
@@ -110,8 +114,10 @@ occ.covs <- ope_selection_param_env %>%
   pivot_wider(names_from = parametre,
               values_from = valeur) %>% 
   arrange(pop_id)
-  
+```
 
+
+```{r Détermination co-variables occurrence part 2}
 test <- ope_selection %>% 
   mutate(jour = lubridate::yday(ope_date)) %>% 
   mutate(protocole = as.factor(pro_libelle),
@@ -136,7 +142,10 @@ protocole <- test %>%
   arrange(pop_id)
 
 modele_bro <- list()
+```
 
+
+```{r Application des co-variables}
 modele_bro$y <- y
 modele_bro$occ.covs <- occ.covs
 modele_bro$det.covs$jour <- jour
@@ -144,7 +153,7 @@ modele_bro$det.covs$protocole <- protocole
 ```
 
 
-```{r}
+```{r Etablissement des formules}
 bro.occ.formula <- ~ scale(profondeur) + scale(pente) + scale(temp_juillet)
 bro.det.formula <- ~ scale(jour) + scale(protocole) + I(scale(jour)^2)
 ```
@@ -183,15 +192,24 @@ out <- PGOcc(occ.formula = bro.occ.formula,
 ```
 
 
-```{r}
+Représentation visuelle des résultats : 
+Pour 'beta' : 
+
+```{r Représentation plot beta}
 plot(out, 'beta', density = FALSE) # Occupancy parameters.
 ```
-```{r}
+
+
+Pour 'alpha' : 
+
+```{r Représentation plot alpha}
 plot(out, 'alpha', density = FALSE) # Detection parameters.
 ```
 
 
-```{r}
+# Sauvegarde
+
+```{r Sauvegarde}
 save(ope_indicateur,
      modele_bro,
      file = "../processed_data/modeles_occupation.rda")

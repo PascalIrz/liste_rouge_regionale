@@ -3,6 +3,9 @@ title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
 subtitle: "Modélisation de la croissance démographique des espèces de poissons d'eau douce de Bretagne"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  mes_especes: r c("ANG","LOF", "BRO") # Sélection des espèces à introduire dans les modèles
+  mes_stations: r c("12436", "11290", "12402", "11743", "12291", "10468", "10734") # Sélection des stations à introduire dans les modèles
 ---
 
 ```{r setup, include=FALSE}
@@ -16,26 +19,6 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
-
-
-
-Partie à supprimer après travail emmanuelle 
-
-```{r}
-mei_ope_selection_t <- mei_ope_selection %>% 
-  mef_ajouter_ope_date() %>% 
-  mef_ajouter_ope_saison() 
-
-mei_ope_selection_t <- mei_ope_selection_t %>% 
-    left_join(y=prelevement_elementaire %>% 
-              select(pre_id,
-                     ope_id = pre_ope_id))
-```
-
-
-
-
-
 
 
 # Installation 
@@ -59,20 +42,20 @@ library(popdynmodel)
 
 
 ```{r Chargement des sauvegardes}
-load(file = "processed_data/modeles_occupation.rda")  # Chemin d'accès à adapter avec le fichier rda
-load(file = "processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/modeles_occupation.rda")  # Chemin d'accès à adapter avec le fichier rda
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
 ```
 
 
 ```{r Chargement des données}
 # Chargement des données ----
 rdata_tables <- misc_nom_dernier_fichier(
-  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 load(rdata_tables)
 
 mei_table <- misc_nom_dernier_fichier(
-  repertoire = "../../../projets/ASPE/raw_data/rdata",
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
 load(mei_table)
 
@@ -81,13 +64,45 @@ load(mei_table)
 
 ## Traitement des données 
 
+Je formate dans un premier temps mon dataframe "mei_ope_selection" en y ajoutant et sélectionnant seulement les données nécessaires dans mes futures analyses : 
+
+```{r Ajout données tab mei_ope_selection}
+mei_ope_selection_t <- mei_ope_selection %>% 
+  mef_ajouter_ope_date() %>% 
+  mef_ajouter_ope_saison() 
+
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+    left_join(y=prelevement_elementaire %>% 
+              select(pre_id,
+                     ope_id = pre_ope_id))
+```
+
+
+```{r Tri des données tab mei_ope_selection}
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+  select(-a,
+         -b,
+         -source,
+         -tyl_libelle,
+         -tlo_libelle,
+         -espece_presence_lrr_2015,
+         -taille_maturite,
+         -n_etudes,
+         -mini,
+         -maxi,
+         -ope_id_wama,
+         -ope_code_wama,
+         -ope_pop_id)
+```
+
+
 Pour facilité les analyses (chronophages), on réduit le jeu de données : sélection de 3 espèces, 1 seul stade (indifférencié) et 7 stations sur les 43 proposées :
 
 ```{r Paramètres espèces et stations}
 
-mes_especes <- c("ANG", "LOF", "BRO")
-mes_stations <- c("12436", "11290", "12402","11743", "12291",
-                  "10468","10734")
+# mes_especes <- c("ANG", "LOF", "BRO")
+# mes_stations <- c("12436", "11290", "12402","11743", "12291",
+#                   "10468","10734")
 
 ```
 
