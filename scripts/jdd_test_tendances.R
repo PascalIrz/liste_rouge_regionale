@@ -175,12 +175,19 @@ mcmc.out <- mod_popgrow(don_capture,
                         var_tax = "esp_code_alternatif",
                         var_cnt = "effectif",
                         var_surf = "ope_surface_calculee",
-                        n_iter = 10200,
+                        n_iter = 1005000,
                         n_thin = 100,
-                        n_burnin = 2000)
+                        n_burnin = 5000)
 
 
-plot(mcmc.out$mcmc_chain$chain1)
+library(mcmcplots)
+
+denplot(mcmc.out$mcmc_chain)
+
+
+plot(mcmc.out$mcmc_chain$chain2)
+
+
 
 #--------------------------------------------------------------------------------------------
 ## Sous-échantillonnage des points de prélèvement pour la biomasse

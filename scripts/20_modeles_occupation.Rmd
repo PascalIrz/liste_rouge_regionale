@@ -14,13 +14,11 @@ knitr::opts_chunk$set(echo = TRUE)
 La première étape est de transformer le jeu de données en détection / non détection (présence / absence d'un espèce : TRUE / FALSE) sur un site donné. Le premier modèle tester est un modèle d'occupation d'une seule espèce (donc à l'espèce).
 
 
-
 # Installation 
 
 ## Chargement des packages, fonctions et des données 
 
-```{r Chargement des packages, données et fonctions}
-
+```{r Chargement des packages}
 ## Chargement des packages ----
 library(ggthemes)
 library(tidyverse)
@@ -36,29 +34,30 @@ library(ggh4x)
 library(spOccupancy)
 library(coda)
 library(stars)
+```
 
 
-## Chargement des données ----
+```{r Chargement des sauvegardes}
+## Chargement des sauvegardes ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
+```
 
 
-
+```{r Chargement des palettes de couleurs}
 # Définition des couleurs de l'OFB en format RGB
 pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
 ```
 
+
 # Constitution du jeu de données
 
 On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
+Réalisation pour le Brochet (BRO) : 
 
-Pour le Brochet : 
-
-```{r}
-
-
+```{r ABS PRE pour BRO}
 mon_espece <- "BRO"
 
 point_prelevement_t <- point_prelevement %>% 
@@ -184,206 +183,6 @@ out <- PGOcc(occ.formula = bro.occ.formula,
 ```
 
 
-
-
-Pour l'anguille : 
-
-
-```{r}
-mon_espece <- "ANG"
-
-point_prelevement_t <- point_prelevement %>% 
-  select(pop_id,
-         pop_coordonnees_x,
-         pop_coordonnees_y) %>% 
-  rename (V1 = pop_coordonnees_x,
-          V2 = pop_coordonnees_y)
-
-ope_ind <- ope_indicateur %>% 
-  filter(indicateur == "densite_surface") %>% 
-  select (ope_id,
-          esp_code_alternatif
-           ) %>% 
-  unique() %>% 
-  mutate (presence = 1)
-
-
-mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
-  distinct() %>% 
-  rename(ope_id = Var1,
-         esp_code_alternatif = Var2)
-
-
-y <- mes_combinaisons %>% 
-  left_join(y = ope_ind) %>% 
-  mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
-  left_join(y = ope_selection %>% 
-              select(ope_id,
-                     pop_id,
-                     annee
-                    # ope_date
-                     )) %>% 
-              select(-ope_id) %>% 
-              distinct() %>% 
-#  mutate(annee = paste0("a_", annee)) %>% 
-  filter(esp_code_alternatif == mon_espece) %>% 
-  select(-esp_code_alternatif) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = presence) %>% 
-  arrange(pop_id)
-
-
-occ.covs <- ope_selection_param_env %>% 
-  group_by(pop_id, parametre) %>% 
-  summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  mutate(valeur = log10(valeur)) %>% 
-  pivot_wider(names_from = parametre,
-              values_from = valeur) %>% 
-  arrange(pop_id)
-  
-
-test <- ope_selection %>% 
-  mutate(jour = lubridate::yday(ope_date)) %>% 
-  mutate(protocole = as.factor(pro_libelle),
-         protocole = as.integer(protocole)) %>% 
-  select(pop_id,
-         annee,
-         jour,
-         protocole)
-
-jour <- test %>% 
-  select(-protocole) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = jour) %>% 
-  arrange(pop_id)
-
-protocole <- test %>% 
-  select(-jour) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = protocole) %>% 
-  arrange(pop_id)
-
-modele_ang <- list()
-
-modele_ang$y <- y
-modele_ang$occ.covs <- occ.covs
-modele_ang$det.covs$jour <- jour
-modele_ang$det.covs$protocole <- protocole
-```
-
-Pour la loche : 
-
-
-```{r}
-mon_espece <- "LOF"
-
-point_prelevement_t <- point_prelevement %>% 
-  select(pop_id,
-         pop_coordonnees_x,
-         pop_coordonnees_y) %>% 
-  rename (V1 = pop_coordonnees_x,
-          V2 = pop_coordonnees_y)
-
-ope_ind <- ope_indicateur %>% 
-  filter(indicateur == "densite_surface") %>% 
-  select (ope_id,
-          esp_code_alternatif
-           ) %>% 
-  unique() %>% 
-  mutate (presence = 1)
-
-
-mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
-  distinct() %>% 
-  rename(ope_id = Var1,
-         esp_code_alternatif = Var2)
-
-
-y <- mes_combinaisons %>% 
-  left_join(y = ope_ind) %>% 
-  mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
-  left_join(y = ope_selection %>% 
-              select(ope_id,
-                     pop_id,
-                     annee
-                    # ope_date
-                     )) %>% 
-              select(-ope_id) %>% 
-              distinct() %>% 
-#  mutate(annee = paste0("a_", annee)) %>% 
-  filter(esp_code_alternatif == mon_espece) %>% 
-  select(-esp_code_alternatif) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = presence) %>% 
-  arrange(pop_id)
-
-
-occ.covs <- ope_selection_param_env %>% 
-  group_by(pop_id, parametre) %>% 
-  summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  mutate(valeur = log10(valeur)) %>% 
-  pivot_wider(names_from = parametre,
-              values_from = valeur) %>% 
-  arrange(pop_id)
-  
-
-test <- ope_selection %>% 
-  mutate(jour = lubridate::yday(ope_date)) %>% 
-  mutate(protocole = as.factor(pro_libelle),
-         protocole = as.integer(protocole)) %>% 
-  select(pop_id,
-         annee,
-         jour,
-         protocole)
-
-jour <- test %>% 
-  select(-protocole) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = jour) %>% 
-  arrange(pop_id)
-
-protocole <- test %>% 
-  select(-jour) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = protocole) %>% 
-  arrange(pop_id)
-
-modele_lof <- list()
-
-modele_lof$y <- y
-modele_lof$occ.covs <- occ.covs
-modele_lof$det.covs$jour <- jour
-modele_lof$det.covs$protocole <- protocole
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-summary(out)
-```
-
 ```{r}
 plot(out, 'beta', density = FALSE) # Occupancy parameters.
 ```
@@ -392,31 +191,9 @@ plot(out, 'alpha', density = FALSE) # Detection parameters.
 ```
 
 
-
-```{r}
-mei_ope_selection_t <- mei_ope_selection_t %>% 
-  select(-a,
-         -b,
-         -source,
-         -tyl_libelle,
-         -tlo_libelle,
-         -espece_presence_lrr_2015,
-         -taille_maturite,
-         -n_etudes,
-         -mini,
-         -maxi,
-         -ope_id_wama,
-         -ope_code_wama,
-         -ope_pop_id)
-```
-
-
 ```{r}
 save(ope_indicateur,
-     mei_ope_selection_t,
-     modele_ang,
      modele_bro,
-     modele_lof,
      file = "../processed_data/modeles_occupation.rda")
 ```
 

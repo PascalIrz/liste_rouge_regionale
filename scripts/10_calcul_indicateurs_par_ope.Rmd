@@ -18,7 +18,8 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 10_calcul_indicateurs_par_ope
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+10_calcul_indicateurs_par_ope
 
 
 Ce script permet de constituer les premiers tableaux de données nécessaires à la
@@ -29,8 +30,7 @@ préparation des analyses temporelles. Plusieurs indicateurs seront calculés à
 
 ## Chargement des packages, fonctions et des données
 
-```{r Chargement des packages, données et fonctions}
-
+```{r Chargement des packages}
 ## Chargement des packages ----
 library(tidyverse)
 library(aspe)
@@ -38,14 +38,20 @@ library(ggplot2)
 library(ggthemes)
 library(dplyr)
 library(readxl)
+```
 
 
-## Chargement des données ----
+```{r Chargement des données}
+## Chargement des données pré-enregistrées ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
 load(file = "../processed_data/pre_traitements_donnees_especes.rda")
+```
 
+
+```{r Chargement des tables ASPE}
+#Chargement des tables ASPE ----
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
@@ -55,7 +61,10 @@ mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
 load(mei_table)
+```
 
+
+```{r Chargement des fonctions}
 ## Chargement des fonctions ----
 source(file = "../R/calcul_biomasse.R")
 source(file = "../R/calcul_50_percentile.R")
@@ -73,7 +82,7 @@ source(file = "../R/calcul_densite_surface.R")
 
 ### Effectif total des espèces par opération de pêche
 
-```{r Création tableau effectif total par ope}
+```{r Creation tableau effectif total par ope}
 ope_effectif <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
@@ -198,7 +207,7 @@ ope_densite_vol<- left_join(ope_param_profondeur, densite_surf, by = "ope_id") %
 ### Pourcentage de juvéniles par opération
 
 !! ATTENTION !! : Ici je n'ai pas réussie à mettre en fonction ! 
-```{r Création dataframe pour l'indicateur pourcentage_juv}
+```{r Création dataframe pour indicateur pourcentage_juv}
 ope_pc_juv <- ope_effectif %>%
   mutate(indicateur = "pourcentage_juveniles")
 ```
@@ -225,6 +234,7 @@ ope_pc_juv <- ope_pc_juv %>%
 ### Longueur médiane
 
 Calcul des longueurs médianes des tailles des individus par opération : Création de la fonction "calcul_50_percentile" : 
+
 ```{r Calcul longueur médiane mei}
 ope_lm <- calcul_50_percentile(mei_ope_selection,
                                mei_taille,
@@ -237,9 +247,11 @@ ope_lm <- calcul_50_percentile(mei_ope_selection,
 ### Ecart interquartile
 
 Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" : 
+
 ```{r Calcul Ecart interquartile longueurs médianes}
 ope_ecart_inter <- calcul_ecart_inter(mei_ope_selection,
-                                      mei_taille,ope_id,
+                                      mei_taille,
+                                      ope_id,
                                       esp_code_alternatif, 
                                       stade)
 ```
@@ -284,11 +296,12 @@ reg_pc_presence_esp <- combinaisons %>%
   left_join(ope_biomasse1, by = c("esp_code_alternatif", "ope_id")) %>%
   mutate(present = !is.na(indicateur)) %>%
   group_by(esp_code_alternatif) %>%
-  mutate(stade = "ind",
-         indicateur = "pourcentage_presence_esp",
-         valeur = sum(present) / n_distinct(ope_id) *100) %>% 
+  mutate(
+    stade = "ind",
+    indicateur = "pourcentage_presence_esp",
+    valeur = sum(present) / n_distinct(ope_id) * 100
+  ) %>%
   select(-present)
-  
 
 # Affichage du résultat
 print(reg_pc_presence_esp)
@@ -318,37 +331,16 @@ ope_indicateur <- ope_indicateur %>%
                      pop_id= ope_pop_id,
                      ope_date)) %>% 
   mef_ajouter_ope_date() %>% 
-    select(ope_id, 
-         esp_code_alternatif,
-         indicateur,
-         valeur,
-         stade,
-         pop_id,
-         annee)
+    select(ope_id,
+           esp_code_alternatif,
+           indicateur,
+           valeur,
+           stade,
+           pop_id,
+           annee)
 ```
 
-
-
-Partie à supprimer après travail emmanuelle 
-```{r}
-
-mei_ope_selection_t <- mei_ope_selection %>% 
-  mef_ajouter_ope_date() %>% 
-  mef_ajouter_ope_saison() 
-
-
-
-mei_ope_selection_t <- mei_ope_selection_t %>% 
-    left_join(y=prelevement_elementaire %>% 
-              select(pre_id,
-                     ope_id = pre_ope_id))
-```
-
-
-
-
-
-
+Visualisation du tableau final de données
 
 ```{r Visualisation tableau "ope_indicateur"}
 #Représentation graphique du tableau 
@@ -356,11 +348,12 @@ ope_indicateur%>%
   DT::datatable(rownames = FALSE)
 ```
 
+
 # Sauvegarde
 
 ```{r Sauvegarde}
 # SAUVEGARDE ----
 save(ope_indicateur,
-     mei_ope_selection_t,
+     mei_ope_selection,
      file = "../processed_data/assemblage_tab_par_ope.rda")
 ```
