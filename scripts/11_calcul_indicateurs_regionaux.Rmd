@@ -16,7 +16,8 @@ knitr::opts_chunk$set(echo = TRUE,
 ```
 
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 11_calcul_indicateurs_regionaux
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+11_calcul_indicateurs_regionaux
 
 Pour les indicateurs calculés au point, on agrège chaque année leur valeur à l'échelle régionale. Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale, comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
 
@@ -25,8 +26,7 @@ Pour les indicateurs calculés au point, on agrège chaque année leur valeur à
 
 ## Chargement des packages, fonctions et des données 
 
-```{r Chargement des packages, données et fonctions}
-
+```{r Chargement des packages}
 ## Chargement des packages ----
 library(ggthemes)
 library(tidyverse)
@@ -36,33 +36,40 @@ library (khroma)
 library(dplyr)
 library(wesanderson)
 library(zoo)
+library(gt)
 library(lemon)
 library(trend)
 library(ggh4x)
+library(purrr)
+```
 
 
+```{r Chargement des données}
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
+```
 
-# rdata_tables <- misc_nom_dernier_fichier(
-#   repertoire = "../../../../projets/ASPE/raw_data/rdata",
-#   pattern = "^tables")
-# load(rdata_tables)
 
+```{r Chargement des fonctions}
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
 source(file = "../R/calcul_taux_evolution.R")
+source(file = "../R/calcul_glm.R")
+```
 
+
+```{r Chargement de la palette de couleur}
 # Définition des couleurs de l'OFB en format RGB
 pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
 ```
 
+
 # Constitution du jeu de données
 
-### Taux d'occurrence
+## Taux d'occurrence
 
 On calcul le taux d'occurrence des espèces : 
 
@@ -88,9 +95,9 @@ taux_occ <- occur %>%
 ```
 
 
-## Echelle régionale
+# Indicateurs à l'Echelle régionale
 
-```{r, fig.height = 55, fig.width = 10}
+```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 reg_indicateur <- ope_indicateur %>%
   group_by(esp_code_alternatif, annee, indicateur, stade) %>%
@@ -102,7 +109,7 @@ reg_indicateur <- ope_indicateur %>%
   distinct()
 ```
 
-```{r}
+```{r Construction tab reg_indicateur part 2}
 taux_occ <- taux_occ %>% 
   select(names(reg_indicateur))
 
@@ -111,10 +118,10 @@ reg_indicateur <- reg_indicateur %>%
 
 ```
 
-```{r, fig.height = 26, fig.width = 10}
+```{r Representation graphique des données, fig.height = 26, fig.width = 10}
 # Représentation graphique des données : 
 
-graphique <- reg_indicateur %>%
+reg_indicateur_graph <- reg_indicateur %>%
   ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
   geom_point() +
   geom_smooth(se = FALSE) +
@@ -132,7 +139,7 @@ graphique <- reg_indicateur %>%
         panel.grid.minor = element_line(color = "lightgrey"),
         axis.text.x = element_text(angle = 45))
 
-print(graphique)
+print(reg_indicateur_graph)
 
 ```
 
@@ -141,7 +148,7 @@ print(graphique)
 
 Il s'agit d'observer les différentes tendances présentes sur les indicateurs précedement établis. 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r Fonction mk_st_by_group, fig.height = 25, fig.width = 10}
 tendance_indicateur <- mk_st_by_group(ope_indicateur,
                                       var_x = annee,
                                       var_y = valeur,
@@ -153,7 +160,7 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r Représentation graphique tendance_indicateur ad, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "ad") %>% 
@@ -182,7 +189,7 @@ tendance_indicateur %>%
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r Représentation graphique tendance_indicateur juv, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          stade == "juv") %>% 
@@ -211,7 +218,7 @@ tendance_indicateur %>%
 ```
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r Représentation graphique tendance_indicateur ind, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
          indicateur!="pourcentage_presence_esp",
@@ -241,12 +248,12 @@ tendance_indicateur %>%
 ```
 
 
-### Taux d'Evolution
+## Taux d'Evolution
 
 On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
 
-```{r}
-# Taux d'évolution du taux d'occurence de densité de surface : 
+```{r Calcul des taux evolution}
+# Calcul des taux d'évolution depuis 1990
 
 taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
@@ -261,14 +268,17 @@ print(taux_evol_1990)
 
 
 
-```{r, fig.height = 25, fig.width = 10}
+```{r Définition des seuils et couleurs taux evol, fig.height = 25, fig.width = 10}
 # Définition des seuils et des couleurs correspondantes
 seuils <- c(0.55, 0.99, 1.01, 1.25)
 couleurs <- c("#CB2027", "#DDDDDD","#8fd175")
 n <- length(seuils)
+```
 
+
+```{r Représentation graphique taux evol, fig.height = 25, fig.width = 10}
 # Représentation graphique :
-graph_taux_evol <- taux_evol_1990 %>%
+taux_evol_graph <- taux_evol_1990 %>%
   ggplot(aes(x = reorder(stade, mean_geom), y = mean_geom, color = stade)) +
   geom_point(shape = 19) +
   geom_line(aes(group = stade)) +
@@ -283,34 +293,40 @@ graph_taux_evol <- taux_evol_1990 %>%
                      name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile"))
 
 
-
  for (i in 1:(n-1)) {
-   graph_taux_evol <- graph_taux_evol +
+   taux_evol_graph <- taux_evol_graph +
      annotate("rect", xmin = -Inf, xmax = Inf, ymin = seuils[i], ymax = seuils[i+1], fill = couleurs[i], alpha = 0.1)
  }
 
-print(graph_taux_evol)
+print(taux_evol_graph)
 
 ```
+### Vérification des taux d'évolutions obtenus 
 
+On souhaite ici avoir une vérification de la cohérence des données obtenues sur les taux d'évolution, on souhaite alors regarder les taux d'évolution sur un paramètres particulier : les effectifs. 
 
-```{r}
+```{r Pré traitement des données testées pour vérif taux évolution 1990}
+# Sélection de l'indicateur souhaité pour la vérification
 indicateur_sel <- "effectif_total"
 
+# On regarde les taux d'évolution seulement pour le stade "indiférencié"
 taux_evol_eff <- taux_evol_1990 %>% 
   filter (indicateur == indicateur_sel,
           stade == "ind")
+```
 
 
-
+```{r Pré traitemenent part 2}
 tendance_indicateur_eff <- tendance_indicateur %>% 
   filter (indicateur == indicateur_sel,
           stade == "ind") %>% 
   select(-pop_id) %>% 
   group_by(esp_code_alternatif) %>% 
   mutate(med_Sen = median(sens_slope))
+```
 
 
+```{r Construction final du tableau tendance_indicateur_eff pour la vérif}
 tendance_indicateur_eff <- tendance_indicateur_eff %>% 
   left_join(taux_evol_eff) %>% 
   select (esp_code_alternatif,
@@ -320,7 +336,8 @@ tendance_indicateur_eff <- tendance_indicateur_eff %>%
 ```
 
 
-Observation de ce qu'il se passe au niveau des taux d'évol
+Observation de ce qu'il se passe au niveau des taux d'évolution : On s'attend, sur le graphique produit, à avoir les données d'espèces d'aligner sur une droite : 
+
 ```{r}
 tendance_indicateur_gra <- tendance_indicateur_eff %>% 
   filter(!esp_code_alternatif %in% c("FLE", "MUP", "PLI", "LPR", "ALF" )) %>%  # On retire les espèces qui ont trop peu de données pour être évaluées
@@ -328,30 +345,29 @@ tendance_indicateur_gra <- tendance_indicateur_eff %>%
   geom_smooth(method = "lm", se = TRUE) + 
   geom_point() + 
   geom_hline(yintercept = 0,
-             linetype = "dotted")+
+             linetype = "dotted") +
   geom_vline(xintercept = 1,
-             linetype = "dotted")+
- # geom_text(hjust = 0.5, vjust = 1.3) + 
+             linetype = "dotted") +
   ggrepel::geom_text_repel()
  
-
 print(tendance_indicateur_gra)
 ```
 
 
 
-Je travail ici sur des modèles linéiares généralisés :
-Distribution de Y : Gaussienne
+# Modèles Linéaires Généralisés (GLM) :
 
-Je réalise des pré-traitement pour : 
-1) Transformer les valeurs de densités (surface et volume) en log : 
+Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
 
-```{r}
+
+Transformer les valeurs de densités (surface et volume) en log pour les analyses (car les valeurs sont parfois très élevées) : 
+
+```{r Transformation données densités en log}
 data <- ope_selection %>% 
   select(ope_id,
          pro_libelle) 
 
-test_ope_indicateur <- ope_indicateur %>% 
+glm_ope_indicateur <- ope_indicateur %>% 
   mutate (valeur_l = ifelse (grepl("densite", indicateur),
                                log(1 + valeur),
                                valeur)) %>%  
@@ -360,39 +376,37 @@ test_ope_indicateur <- ope_indicateur %>%
 
 
 
-2) Exclure du jeu de données les lignes avec moins de 5 années de données : 
+Exclure du jeu de données les lignes avec moins de 5 années de données (données trop peu robuste pour réaliser une analyse) : 
 
-
-```{r}
-
+```{r Paramétrage années minimum GLM}
 nb_annee_glm <- 5
+```
 
 
-test_ope_indicateur <- test_ope_indicateur %>%
+```{r Construction tableau glm_ope_indicateur}
+glm_ope_indicateur <- glm_ope_indicateur %>%
   group_by(esp_code_alternatif, indicateur, stade) %>%
   filter(n_distinct(annee) >= nb_annee_glm) %>%
   ungroup() %>% 
   select(-valeur)
-
 ```
 
-Je fais un essaie individuel : 
 
-```{r}
-source(file = "../R/calcul_glm.R")
+## Réalisation GLM (Individuel)
 
+```{r Réalisation GLM Individuel}
 mon_espece <- "ANG"
 mon_stade <- "ind"
 mon_indicateur <- "densite_volumique"
 
-test_data_ang_ind <- test_ope_indicateur %>% 
+glm_data_ang <- glm_ope_indicateur %>% 
   ungroup() %>% 
   filter(indicateur == mon_indicateur,
          esp_code_alternatif == mon_espece,
          stade == mon_stade)
 
-test_ang_ind <- calcul_glm_non_groupe(test_data_ang_ind)
-test_ang_ind <- test_ang_ind %>% 
+glm_ang <- calcul_glm_non_groupe(glm_data_ang)
+glm_ang <- glm_ang %>% 
   mutate(esp_code_alternatif = "ANG",
          stade = "ind",
          indicateur = "densite_volumique")
@@ -400,15 +414,13 @@ test_ang_ind <- test_ang_ind %>%
 ```
 
 
-Je le fais pour tous : 
-```{r}
-library(purrr)
+## Réalisation GLM (Collectif)
 
-combinaisons <- unique(select(test_ope_indicateur, esp_code_alternatif, stade, indicateur))
+```{r Realisation GLM collectif}
+combinaisons_glm_coll <- unique(select(glm_ope_indicateur, esp_code_alternatif, stade, indicateur))
 
-# Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
-resultats_glm <- combinaisons %>%
-  pmap_dfr(~calcul_glm_non_groupe(test_ope_indicateur %>%
+glm_collectif <- combinaisons_glm_coll %>%  # Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
+  pmap_dfr(~calcul_glm_non_groupe(glm_ope_indicateur %>%
                                     filter(esp_code_alternatif == ..1 & stade == ..2 & indicateur == ..3)) %>%
              mutate(esp_code_alternatif = ..1, 
                      stade = ..2, 
@@ -425,10 +437,11 @@ resultats_glm <- combinaisons %>%
 
 ```
 
-```{r, fig.height = 5, fig.width = 10}
 
-resultats_glm <- resultats_glm %>%
-  filter(esp_code_alternatif %in% c("LOF", "ANG", "BRO")) %>%
+Représentation visuelle des résultats GLM collectif
+
+```{r Attribution significativité Tab GLM, fig.height = 5, fig.width = 10}
+glm_collectif <- glm_collectif %>%
   mutate(significativité = case_when(
     glm_pvalue <= 0.001 ~ '***',
     glm_pvalue <= 0.01 ~ '**',
@@ -436,16 +449,11 @@ resultats_glm <- resultats_glm %>%
     glm_pvalue <= 0.1 ~ '.',
     TRUE ~ ' '
   ))
+```
 
 
-# resultats_glm_test <- resultats_glm %>% 
-#   select(-glm_pvalue) %>% 
-#   filter(significativité == "***")
-
-
-library(gt)
-
-resultats_glm %>%
+```{r Représentation Tab GLM, fig.height = 5, fig.width = 10}
+glm_collectif %>%
   gt() %>%
   tab_header(
     title = "Résultats des modèles GLM",
@@ -455,39 +463,4 @@ resultats_glm %>%
     columns = vars(glm_intercept, glm_annee, glm_pvalue),
     decimals = 3
   )
-
-
 ```
-
-
-```{r, fig.height = 25, fig.width = 10}
-# resultats_glm_test <- resultats_glm_test %>%
-#   pivot_longer(cols = starts_with("glm_"), 
-#                names_to = "glm_data",
-#                values_to = "glm_valeur") %>% 
-#   select (- significatif,
-#           significativité)
-# 
-# 
-# graph_glm <- resultats_glm_test %>% 
-#   ggplot(aes(x= esp_code_alternatif, 
-#              y = glm_valeur,
-#              fill = esp_code_alternatif,
-#              colour = esp_code_alternatif)) +
-#   geom_boxplot(alpha=0.5, outlier.alpha=0) +
-#   geom_jitter() +
-#   facet_grid2(indicateur ~ glm_data, 
-#               scales = "free", 
-#               independent = "y") +
-#   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-#         legend.position = "bottom",
-#         panel.background = element_rect(fill="#faf0e0"),
-#         panel.grid.major = element_line(color="lightgrey", size = 0.1),
-#         panel.grid.minor = element_line(color = "lightgrey"),
-#         axis.text.x = element_text(angle = 45))
-#   
-# 
-# print(graph_glm)
-```
-
-

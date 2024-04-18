@@ -175,9 +175,18 @@ mcmc.out <- mod_popgrow(don_capture,
                         var_tax = "esp_code_alternatif",
                         var_cnt = "effectif",
                         var_surf = "ope_surface_calculee",
-                        n_iter = 10200,
+                        n_iter = 1005000,
                         n_thin = 100,
-                        n_burnin = 2000)
+                        n_burnin = 5000)
+
+
+library(mcmcplots)
+
+denplot(mcmc.out$mcmc_chain)
+
+
+plot(mcmc.out$mcmc_chain$chain2)
+
 
 test <- mcmc.out$mcmc_summary
 plot(mcmc.out$mcmc_summary)
@@ -203,7 +212,7 @@ don_biomasse <- don_capture %>%
 
 
 # Modélisation de la croissance à partir des effectifs et de la biomasse
-mcmc.out <- mod_popgrow(don_biomasse, 
+mcmc.out2 <- mod_popgrow(don_biomasse, 
                         var_id = "pop_id",
                         var_tmp = "annee",
                         var_tax = "esp_code_alternatif",

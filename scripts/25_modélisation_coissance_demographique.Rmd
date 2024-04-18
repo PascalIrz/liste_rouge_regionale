@@ -4,12 +4,17 @@ subtitle: "Modélisation de la croissance démographique des espèces de poisson
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
+<<<<<<< HEAD
   mes_especes_1: !r c("ANG","ALA", "BRO","SAT") # Sélection des espèces à introduire dans les modèles
   mes_especes_2: !r c("LOF", "ABL", "BRB", "BRE")
   mes_especes_3: !r c("CCO","CHE", "GAR", "GOU", "CHA")
   mes_especes_4: !r c("ROT","VAI", "EPI", "EPT", "VAR")
   mes_especes_5: !r c("PER","LPP", "LPM", "TRF", "TAN")
   mes_stations: !r c("12436", "11290", "12402", "11743", "12291", "10468", "10734") # Sélection des stations à introduire dans les modèles
+=======
+  mes_especes: r c("ANG","LOF", "BRO") # Sélection des espèces à introduire dans les modèles
+  mes_stations: r c("12436", "11290", "12402", "11743", "12291", "10468", "10734") # Sélection des stations à introduire dans les modèles
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
 ---
 
 ```{r setup, include=FALSE}
@@ -42,10 +47,22 @@ library(ggplot2)
 library(dplyr)
 library(nimble)
 library(popdynmodel)
+<<<<<<< HEAD
 library(mcmcplots)
 
 ```
 
+=======
+```
+
+
+```{r Chargement des sauvegardes}
+load(file = "../processed_data/modeles_occupation.rda")  # Chemin d'accès à adapter avec le fichier rda
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+```
+
+
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
 ```{r Chargement des données}
 # Chargement des données ----
 rdata_tables <- misc_nom_dernier_fichier(
@@ -60,6 +77,7 @@ load(mei_table)
 
 ```
 
+<<<<<<< HEAD
 Code afin de pouvoir coder mes noms de fichiers (sorties de modèles bayésien) : 
 
 ```{r Script nom fichier}
@@ -456,10 +474,122 @@ result_esp4 <- mod_popgrow(data_esp_4,
 
 save(result_esp4,
      file = nom_fichier)
+=======
+
+## Traitement des données 
+
+Je formate dans un premier temps mon dataframe "mei_ope_selection" en y ajoutant et sélectionnant seulement les données nécessaires dans mes futures analyses : 
+
+```{r Ajout données tab mei_ope_selection}
+mei_ope_selection_t <- mei_ope_selection %>% 
+  mef_ajouter_ope_date() %>% 
+  mef_ajouter_ope_saison() 
+
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+    left_join(y=prelevement_elementaire %>% 
+              select(pre_id,
+                     ope_id = pre_ope_id))
+```
+
+
+```{r Tri des données tab mei_ope_selection}
+mei_ope_selection_t <- mei_ope_selection_t %>% 
+  select(-a,
+         -b,
+         -source,
+         -tyl_libelle,
+         -tlo_libelle,
+         -espece_presence_lrr_2015,
+         -taille_maturite,
+         -n_etudes,
+         -mini,
+         -maxi,
+         -ope_id_wama,
+         -ope_code_wama,
+         -ope_pop_id)
+```
+
+
+Pour facilité les analyses (chronophages), on réduit le jeu de données : sélection de 3 espèces, 1 seul stade (indifférencié) et 7 stations sur les 43 proposées :
+
+```{r Paramètres espèces et stations}
+
+# mes_especes <- c("ANG", "LOF", "BRO")
+# mes_stations <- c("12436", "11290", "12402","11743", "12291",
+#                   "10468","10734")
 
 ```
 
 
+Je prépare mon jeu de données à appliquer avec ASPE2, en sélectionnant seulement 3 espèces (pour simplifier les analyses dans un premier temps) et 7 stations : 
+
+```{r Réduction mei_ope_selection}
+
+mei_ope_selection_reduit <- mei_ope_selection_t %>% 
+  filter (esp_code_alternatif %in% mes_especes,
+          sta_id %in% mes_stations)
+
+```
+
+
+
+```{r}
+
+# Je pars de mon fichier mei_ope_selection_reduit qui ne contient que les 3 espèces (ANG, LOF et BRO) :
+# J'applique le package ASPE2 pour la préparation des données : 
+
+don <- mei_ope_selection_reduit %>%
+  # ajout de la date et de l'année de chaque opération de pêche
+  # mef_ajouter_ope_date() %>% # -> les données de dates sont déjà présentes dans le jeu de données mei_ope_selection_test
+  # ajout du mois et de la saison de chaque opération de pêche
+  # mef_ajouter_ope_saison() %>%  # -> les données de saison sont déjà présentes dans le jeu de données mei_ope_selection_test
+  # sélection des pêches de printemps et d'automne
+  filter(!is.na(saison)) %>%
+  # ajout des surfaces de pêche
+  # mef_ajouter_surf_calc() %>%    # -> les données de surface sont déjà présentes dans le jeu de données mei_ope_selection_test
+  # ajout des protocoles de pêche
+  # mef_ajouter_type_protocole() %>%     #-> les données de protocole sont déjà présentes dans le jeu de données mei_ope_selection_test
+  # sélection des données selon le protocole de pêche
+  # filter(pro_libelle %in% c("Pêche complète à un ou plusieurs passages","Pêche partielle par points (grand milieu)","Pêche partielle sur berge","Pêche par ambiances")) %>%
+  # ajout du numéro du passage
+  # mef_ajouter_passage() %>%   # -> les données de passage sont déjà présentes dans le jeu de données mei_ope_selection_test
+  # conservation du premier passage de pêche 
+  mutate(pas_numero = replace_na(pas_numero, 1)) %>%
+  filter(pas_numero == 1) #%>%
+# ajout du poids les lots 
+#mef_ajouter_poids() %>%                               #-> les données de poids sont déjà présentes dans le jeu de données mei_ope_selection_test
+# ajout des mesures individuelles
+# mef_ajouter_mei()
+```
+
+
+
+```{r}
+
+
+#############################################################################################
+## Etape 2 : conservation d'une seule opération de pêche par points de prélèvement et par an
+#############################################################################################
+don_operation <- mef_filtrer_operation(don,
+                                       var_id = pop_id,
+                                       var_tmp = annee,
+                                       var_surf = ope_surface_calculee,
+                                       var_pro = pro_libelle,
+                                       var_mei = mei_id,
+                                       default=FALSE) %>%
+  mef_filtrer_operation(var_id = pop_id,
+                        var_tmp = annee,
+                        var_pds = lop_poids,
+                        var_date = mois,
+                        default = TRUE) %>%
+  select(sta_id, pop_id, ope_id, lop_id, annee, pro_libelle) %>%
+  distinct()
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
+
+```
+
+
+<<<<<<< HEAD
 Pour le jeu de données data_esp_5
 
 ```{r}
@@ -476,10 +606,43 @@ result_esp5 <- mod_popgrow(data_esp_5,
 
 save(result_esp5,
      file = nom_fichier)
+=======
+
+```{r}
+#############################################################################################
+## Etape 3 : sélection des points de prélèvements selon la fréquence des opérations de pêche
+#############################################################################################
+## Estimation du nombre d'années de pêche, d'années consécutives sans pêche, de protocoles
+# et de changement de protocoles par points de prélèvement pour chaque combinaison de protocoles
+def_popid <- def_compter_obs(don_operation,
+                             var_id = pop_id,
+                             var_tmp = annee,
+                             var_pro = pro_libelle) 
+
+## Sélection des opérations et des points de prélèvements suivis sur une base annuelle
+# 1 protocole de pêche, 20 années de pêche minimum et 3 années consécutives sans pêche maximum
+don_an <- mef_filtrer_obs(don_operation,
+                          def_popid,
+                          var_id = pop_id,
+                          var_pro = pro_libelle,
+                          min_obs = 20,
+                          max_na_cons = 3,
+                          max_pro = 1)
+
+## Regroupement des opérations et des points de prélèvements sélectionnés
+don_popid <- don_an %>% distinct()
+
+
+
+###########
+# J'ai un problème avec les poids (valeurs manquantes au niveau de l'estimation des poids des lots estimés)
+# Blocage pour la suite des traitements ; en + il manque des ope_id mais je ne sais pas pourquoi ! 
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
 
 ```
 
 
+<<<<<<< HEAD
 La fonction mod popgrow retourne une liste avec les résumés des principales statistiques associées à l’estimation des paramètres demandés (mcmc_summary), les chaînes MCMC (mcmc_chain) et la liste des indices de paramètres (subscript) : 
 
 ```{r}
@@ -517,10 +680,92 @@ temp %>%
   filter(is.na(pop_id)) %>% 
   nrow
   Sys.time()
+=======
+```{r}
+
+#############################################################################################
+## Etape 4 : préparation du jeux de données - capture de l'ensemble de la population
+#############################################################################################
+don_capture <- don_popid %>%
+  # ajouter les informations sur les lots 
+  mef_ajouter_lots() %>%
+  # ajouter les poids des lots 
+  mef_ajouter_poids() %>%
+  # corriger et complèter les poids des lots à partir des mesures individuelles
+  mef_completer_poids() %>%
+  # agréger les effectifs et les poids par taxon, opération de pêche et année
+  summarise(effectif = sum(lop_effectif),
+            poids = sum(lop_poids),
+            poids_estime = sum(lop_poids_estime),
+            .by = c(pop_id,ope_id,annee,esp_code_alternatif)) %>%
+  # ajouter les absences (i.e. non-observation d'un taxon lors d'une opération de pêche sur les points de prélèvement ou celui-ci a été observé au moins une fois)
+  mef_ajouter_absence(var_id = pop_id,
+                      var_taxon = esp_code_alternatif,
+                      var_abs = c(effectif, poids, poids_estime),
+                      var_obs= ope_id) %>%
+  # ajouter les années sans opération de pêche 
+  mef_ajouter_na(var_id = pop_id,
+                 var_taxon = esp_code_alternatif,
+                 var_obs = annee,
+                 vec_obs = 1990:2023) %>%
+  # ajouter les surface de pêche et imputer les valeurs manquantes
+  mef_ajouter_surf_calc() %>%
+  mutate(ope_surface_calculee = ifelse(ope_surface_calculee == 0, NA, ope_surface_calculee)) %>%
+  mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="ope_surface_calculee") %>%
+  mutate(ope_surface_calculee = replace_na(ope_surface_calculee, 1)) %>%
+  # ajouter les protocoles de pêche et imputer les valeurs manquantes
+  mef_ajouter_type_protocole() %>%
+  mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="pro_libelle") 
+
+
+# Modélisation de la croissance à partir des effectifs
+mcmc.out <- mod_popgrow(don_capture, 
+                        var_id = "pop_id",
+                        var_tmp = "annee",
+                        var_tax = "esp_code_alternatif",
+                        var_cnt = "effectif",
+                        var_surf = "ope_surface_calculee",
+                        n_iter = 1005000,
+                        n_thin = 100,
+                        n_burnin = 5000)
+
+
+library(mcmcplots)
+
+denplot(mcmc.out$mcmc_chain)
+
+
+plot(mcmc.out$mcmc_chain$chain2)
+
+
+
+#--------------------------------------------------------------------------------------------
+## Sous-échantillonnage des points de prélèvement pour la biomasse
+don_biomasse <- don_capture %>%
+  # créer la variable biomasse
+  mutate(biomasse = ifelse(is.na(poids), poids_estime, poids)) %>%
+  # supprimer pour chaque taxon les points de prélèvement ne comportant que des 0 et des NA
+  mef_filtrer_presence(var_id = pop_id,
+                       var_taxon = esp_code_alternatif,
+                       var_obs = biomasse) 
+
+
+# Modélisation de la croissance à partir des effectifs et de la biomasse
+mcmc.out2 <- mod_popgrow(don_biomasse, 
+                        var_id = "pop_id",
+                        var_tmp = "annee",
+                        var_tax = "esp_code_alternatif",
+                        var_cnt = "effectif",
+                        var_wei = "biomasse",
+                        var_surf = "ope_surface_calculee")
+
+
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
 ```
 
 
 ```{r}
+<<<<<<< HEAD
 save(result,
      result_esp1,
      result_esp2,
@@ -528,5 +773,41 @@ save(result,
      result_esp4,
      result_esp5,
      file = "../processed_data/modelisation_croissance_demographique_esp_1_2_3_4_5.rda")
+=======
+#############################################################################################
+## Etape 4 : préparation du jeux de données - capture des adultes
+#############################################################################################
+don_capture_adt <- don_popid %>%
+  mef_ajouter_lots() %>%
+  mef_reconstituer_effectif_par_taille() %>%
+  mutate(tlo_id = ifelse(tlo_id %in% c(3,NA), 2, tlo_id)) %>%
+  mef_reconstituer_effectif_par_stade(var_id = c(pop_id,ope_id,annee), var_taxon = esp_code_alternatif) %>%
+  summarise(effectif = sum(std_effectif),
+            .by = c(pop_id,ope_id,annee,esp_code_alternatif,stade)) %>%
+  # ajouter les absences (i.e. non-observation d'un stade d'un taxon lors d'une opération de pêche sur les points de prélèvement ou le taxon a été observé au moins une fois)
+  mef_ajouter_absence(var_id = pop_id,
+                      var_taxon = c(esp_code_alternatif, stade),
+                      var_abs = effectif,
+                      var_obs= ope_id) %>%
+  # sélectionner les captures d'adultes
+  filter(stade %in% "S2") %>%
+  # ajouter les années sans opération de pêche 
+  mef_ajouter_na(var_id = pop_id,
+                 var_taxon = c(esp_code_alternatif,stade),
+                 var_obs = annee,
+                 vec_obs = 1990:2023) %>%
+  # supprimer pour chaque taxon les points de prélèvement ne comportant que des 0 et des NA
+  mef_filtrer_presence(var_id = pop_id,
+                       var_taxon = esp_code_alternatif,
+                       var_obs = effectif) %>%
+  # ajouter les surface de pêche et imputer les valeurs manquantes
+  mef_ajouter_surf_calc() %>%
+  mutate(ope_surface_calculee = ifelse(ope_surface_calculee == 0, NA, ope_surface_calculee)) %>%
+  mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="ope_surface_calculee") %>%
+  mutate(ope_surface_calculee = replace_na(ope_surface_calculee, 1)) %>%
+  # ajouter les protocoles de pêche et imputer les valeurs manquantes
+  mef_ajouter_type_protocole() %>%
+  mef_imputevalue(var_id="pop_id", var_tmp="annee", var_imp="pro_libelle")
+>>>>>>> 4f8f13bb96c3d35fc36fa0fa6686de31a519b31a
 ```
 
