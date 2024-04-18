@@ -179,6 +179,17 @@ mcmc.out <- mod_popgrow(don_capture,
                         n_thin = 100,
                         n_burnin = 2000)
 
+test <- mcmc.out$mcmc_summary
+plot(mcmc.out$mcmc_summary)
+plot(mcmc.out$mcmc_chain$chain1)
+plot(mcmc.out$mcmc_summary)
+
+View(test)
+
+
+
+
+
 
 #--------------------------------------------------------------------------------------------
 ## Sous-échantillonnage des points de prélèvement pour la biomasse
