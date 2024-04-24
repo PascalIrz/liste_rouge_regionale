@@ -1,0 +1,77 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Application des critères de la liste rouge régionale UICN - sélection des espèces"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
+"30_application_criteres_lrr_uicn"
+
+
+Ce script applique la sélection des espèces à traiter pour le renouvellement de la liste rouge régionale à partir des critères de sélection de l'UICN. Selon la méthodologie de l'UICN, chaque espèce ou sous-espèce peut être classée dans l'une des 11 catégories de la liste rouge en fonction de son risque de disparition de la région considérée. Le classement des espèces dans les catégories d'espèces menacées s'opère sur la base de 5 critères d'évaluation faisant intervenir des facteurs quantitatifs tels que la taille de la population, le taux de déclin, la superficie de l'aire de répartition ou sa fragmentation. 
+
+Il suffit qu'au moins un des critères A à E soit rempli pour qu'une espèce soit classée dans l'une des catégories CR, EN ou VU. 
+
+
+
+# Principales étapes d'un projet de Liste Rouge Régionale 
+
+La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut se décomposer en ?3 étapes, présentées et réalisées ci-dessous : 
+
+
+## Identification des espèces soumises au processus d'évaluation : 
+
+1) Etablir la liste des espèces présentes dans la région, sur la base d'un référentiel taxonomique et d'un catalogue régional de référence. Les espèces présentes dans la région sont répertoriées au sein d'un excel et mis dans un dataframe (reg_espece) :
+
+```{r}
+## Lire le fichier Excel contenant les différentes espèces de la région ainsi que leurs traits biologiques
+reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
+
+```
+
+
+2) Identifier dans cette liste les espèces ne devant pas être soumis à l'évaluation, à placer en catégorie "Non Applicable" (NA). A une échelle régionale, certaines espèces ne doivent pas être soumises au processus d'évaluation. Il s'agit des espèces introduites et des espèces erratiques pour lesquelles la méthodologie n'est pas applicable. 
+
+Espèces introduites et indigènes : Il est nécessaire de définir des principes généraux permettant de déterminer la limte entre espèces introduites et espèces indigènes. De manière générale, il est recommandé de considérer les espèces introduites après 1500 comme non indigènes. Toutefois, pour certains groupes taxonomiques, les experts peuvent s'accorder sur d'autres principes analogues si la situation le justifie. 
+
+Espèces erratiques : une espèce est considérée comme erratique lorsque sa présence dans la région est occasionnelle, c'est à dire en général irrégulière et peu fréquente. Pour distinguer les espèces régulièrement présentes des espèces erratiques, il convient de s'accorder sur des principes reposant en particulier sur la fréquence d'observation de l'espèce dans la région. 
+
+Ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr" :
+
+```{r}
+# Mise en place d'une colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
+reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"), "NA", "Applicable")
+
+```
+
+
+
+## Phase de pré-évaluation 
+
+1) Réalisation d'une pré-évaluation selon la méthodologie de l'UICN (étapes 1 et 2), afin d'obtenir pour chaque espèce une proposition de catégorie. 
+
+
+### Etape 1 : évaluation initiale
+
+La première étape consiste à appliquer les critères d'évaluation aux populations situées dans les limites de la région considérée. Cette évaluation initiale aboutit à un classement préliminaire de l'espèce. Comme l'évaluation initiale ne porte que sur la population régionale, le classement déterminé lors de cette première étape peut surestimer (ou parfois sous-estimer) le risque réel de disparition de la région. Un ajustement à la baisse ou à la hausse de la catégorie préliminaire peut donc être nécessaire. 
+
+
+##### Utilisation des critères A à E de l'UICN
+
+
+Temps de génération : Les temps de génération à prendre en compte pour les différentes espèces sont renseignées dans le tableau de données reg_especes - dans la colonne temps_generation (3 générations ou 10 ans : la plus longue de ces deux données).
+
+
+
+
+## Critère A : Réduction de la population
+
+Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
+
+
