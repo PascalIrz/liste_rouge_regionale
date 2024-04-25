@@ -301,6 +301,7 @@ taux_evol_graph <- taux_evol_1990 %>%
 print(taux_evol_graph)
 
 ```
+
 ### Vérification des taux d'évolutions obtenus 
 
 On souhaite ici avoir une vérification de la cohérence des données obtenues sur les taux d'évolution, on souhaite alors regarder les taux d'évolution sur un paramètres particulier : les effectifs. 
@@ -354,6 +355,27 @@ print(tendance_indicateur_gra)
 ```
 
 
+
+
+# Sauvegarde : 
+
+```{r Sauvegarde}
+# SAUVEGARDE ----
+save(taux_occ,
+     reg_indicateur,
+     taux_evol_1990,
+     file = "../processed_data/calcul_indicateurs_regionaux.rda")
+```
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------
+
+Optionnel (expérimentale) :
 
 # Modèles Linéaires Généralisés (GLM) :
 

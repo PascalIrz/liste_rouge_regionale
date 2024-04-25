@@ -83,7 +83,7 @@ mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages",
                    "Pêche partielle sur berge")
 
 ## Le nombre minimum d'années sur les séries de pêches  ----
-n_mini_annee <- 9 
+n_mini_annee <- 8 
 
 ## Le nombre d'années manquantes maximum sur cette série de pêches dans les données ----
 n_max_manquant <- 2
@@ -145,9 +145,6 @@ pop_bzh <- point_prelevement %>%
 ```
 
 
-
-
-
 ```{r, fig.height = 10, fig.width = 15}
 
 # Dessiner la carte
@@ -160,9 +157,6 @@ ggplot(regions_metro_geo) +
   # Ajouter une légende pour la variable DEP
   labs(color = "Département")
 ```
-
-
-
 
 
 ```{r Visualisation point prélèvements 2}
@@ -325,16 +319,37 @@ ope_selection_sta <- ope_selection %>%
   group_by(sta_id) %>% 
   mutate(nombre_ope_sta = n_distinct(ope_id)) 
 
-
 # Afficher le tableau résumant le nombre d'"ope_id" par station
-  
-  # flextable::flextable() %>% 
-  # flextable::autofit() %>% 
-  # flextable::colformat_int(j = c(1, 2), big.mark = " ")
-  # ggplot(aes(x = as.factor(sta_id), 
-  #            y = nombre_ope_sta)) +
-  # geom_bar(stat = "identity") + 
-  # coord_flip()
+# ope_selection_sta %>%   
+#   flextable::flextable() %>%
+#   flextable::autofit() %>%
+#   flextable::colformat_int(j = c(1, 2), big.mark = " ")
+#   ggplot(aes(x = as.factor(sta_id),
+#              y = nombre_ope_sta)) +
+#   geom_bar(stat = "identity") +
+#   coord_flip()
+```
+
+Opération temporaire : Comparaison du nombre de stations sélectionnées en fonction du nombre d'années de pêches consécutives imposées : 
+
+```{r Sélection années de pêches consécutives}
+
+nbr_annee <- c(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+nbr_sta <- c(95, 95, 95, 95, 95, 66, 43, 41, 35, 34, 32, 32)
+data <- data.frame(Annees_de_peches = nbr_annee, Nombre_de_stations = nbr_sta)
+
+
+ggplot(data, aes(x = Annees_de_peches, y = Nombre_de_stations)) +
+  geom_bar(stat = "identity", fill = "#0087C1", width = 0.5) +  # Diagramme à barres
+  geom_text(aes(label = Nombre_de_stations), vjust = -0.5, color = "black", size = 3) +  # Ajout des valeurs
+  labs(x = "Années de pêches consécutives", y = "Nombre de station", title = "Nombre de station en fonction du nombre d'années de pêches consécutives sélectionnées", caption = "Nombre années manquantes consécutives max dans une série = 2 ans") +
+  scale_x_continuous(breaks = seq(0, max(data$Annees_de_peches), by = 1), minor_breaks = NULL) +  # Échelle des x avec des nombres entiers
+  scale_y_continuous(breaks = seq(0, max(data$Nombre_de_stations), by = 10)) +  # Échelle des y avec plus de graduations
+  theme_light(base_size = 11) +
+  theme(panel.grid.major = element_line(color="#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill="#faf0e6"))
+
 ```
 
 ## Visualisation des efforts de pêche par station dans l'aire géographique sélectionnée

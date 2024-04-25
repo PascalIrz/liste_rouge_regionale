@@ -10,6 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
 "30_application_criteres_lrr_uicn"
 
@@ -20,6 +21,37 @@ Il suffit qu'au moins un des critères A à E soit rempli pour qu'une espèce so
 
 
 
+
+# Chargement des packages
+
+```{r Chargement des packages}
+library(aspe)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+
+```
+
+
+# Chargement des données
+
+```{r chargement des données}
+
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
+
+```
+
+# Chargement excel "selection_taxon_lrr"
+
+```{r Chargement Excel}
+## Lire le fichier Excel contenant les différentes espèces de la région ainsi que leurs traits biologiques
+reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
+
+```
+
+
+
 # Principales étapes d'un projet de Liste Rouge Régionale 
 
 La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut se décomposer en ?3 étapes, présentées et réalisées ci-dessous : 
@@ -27,13 +59,7 @@ La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut s
 
 ## Identification des espèces soumises au processus d'évaluation : 
 
-1) Etablir la liste des espèces présentes dans la région, sur la base d'un référentiel taxonomique et d'un catalogue régional de référence. Les espèces présentes dans la région sont répertoriées au sein d'un excel et mis dans un dataframe (reg_espece) :
-
-```{r}
-## Lire le fichier Excel contenant les différentes espèces de la région ainsi que leurs traits biologiques
-reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
-
-```
+1) Etablir la liste des espèces présentes dans la région, sur la base d'un référentiel taxonomique et d'un catalogue régional de référence. Les espèces présentes dans la région sont répertoriées au sein d'un excel et mis dans un dataframe (reg_espece).
 
 
 2) Identifier dans cette liste les espèces ne devant pas être soumis à l'évaluation, à placer en catégorie "Non Applicable" (NA). A une échelle régionale, certaines espèces ne doivent pas être soumises au processus d'évaluation. Il s'agit des espèces introduites et des espèces erratiques pour lesquelles la méthodologie n'est pas applicable. 
@@ -44,7 +70,7 @@ Espèces erratiques : une espèce est considérée comme erratique lorsque sa pr
 
 Ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr" :
 
-```{r}
+```{r Création statut_lrr}
 # Mise en place d'une colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
 reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"), "NA", "Applicable")
 
@@ -62,11 +88,48 @@ reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erra
 La première étape consiste à appliquer les critères d'évaluation aux populations situées dans les limites de la région considérée. Cette évaluation initiale aboutit à un classement préliminaire de l'espèce. Comme l'évaluation initiale ne porte que sur la population régionale, le classement déterminé lors de cette première étape peut surestimer (ou parfois sous-estimer) le risque réel de disparition de la région. Un ajustement à la baisse ou à la hausse de la catégorie préliminaire peut donc être nécessaire. 
 
 
+Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation de la Bretagne. Le seul point de vigilience est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (La Vilaine). Il s'agira d'un point de vigilence à prendre en compte dans l'analyse des résultats. 
+
+
+
 ##### Utilisation des critères A à E de l'UICN
 
+---
 
-Temps de génération : Les temps de génération à prendre en compte pour les différentes espèces sont renseignées dans le tableau de données reg_especes - dans la colonne temps_generation (3 générations ou 10 ans : la plus longue de ces deux données).
+Temps de génération : La durée d'une génération correspond à l'âge moyen des parents de la cohorte actuelle (c'est à dire des nouveau-nés dans la population). En conséquence, la durée d'une génération reflète le taux de renouvellement des reproducteurs dans une population. La durée d'une génération est plus grande que l'âge à la première reproduction et plus petite que l'âge du reproducteur le plus agé, sauf pour les taxons qui ne se reproduisent qu'une seule fois. Lorsque la durée de la génération varie en raison de mencaes, c'est la durée la plus naturelle, c'est à dire avant perturbation, qu'il convient de retenir (UICN, 2012).
 
+
+Les temps de génération à prendre en compte pour les différentes espèces sont renseignées dans le tableau de données reg_especes - dans la colonne temps_generation (3 générations ou 10 ans : la plus longue de ces deux données).
+
+---
+
+Catégorie Données Insuffisantes : Lorsque les informations disponibles sont considérées comme insuffisantes pour pouvoir évaluer une espèce, celle-ci est classée dans la catégorie Données insuffisantes (DD) dans l'attente de l'acquisition de nouvelle connaissances. De manière générale, il est souhaitable d'éviter le recours à cette catégorie, dès lors que les informations disponibles permettent d'apprécier raisonnablement la situation de l'espèce. 
+
+
+Cas de la Bretagne : En Bretagne, 6 espèces indigènes présentes des données insufisantes : 
+
+- Alose feinte : données manquantes; présence côtière, peu ou pas d'observation en eau douce, hybridation possible avec la grande alose;
+
+- Flet : migrateur aux données manquantes; espèce qui n'est pas étudiée et qui l'a été seulement pour caractériser la qualité des estuaires alors qu'elle fait partie de la communauté françaises des poissons diadromes;
+
+- Lamproie fluviatile : manque de données; lamproie de planer et lamproie fluviatile pourraient être deux formes biologiques d'une même espèce (résidente en eau douce et marine);
+
+- Mulet porc : migrateur aux données manquantes; espèce qui n'a été que très peu étudiée  alors qu'elle fait partie de la communauté française des poissons diadromes;
+
+- Tanche : peu de données; espèce très inféodées aux végétaux aquatiques peu représentés dans les potamons bretons (Vilaine - Oust); occurrence de 26 % dans les données CSP-Onema avec une aire de répartition orientale; les analyses statistiques sur le RHP ne montrent pas d'évolutions significatives à l'échelle régionale; cette espèce se reproduit, comme le brochet dans des annexes de la plaine alluviale mais à une période plus tardive au printemps; les conditions de réussite semblent ainsi moins défavorables que pour le brochet;
+
+- Vandoise rostrée :parasitisme laissant supposé un impact sur les populations, mais peu documenté et pas chiffré; le domaine typoloigique de la vandoise est assez réduit en Bretagne (épipotamon et hyporhithron); occurence de 26 % sur réseau de contrôle de surveillance (env 100 stations); les chronologies RHP montrent des résultats très fluctuants (variabilité naturelle des reproduction des cyprinidés ???); cependant on observe des effectifs non négligeables dans des milieux assez dégradés; l'impact du parasitisme a probablement peu de chance de menacer l'espèce à court terme; la menace principale est l'étagement présent en BZH mais depuis longtemps et pas suceptible d'évoluer dans le mauvais sens (tendance plutôt à la suppression de seuils);
+
+
+Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
+
+
+```{r}
+esp_code_DD <- c("ALF","FLE","MUP", "LPR", "TAN", "VAR")
+
+reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
+
+```
 
 
 
