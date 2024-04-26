@@ -29,25 +29,29 @@ library(aspe)
 library(tidyverse)
 library(ggplot2)
 library(readxl)
-
+library(dplyr)
+library(ggh4x)
 ```
 
 
 # Chargement des données
 
 ```{r chargement des données}
-
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
-
 ```
 
 # Chargement excel "selection_taxon_lrr"
 
 ```{r Chargement Excel}
-## Lire le fichier Excel contenant les différentes espèces de la région ainsi que leurs traits biologiques
+## Fichier Excel contenant les différentes espèces de la région
 reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
+```
 
+# Chargement des fonctions 
+
+```{r}
+source(file = "../R/lrr_critere_a.R")
 ```
 
 
@@ -71,9 +75,10 @@ Espèces erratiques : une espèce est considérée comme erratique lorsque sa pr
 Ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr" :
 
 ```{r Création statut_lrr}
-# Mise en place d'une colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
-reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"), "NA", "Applicable")
-
+# Ajout colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
+reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"), 
+                                "NA", 
+                                "Applicable")
 ```
 
 
@@ -123,8 +128,7 @@ Cas de la Bretagne : En Bretagne, 6 espèces indigènes présentes des données 
 
 Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
 
-
-```{r}
+```{r Mise en place DD}
 esp_code_DD <- c("ALF","FLE","MUP", "LPR", "TAN", "VAR")
 
 reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
@@ -133,8 +137,201 @@ reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD 
 
 
 
+On réalise maintenant pour chacune des espèces un travail de traitement de données : 
+
 ## Critère A : Réduction de la population
 
 Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
 
+
+```{r Liste espèce à traiter}
+# Définir la liste des espèces indigènes à traiter
+mes_especes <- reg_espece %>% 
+  filter (statut_esp == "indigene",
+          statut_lrr == "Applicable") %>% 
+  pull(esp_code_alternatif)
+
+
+# Construction d'u df avec espèce applicable et leurs temps de génération
+reg_temps_generation <- reg_espece %>% 
+  filter(statut_esp == "indigene",
+          statut_lrr == "Applicable") %>% 
+  select(esp_code_alternatif,
+         temps_generation) %>% 
+  na.omit()
+
+```
+
+
+
+
+J'ai avant tout besoin de mettre les valeurs de 0 dans mon tableau de base : 
+
+```{r}
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons <- expand.grid(annee = unique(reg_indicateur$annee),
+                            indicateur = unique(reg_indicateur$indicateur),
+                            stade = unique(reg_indicateur$stade),
+                            esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
+
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+reg_indicateur_complet <- combinaisons %>%
+  left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(esp_code_alternatif,
+         annee,
+         stade,
+         indicateur, 
+         valeur)
+
+# Maintenant, reg_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans reg_indicateur
+
+
+reg_indicateur_complet <- reg_indicateur_complet %>%
+  left_join(reg_temps_generation, by = "esp_code_alternatif") %>% 
+  filter(esp_code_alternatif %in% mes_especes)
+
+
+```
+
+
+
+J'applique une fonction pour le critère A2a (effectif) et A2b (densité surface) : 
+
+```{r}
+# Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
+reg_indicateur_critere_a <- reg_indicateur_complet %>%
+  filter(!stade == "juv") %>% 
+  arrange(esp_code_alternatif,
+          indicateur,
+          stade,
+          annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  ungroup() 
+
+
+# Calcul des pourcentages d'évolution des valeurs d'indicateurs
+reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
+  mutate(pourcentage_evo = (valeur - lag(valeur, default = first(valeur))) / lag(valeur, default = first(valeur)) * 100) %>%
+  filter(annee == max(annee)) # Sélectionner uniquement les données de l'année la plus récente
+
+
+# Filtrer uniquement les colonnes nécessaires
+reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
+  filter(!indicateur == "pourcentage_juveniles",
+         !indicateur == "pourcentage_presence_esp")  %>% 
+  select(esp_code_alternatif, stade, indicateur, pourcentage_evo)
+```
+
+```{r,fig.height = 26, fig.width = 15}
+reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a %>%
+  filter(stade == "ind") %>% 
+  ggplot(aes(x = pourcentage_evo, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(pourcentage_evo)))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif), 
+            position = position_stack(vjust = 1,5), 
+            hjust = 0, 
+            size = 3.5, 
+            color = "black", 
+            fontface = "bold") +
+  facet_wrap(~ indicateur, scales = "free") +
+  labs(title = "Critère A LRR - échelle régionale des espèces de poissons d'eau douce",
+       x = "Pourcentage d'évolution", 
+       y = "Espèce") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.y = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 0, vjust = 0.5)) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "white", "#92D050","white"), 
+                     labels = c("Diminution", "","","Augmentation"), 
+                     name = "Taux de croissance")
+
+print(reg_indicateur_critere_a_graph_ind)
+```
+
+
+```{r,fig.height = 26, fig.width = 15}
+
+reg_indicateur_critere_a_graph_ad <- reg_indicateur_critere_a %>%
+  filter(stade == "ad") %>% 
+  ggplot(aes(x = pourcentage_evo, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(pourcentage_evo)))) + 
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif), 
+            position = position_stack(vjust = 1,5), 
+            hjust = 0.5, 
+            size = 3.5, 
+            color = "black", 
+            fontface = "bold") +
+  facet_wrap(~ indicateur, scales = "free") +
+  labs(title = "Critère A LRR - échelle régionale des espèces de poissons d'eau douce",
+       x = "Pourcentage d'évolution", 
+       y = "Espèce") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.y = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 0, vjust = 0.5)) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "white", "#92D050", "white"), 
+                     labels = c("Diminution", "","Augmentation", ""), 
+                     name = "Taux de croissance")
+
+print(reg_indicateur_critere_a_graph_ad)
+
+```
+
+
+Application du critère A2a, reposant sur l'observation directe : 
+- Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
+
+(a) : l'observation directe => nous sélectionnons alors notre indicateur "effectif_total". 
+
+```{r}
+result_A2a_lrr <- reg_indicateur_critere_a %>%
+  filter(indicateur == "effectif_total") %>% 
+  mutate(statut_espece = case_when(
+    pourcentage_evo <= -80 ~ "en danger critique",
+    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
+    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
+    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
+  ))
+
+#Représentation graphique du tableau 
+result_A2a_lrr%>%
+  DT::datatable(rownames = FALSE)
+
+```
+Application du critère A2B, reposant sur un indice d'abondance adapté au taxon (densité de surface) : 
+- Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
+
+(b) : indice d'abondance adapté au taxon => densité de surface. 
+
+
+```{r}
+result_A2b_lrr <- reg_indicateur_critere_a %>%
+  filter(indicateur == "densite_surface") %>% 
+  mutate(statut_espece = case_when(
+    pourcentage_evo <= -80 ~ "en danger critique",
+    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
+    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
+    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
+  ))
+
+#Représentation graphique du tableau 
+result_A2b_lrr%>%
+  DT::datatable(rownames = FALSE)
+```
 

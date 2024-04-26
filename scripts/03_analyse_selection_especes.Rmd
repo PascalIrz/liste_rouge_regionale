@@ -7,7 +7,8 @@ params:
   annee_limite: 2013 # On fixe une année limite afin de calculer les densités
   especes_lrr_2015: !r c("ABL","ALF","ANG","BRB","BRE","BRO","CCO","CHA","CHE",
                          "EPI","EPT","FLE","GAR","GOU","ALA","LPP","LPR","LPM",
-                         "LOF","MUP","PER","ROT","SAT","TAN","TRF","VAI","VAR")
+                         "LOF","MUP","PER","ROT","SAT","TAN","TRF","VAI","VAR", 
+                         "GRE")
   especes_a_retirer: !r c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC","PFL",
                        "CCU","CAS") # Sélection des espèces à retirer du jeu de données initial
 output:
