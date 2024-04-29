@@ -31,6 +31,7 @@ library(ggplot2)
 library(readxl)
 library(dplyr)
 library(ggh4x)
+library(kableExtra)
 ```
 
 
@@ -58,7 +59,8 @@ source(file = "../R/lrr_critere_a.R")
 
 # Principales étapes d'un projet de Liste Rouge Régionale 
 
-La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut se décomposer en ?3 étapes, présentées et réalisées ci-dessous : 
+La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut se décomposer en 3 étapes, présentées et réalisées ci-dessous (application à l'échelle de la Bretagne): 
+
 
 
 ## Identification des espèces soumises au processus d'évaluation : 
@@ -72,7 +74,7 @@ Espèces introduites et indigènes : Il est nécessaire de définir des principe
 
 Espèces erratiques : une espèce est considérée comme erratique lorsque sa présence dans la région est occasionnelle, c'est à dire en général irrégulière et peu fréquente. Pour distinguer les espèces régulièrement présentes des espèces erratiques, il convient de s'accorder sur des principes reposant en particulier sur la fréquence d'observation de l'espèce dans la région. 
 
-Ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr" :
+Pour l'exemple de la Bretagne, ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr". Les statuts renseignés correspondent à ceux utilisé dans la précédente liste rouge régionale :
 
 ```{r Création statut_lrr}
 # Ajout colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
@@ -93,7 +95,7 @@ reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erra
 La première étape consiste à appliquer les critères d'évaluation aux populations situées dans les limites de la région considérée. Cette évaluation initiale aboutit à un classement préliminaire de l'espèce. Comme l'évaluation initiale ne porte que sur la population régionale, le classement déterminé lors de cette première étape peut surestimer (ou parfois sous-estimer) le risque réel de disparition de la région. Un ajustement à la baisse ou à la hausse de la catégorie préliminaire peut donc être nécessaire. 
 
 
-Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation de la Bretagne. Le seul point de vigilience est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (La Vilaine). Il s'agira d'un point de vigilence à prendre en compte dans l'analyse des résultats. 
+Pour l'exemple de la Bretagne : Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation de la Bretagne. Le seul point de vigiliance est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (La Vilaine). Il s'agira d'un point de vigilance à prendre en compte dans l'analyse des résultats. 
 
 
 
@@ -111,7 +113,8 @@ Les temps de génération à prendre en compte pour les différentes espèces so
 Catégorie Données Insuffisantes : Lorsque les informations disponibles sont considérées comme insuffisantes pour pouvoir évaluer une espèce, celle-ci est classée dans la catégorie Données insuffisantes (DD) dans l'attente de l'acquisition de nouvelle connaissances. De manière générale, il est souhaitable d'éviter le recours à cette catégorie, dès lors que les informations disponibles permettent d'apprécier raisonnablement la situation de l'espèce. 
 
 
-Cas de la Bretagne : En Bretagne, 6 espèces indigènes présentes des données insufisantes : 
+
+Cas de la Bretagne : En Bretagne, 7 espèces indigènes présentes des données insufisantes : 
 
 - Alose feinte : données manquantes; présence côtière, peu ou pas d'observation en eau douce, hybridation possible avec la grande alose;
 
@@ -126,10 +129,13 @@ Cas de la Bretagne : En Bretagne, 6 espèces indigènes présentes des données 
 - Vandoise rostrée :parasitisme laissant supposé un impact sur les populations, mais peu documenté et pas chiffré; le domaine typoloigique de la vandoise est assez réduit en Bretagne (épipotamon et hyporhithron); occurence de 26 % sur réseau de contrôle de surveillance (env 100 stations); les chronologies RHP montrent des résultats très fluctuants (variabilité naturelle des reproduction des cyprinidés ???); cependant on observe des effectifs non négligeables dans des milieux assez dégradés; l'impact du parasitisme a probablement peu de chance de menacer l'espèce à court terme; la menace principale est l'étagement présent en BZH mais depuis longtemps et pas suceptible d'évoluer dans le mauvais sens (tendance plutôt à la suppression de seuils);
 
 
+- Epinoche : trop peu de données renseignée sur elle durant les pêches.?.
+
+
 Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
 
 ```{r Mise en place DD}
-esp_code_DD <- c("ALF","FLE","MUP", "LPR", "TAN", "VAR")
+esp_code_DD <- c("ALF","FLE","MUP", "LPR", "TAN", "VAR", "EPI","ALA")
 
 reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
 
@@ -137,7 +143,7 @@ reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD 
 
 
 
-On réalise maintenant pour chacune des espèces un travail de traitement de données : 
+On réalise maintenant pour chacune des espèces "applicable" l'application des différents critères : 
 
 ## Critère A : Réduction de la population
 
@@ -162,10 +168,27 @@ reg_temps_generation <- reg_espece %>%
 
 ```
 
+Réalisation d'un tableau des espèces à traiter avec leurs temps de génération associé : 
+
+```{r Tableau liste espece a traiter}
+reg_espece_tab <- reg_espece %>% 
+  filter(statut_lrr == "Applicable") %>% 
+  select(esp_nom_commun,
+         esp_code_alternatif,
+         temps_generation)
+
+colnames(reg_espece_tab) <- c("Nom commun", "Nom de code", "Temps de génération")
+
+reg_espece_tab %>% 
+  flextable::flextable() %>% 
+  flextable::autofit() %>% 
+  flextable::colformat_int(j = c(1, 3), big.mark = " ")
+```
 
 
 
-J'ai avant tout besoin de mettre les valeurs de 0 dans mon tableau de base : 
+
+Je dois également renseigner les absences (valeurs de 0) dans mon tableau de base : 
 
 ```{r}
 # Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
@@ -185,13 +208,9 @@ reg_indicateur_complet <- combinaisons %>%
          valeur)
 
 # Maintenant, reg_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans reg_indicateur
-
-
 reg_indicateur_complet <- reg_indicateur_complet %>%
   left_join(reg_temps_generation, by = "esp_code_alternatif") %>% 
   filter(esp_code_alternatif %in% mes_especes)
-
-
 ```
 
 
@@ -208,13 +227,41 @@ reg_indicateur_critere_a <- reg_indicateur_complet %>%
           annee) %>% 
   group_by(esp_code_alternatif) %>%
   mutate(annee_moins_generation = max(annee) - temps_generation) %>%
-  ungroup() 
+  ungroup()
+```
 
 
+```{r}
+reg_indicateur_max_annee <- reg_indicateur_complet %>%
+  filter(annee == max(annee)) %>%
+  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv"
+  arrange(esp_code_alternatif, indicateur, stade, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  ungroup()
+
+
+# Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
+reg_indicateur_max_annee_moins_generation <- reg_indicateur_complet %>%
+  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv"
+  arrange(esp_code_alternatif, indicateur, stade, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  filter(annee == max(annee) - temps_generation) %>%
+  ungroup()
+
+# Combiner les deux dataframes en un seul
+reg_indicateur_critere_a <- bind_rows(reg_indicateur_max_annee, reg_indicateur_max_annee_moins_generation)
+```
+
+
+
+```{r}
 # Calcul des pourcentages d'évolution des valeurs d'indicateurs
 reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
-  mutate(pourcentage_evo = (valeur - lag(valeur, default = first(valeur))) / lag(valeur, default = first(valeur)) * 100) %>%
-  filter(annee == max(annee)) # Sélectionner uniquement les données de l'année la plus récente
+  group_by(esp_code_alternatif, stade, indicateur) %>% 
+  mutate(pourcentage_evo = ((first(valeur) - last(valeur))/ last(valeur))*100) %>% 
+  ungroup()
 
 
 # Filtrer uniquement les colonnes nécessaires
@@ -224,73 +271,38 @@ reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
   select(esp_code_alternatif, stade, indicateur, pourcentage_evo)
 ```
 
-```{r,fig.height = 26, fig.width = 15}
+
+
+```{r,fig.height = 8, fig.width = 10}
 reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a %>%
-  filter(stade == "ind") %>% 
+  filter(stade == "ad") %>% 
+  filter (indicateur %in% c("effectif_total","biomasse","densite_surface")) %>% 
+  filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% 
   ggplot(aes(x = pourcentage_evo, 
              y = esp_code_alternatif, 
              fill = factor(sign(pourcentage_evo)))) + 
   geom_bar(stat = "identity") +
-  geom_text(aes(label = esp_code_alternatif), 
-            position = position_stack(vjust = 1,5), 
-            hjust = 0, 
-            size = 3.5, 
-            color = "black", 
+ geom_text(aes(label = esp_code_alternatif),
+  #           position = position_stack(vjust = 1,5), 
+  #           hjust = 0, 
+  #           size = 3.5, 
+  #           color = "black", 
             fontface = "bold") +
   facet_wrap(~ indicateur, scales = "free") +
-  labs(title = "Critère A LRR - échelle régionale des espèces de poissons d'eau douce",
-       x = "Pourcentage d'évolution", 
+  labs(x = "Pourcentage d'évolution", 
        y = "Espèce") +
   theme_bw() +
   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
         legend.position = "bottom",
         panel.background = element_rect(fill = "#faf0e0"),
         panel.grid.major = element_line(color = "lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.y = element_text(hjust = 0.5),
-        axis.text.x = element_text(angle = 0, vjust = 0.5)) + 
+        panel.grid.minor = element_line(color = "lightgrey")) + 
   scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000", "white", "#92D050","white"), 
-                     labels = c("Diminution", "","","Augmentation"), 
+  scale_fill_manual(values = c("#ed0000",  "white","#92D050"), 
+                     labels = c("Diminution","Augmentation", ""), 
                      name = "Taux de croissance")
 
 print(reg_indicateur_critere_a_graph_ind)
-```
-
-
-```{r,fig.height = 26, fig.width = 15}
-
-reg_indicateur_critere_a_graph_ad <- reg_indicateur_critere_a %>%
-  filter(stade == "ad") %>% 
-  ggplot(aes(x = pourcentage_evo, 
-             y = esp_code_alternatif, 
-             fill = factor(sign(pourcentage_evo)))) + 
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = esp_code_alternatif), 
-            position = position_stack(vjust = 1,5), 
-            hjust = 0.5, 
-            size = 3.5, 
-            color = "black", 
-            fontface = "bold") +
-  facet_wrap(~ indicateur, scales = "free") +
-  labs(title = "Critère A LRR - échelle régionale des espèces de poissons d'eau douce",
-       x = "Pourcentage d'évolution", 
-       y = "Espèce") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.y = element_text(hjust = 0.5),
-        axis.text.x = element_text(angle = 0, vjust = 0.5)) + 
-  scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000", "white", "#92D050", "white"), 
-                     labels = c("Diminution", "","Augmentation", ""), 
-                     name = "Taux de croissance")
-
-print(reg_indicateur_critere_a_graph_ad)
-
 ```
 
 
@@ -307,7 +319,8 @@ result_A2a_lrr <- reg_indicateur_critere_a %>%
     (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
     (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
     TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
-  ))
+  )) %>% 
+  unique()
 
 #Représentation graphique du tableau 
 result_A2a_lrr%>%
@@ -333,5 +346,33 @@ result_A2b_lrr <- reg_indicateur_critere_a %>%
 #Représentation graphique du tableau 
 result_A2b_lrr%>%
   DT::datatable(rownames = FALSE)
+```
+
+Partie pour moi : je réaffiche mon tableau tab_reg_indicateur avec seulement mes espèces "En danger", "vulnérables" et "en danger critique d'extinction" : 
+
+
+
+```{r, fig.height = 26, fig.width = 10}
+
+reg_indicateur_graph_a <- reg_indicateur %>%
+  filter(esp_code_alternatif == mes_especes) %>% 
+  ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
+  geom_point() +
+  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
+  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
+                     name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
+  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
+       x = "Années", 
+       y = "Valeurs") +
+  theme_bw()+
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill="#faf0e0"),
+        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+print(reg_indicateur_graph_a)
+
 ```
 
