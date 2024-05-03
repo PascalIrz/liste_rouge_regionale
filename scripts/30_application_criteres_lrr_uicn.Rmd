@@ -15,9 +15,12 @@ knitr::opts_chunk$set(echo = TRUE)
 "30_application_criteres_lrr_uicn"
 
 
-Ce script applique la sélection des espèces à traiter pour le renouvellement de la liste rouge régionale à partir des critères de sélection de l'UICN. Selon la méthodologie de l'UICN, chaque espèce ou sous-espèce peut être classée dans l'une des 11 catégories de la liste rouge en fonction de son risque de disparition de la région considérée. Le classement des espèces dans les catégories d'espèces menacées s'opère sur la base de 5 critères d'évaluation faisant intervenir des facteurs quantitatifs tels que la taille de la population, le taux de déclin, la superficie de l'aire de répartition ou sa fragmentation. 
+Ce script à pour objectif d'appliquer la méthodologie de la liste rouge régionale - UICN 2012. Elle contient 2 grandes étapes : 
 
-Il suffit qu'au moins un des critères A à E soit rempli pour qu'une espèce soit classée dans l'une des catégories CR, EN ou VU. 
+- La sélection des espèces à évaluer
+- Le pré-classement de chaque espèce ou sous-espèce dans l'une des 11 catégories de la liste rouge en fonction de son risque de disparition de la région considérée
+
+Le classement des espèces dans les catégories d'espèces menacées s'opère sur la base de 5 critères d'évaluation faisant intervenir des facteurs quantitatifs tels que la taille de la population, le taux de déclin, la superficie de l'aire de répartition ou sa fragmentation. Il suffit qu'au moins un des critères A à E soit rempli pour qu'une espèce soit classée dans l'une des catégories CR, EN ou VU. 
 
 
 
@@ -32,6 +35,22 @@ library(readxl)
 library(dplyr)
 library(ggh4x)
 library(kableExtra)
+
+
+
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(gt)
+library(lemon)
+library(trend)
+library(ggh4x)
+library(purrr)
 ```
 
 
@@ -53,6 +72,10 @@ reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 
 ```{r}
 source(file = "../R/lrr_critere_a.R")
+source(file = "../R/mk_st_by_group.R")
+source(file = "../R/mann_kendall_sen.R")
+source(file = "../R/calcul_taux_evolution.R")
+source(file = "../R/calcul_glm.R")
 ```
 
 
@@ -78,7 +101,7 @@ Pour l'exemple de la Bretagne, ces dernières sont renseignées sous forme de "N
 
 ```{r Création statut_lrr}
 # Ajout colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
-reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"), 
+reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"),
                                 "NA", 
                                 "Applicable")
 ```
@@ -95,7 +118,7 @@ reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erra
 La première étape consiste à appliquer les critères d'évaluation aux populations situées dans les limites de la région considérée. Cette évaluation initiale aboutit à un classement préliminaire de l'espèce. Comme l'évaluation initiale ne porte que sur la population régionale, le classement déterminé lors de cette première étape peut surestimer (ou parfois sous-estimer) le risque réel de disparition de la région. Un ajustement à la baisse ou à la hausse de la catégorie préliminaire peut donc être nécessaire. 
 
 
-Pour l'exemple de la Bretagne : Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation de la Bretagne. Le seul point de vigiliance est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (La Vilaine). Il s'agira d'un point de vigilance à prendre en compte dans l'analyse des résultats. 
+Pour l'exemple de la Bretagne : Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation des poissons d'eau douce en Bretagne. Le seul point de vigiliance est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (reliées à La Vilaine). Il s'agira d'un point de vigilance à prendre en compte dans l'analyse des résultats. 
 
 
 
@@ -114,7 +137,7 @@ Catégorie Données Insuffisantes : Lorsque les informations disponibles sont co
 
 
 
-Cas de la Bretagne : En Bretagne, 7 espèces indigènes présentes des données insufisantes : 
+Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données insufisantes : 
 
 - Alose feinte : données manquantes; présence côtière, peu ou pas d'observation en eau douce, hybridation possible avec la grande alose;
 
@@ -129,7 +152,8 @@ Cas de la Bretagne : En Bretagne, 7 espèces indigènes présentes des données 
 - Vandoise rostrée :parasitisme laissant supposé un impact sur les populations, mais peu documenté et pas chiffré; le domaine typoloigique de la vandoise est assez réduit en Bretagne (épipotamon et hyporhithron); occurence de 26 % sur réseau de contrôle de surveillance (env 100 stations); les chronologies RHP montrent des résultats très fluctuants (variabilité naturelle des reproduction des cyprinidés ???); cependant on observe des effectifs non négligeables dans des milieux assez dégradés; l'impact du parasitisme a probablement peu de chance de menacer l'espèce à court terme; la menace principale est l'étagement présent en BZH mais depuis longtemps et pas suceptible d'évoluer dans le mauvais sens (tendance plutôt à la suppression de seuils);
 
 
-- Epinoche : trop peu de données renseignée sur elle durant les pêches.?.
+- Epinoche : trop peu de données renseignées sur elle durant les pêches.?.
+- Grande Alose : trop peu de données renseignées sur elle durant les pêches .?.
 
 
 Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
@@ -141,17 +165,10 @@ reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD 
 
 ```
 
-
-
-On réalise maintenant pour chacune des espèces "applicable" l'application des différents critères : 
-
-## Critère A : Réduction de la population
-
-Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
-
+On réalise une liste bilan des espèces qui vont être évaluées : 
 
 ```{r Liste espèce à traiter}
-# Définir la liste des espèces indigènes à traiter
+# Définir la liste des espèces indigènes à traiter pour l'évaluation du critère A
 mes_especes <- reg_espece %>% 
   filter (statut_esp == "indigene",
           statut_lrr == "Applicable") %>% 
@@ -168,7 +185,7 @@ reg_temps_generation <- reg_espece %>%
 
 ```
 
-Réalisation d'un tableau des espèces à traiter avec leurs temps de génération associé : 
+Réalisation d'un tableau bilan des espèces à traiter avec leurs temps de génération associés : 
 
 ```{r Tableau liste espece a traiter}
 reg_espece_tab <- reg_espece %>% 
@@ -185,20 +202,20 @@ reg_espece_tab %>%
   flextable::colformat_int(j = c(1, 3), big.mark = " ")
 ```
 
+# Préparation des jeux de données : 
 
+Les absences de valeurs d'effectifs (valeurs effectif = 0) doivent être intégrés dans les différents dataframe traités lorsque l'espèce a été présente au moins une fois sur une des station : 
 
-
-Je dois également renseigner les absences (valeurs de 0) dans mon tableau de base : 
-
+## Dataframe reg_indicateur : 
 ```{r}
 # Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
-combinaisons <- expand.grid(annee = unique(reg_indicateur$annee),
+combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
                             indicateur = unique(reg_indicateur$indicateur),
                             stade = unique(reg_indicateur$stade),
                             esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
 
 # Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
-reg_indicateur_complet <- combinaisons %>%
+reg_indicateur_complet <- combinaisons_esp_sta %>%
   left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
   mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
   select(esp_code_alternatif,
@@ -214,27 +231,187 @@ reg_indicateur_complet <- reg_indicateur_complet %>%
 ```
 
 
+## Dataframe ope_selection : 
 
-J'applique une fonction pour le critère A2a (effectif) et A2b (densité surface) : 
+Ce dataframe sera utile pour seulement les valeurs d'effectifs propres aux différentes stations pour le critère A : On réalise alors la même manip que ci-avant en ajoutant les 0 aux valeurs manquantes : 
+
 
 ```{r}
-# Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
-reg_indicateur_critere_a <- reg_indicateur_complet %>%
-  filter(!stade == "juv") %>% 
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
+                            indicateur = unique(ope_indicateur$indicateur),
+                            stade = unique(ope_indicateur$stade),
+                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif))
+
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+ope_indicateur_complet <- combinaisons_esp_ope %>%
+  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(esp_code_alternatif,
+         annee,
+         stade,
+         indicateur, 
+         valeur)
+
+# Maintenant, ope_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans ope_indicateur
+ope_indicateur_complet <- ope_indicateur_complet %>%
+  left_join(reg_temps_generation, by = "esp_code_alternatif") %>% 
+  filter(esp_code_alternatif %in% mes_especes, 
+         indicateur == "effectif_total",
+         stade == "ad")
+
+```
+
+
+
+
+
+
+
+
+On réalise maintenant pour chacune des espèces évaluables l'application des différents critères : 
+
+
+## Critère A : Réduction de la population
+
+Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
+
+
+
+## Critère A2a : Observation directe : 
+
+On réalise alors un tableau des effectifs cumulés pour toutes les stations par années : 
+
+```{r}
+
+# Filtrer les données pour l'indicateur 'effectif_total'
+ope_indicateur_complet <- ope_indicateur_complet %>%
+  group_by(esp_code_alternatif, annee) %>%
+  mutate(effectif_total_cumule = sum(valeur)) %>% 
+  select(-indicateur,
+         -stade,
+         -valeur) %>% 
+  unique()
+
+
+ope_indicateur_complet <- ope_indicateur_complet %>%
   arrange(esp_code_alternatif,
-          indicateur,
-          stade,
           annee) %>% 
   group_by(esp_code_alternatif) %>%
   mutate(annee_moins_generation = max(annee) - temps_generation) %>%
   ungroup()
+
+
+ope_indicateur_max_annee <- ope_indicateur_complet %>%
+  filter(annee == max(annee)) %>%
+  arrange(esp_code_alternatif, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  ungroup()
+
+
+# Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
+ope_indicateur_min_annee <- ope_indicateur_complet %>%
+  arrange(esp_code_alternatif, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  filter(annee == max(annee) - temps_generation) %>%
+  ungroup()
+
+# Combiner les deux dataframes en un seul
+ope_indicateur_critere_A2a <- bind_rows(ope_indicateur_max_annee, ope_indicateur_min_annee)
+
+```
+
+On calcul maintenant le pourcentage d'évolution entre l'annnée max et l'année-temps de génération de l'espèce :
+
+```{r}
+# Calcul des pourcentages d'évolution des valeurs d'indicateurs
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
+  group_by(esp_code_alternatif) %>% 
+  mutate(pourcentage_evo = ((first(effectif_total_cumule) - last(effectif_total_cumule))/ last(effectif_total_cumule))*100) %>% 
+  ungroup() %>% 
+  select (-temps_generation,
+          -annee_moins_generation,
+          -annee,
+          -effectif_total_cumule) %>% 
+  unique()
+
 ```
 
 
 ```{r}
+result_A2a_lrr <- ope_indicateur_critere_A2a %>%
+  mutate(statut_espece = case_when(
+    is.nan(pourcentage_evo) ~ "NaN",
+    pourcentage_evo <= -80 ~ "en danger critique",
+    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
+    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
+    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
+  )) %>% 
+  unique()
+
+#Représentation graphique du tableau 
+result_A2a_lrr%>%
+  DT::datatable(rownames = FALSE)
+
+result_lrr <- result_A2a_lrr %>% 
+  mutate(critere = "A2a")
+```
+
+
+```{r,fig.height = 8, fig.width = 10}
+ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
+  filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% # Apparaissent en Nan
+  ggplot(aes(x = pourcentage_evo, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(pourcentage_evo)))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif),
+            fontface = "bold") +
+  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey"),
+        panel.grid.minor = element_line(color = "lightgrey")) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "#92D050"), 
+                     labels = c("Diminution","Augmentation"), 
+                     name = "Taux de croissance")
+
+print(ope_indicateur_critere_A2a_graph)
+
+```
+
+
+
+
+
+
+## Critère A2b : indice d'abondance adapté au taxon : densité_surface : 
+
+```{r}
+# Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
+reg_indicateur_critere_A2b <- reg_indicateur_complet %>%
+  filter(stade == "ad") %>% 
+  select(indicateur %in% c("densite_surface", "biomasse")) %>% 
+  arrange(esp_code_alternatif,
+          annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
+  ungroup()
+
+
+
+
+
+
+
 reg_indicateur_max_annee <- reg_indicateur_complet %>%
   filter(annee == max(annee)) %>%
-  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv"
+  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv", inutile dans la méthodo LRR
   arrange(esp_code_alternatif, indicateur, stade, annee) %>% 
   group_by(esp_code_alternatif) %>%
   mutate(annee_moins_generation = max(annee) - temps_generation) %>%
@@ -251,21 +428,21 @@ reg_indicateur_max_annee_moins_generation <- reg_indicateur_complet %>%
   ungroup()
 
 # Combiner les deux dataframes en un seul
-reg_indicateur_critere_a <- bind_rows(reg_indicateur_max_annee, reg_indicateur_max_annee_moins_generation)
+reg_indicateur_critere_a_extremite <- bind_rows(reg_indicateur_max_annee, reg_indicateur_max_annee_moins_generation)
 ```
 
 
 
 ```{r}
 # Calcul des pourcentages d'évolution des valeurs d'indicateurs
-reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
+reg_indicateur_critere_a_extremite <- reg_indicateur_critere_a_extremite %>%
   group_by(esp_code_alternatif, stade, indicateur) %>% 
   mutate(pourcentage_evo = ((first(valeur) - last(valeur))/ last(valeur))*100) %>% 
   ungroup()
 
 
 # Filtrer uniquement les colonnes nécessaires
-reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
+reg_indicateur_critere_a_extremite <- reg_indicateur_critere_a_extremite %>%
   filter(!indicateur == "pourcentage_juveniles",
          !indicateur == "pourcentage_presence_esp")  %>% 
   select(esp_code_alternatif, stade, indicateur, pourcentage_evo)
@@ -274,8 +451,8 @@ reg_indicateur_critere_a <- reg_indicateur_critere_a %>%
 
 
 ```{r,fig.height = 8, fig.width = 10}
-reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a %>%
-  filter(stade == "ad") %>% 
+reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a_extremite %>%
+  filter(stade == "ind") %>% 
   filter (indicateur %in% c("effectif_total","biomasse","densite_surface")) %>% 
   filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% 
   ggplot(aes(x = pourcentage_evo, 
@@ -312,7 +489,7 @@ Application du critère A2a, reposant sur l'observation directe :
 (a) : l'observation directe => nous sélectionnons alors notre indicateur "effectif_total". 
 
 ```{r}
-result_A2a_lrr <- reg_indicateur_critere_a %>%
+result_A2a_lrr <- reg_indicateur_critere_a_extremite %>%
   filter(indicateur == "effectif_total") %>% 
   mutate(statut_espece = case_when(
     pourcentage_evo <= -80 ~ "en danger critique",
@@ -334,8 +511,8 @@ Application du critère A2B, reposant sur un indice d'abondance adapté au taxon
 
 
 ```{r}
-result_A2b_lrr <- reg_indicateur_critere_a %>%
-  filter(indicateur == "densite_surface") %>% 
+result_A2b_lrr <- reg_indicateur_critere_a_extremite %>%
+  filter(indicateur == "effectif_total") %>% 
   mutate(statut_espece = case_when(
     pourcentage_evo <= -80 ~ "en danger critique",
     (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
@@ -375,4 +552,103 @@ reg_indicateur_graph_a <- reg_indicateur %>%
 print(reg_indicateur_graph_a)
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+Toujours pour le critère A : On prend les données d'effectifs des individus matures ("AD") et on applique des test de Mann Kendallpour observer l'évolution des effectifs : 
+
+Je fais un tableau de données avec juste les "ad" et aussi avec juste les années moins temps de générations : 
+
+Pour les effectifs totaux : 
+
+```{r}
+tendances_indicateur_critere_a_e <- reg_indicateur_critere_a %>% 
+  filter(stade == "ad",
+         indicateur == "effectif_total") 
+
+tendances_indicateur_critere_a_e <- tendances_indicateur_critere_a_e %>%
+  group_by(esp_code_alternatif) %>%
+  filter(annee >= annee_moins_generation) %>%
+  ungroup()
+
+tendances_indicateur_critere_a_e <- mk_st_by_group(tendances_indicateur_critere_a_e,
+                                      var_x = annee,
+                                      var_y = valeur,
+                                      esp_code_alternatif,
+                                      indicateur,
+                                      stade)
+```
+
+
+
+Pour la biomasse : 
+
+```{r}
+tendances_indicateur_critere_a_b <- reg_indicateur_critere_a %>% 
+  filter(stade == "ad",
+         indicateur == "biomasse") 
+
+tendances_indicateur_critere_a_b <- tendances_indicateur_critere_a_b %>%
+  group_by(esp_code_alternatif) %>%
+  filter(annee >= annee_moins_generation) %>%
+  ungroup()
+
+tendances_indicateur_critere_a_b <- mk_st_by_group(tendances_indicateur_critere_a_b,
+                                      var_x = annee,
+                                      var_y = valeur,
+                                      esp_code_alternatif,
+                                      indicateur,
+                                      stade)
+```
+
+
+Pour la densité de surface : 
+
+```{r}
+tendances_indicateur_critere_a_d <- reg_indicateur_critere_a %>% 
+  filter(stade == "ad",
+         indicateur == "densite_surface") 
+
+tendances_indicateur_critere_a_d <- tendances_indicateur_critere_a_d %>%
+  group_by(esp_code_alternatif) %>%
+  filter(annee >= annee_moins_generation) %>%
+  ungroup()
+
+tendances_indicateur_critere_a_d <- mk_st_by_group(tendances_indicateur_critere_a_d,
+                                      var_x = annee,
+                                      var_y = valeur,
+                                      esp_code_alternatif,
+                                      indicateur,
+                                      stade)
+```
+
+
+
+Bon alors au niveau des effectifs j'ai un doute ... Je ne pense pas qu'il faille prendre la valeur de la médiane des effectifs de toutes mes stations, mais surement le cumul des effectifs pour les années qui m'interresse, je vais donc faire un tableau avec mes effectifs cumulé par années sur toutes mes stations : 
+
+
+```{r}
+
+# Filtrer les données pour l'indicateur 'effectif_total'
+resultat <- ope_indicateur %>%
+  filter(indicateur == 'effectif_total', 
+         stade == "ad") %>%
+  group_by(esp_code_alternatif, annee) %>%
+  summarize(effectif_total_cumule = sum(valeur)) %>%
+  pivot_wider(names_from = annee, values_from = effectif_total_cumule, values_fill = 0)
+
+# Afficher le résultat
+print(resultat)
+```
+
+
 

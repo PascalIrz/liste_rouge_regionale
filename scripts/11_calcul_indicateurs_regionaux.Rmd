@@ -357,6 +357,50 @@ print(tendance_indicateur_gra)
 
 
 
+
+
+
+
+Je souhaite visualiser l'évolution de la densité d'une espèce sur un point de prélèvement dans le temps : 
+
+```{r}
+# Filtrer les données pour une espèce donnée et une station donnée
+esp_specifique <- "ANG"  # Remplacer par le code de l'espèce spécifique
+pop_specifique <- "46221"  # Remplacer par l'ID de la station spécifique
+
+donnees_filtrees <- subset(ope_indicateur, esp_code_alternatif == esp_specifique & pop_id == pop_specifique)
+
+donnees_filtrees <- donnees_filtrees %>% 
+  filter(indicateur == "densite_surface",
+         stade == "ind")
+
+# Créer le graphique
+ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Année", y = "Densité", title = paste("Évolution de la densité de l'espèce", esp_specifique, "sur la station", pop_specifique)) +
+  theme_minimal()
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Sauvegarde : 
 
 ```{r Sauvegarde}
