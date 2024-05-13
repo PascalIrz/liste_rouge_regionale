@@ -5,7 +5,7 @@ author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
   passage_a_retirer: !r c("2","3") # Sélection du nombre de passage souhaité ; Remarque : si je souhaite enlever les 1ers passages, sélection "0","1" 
-  type_lot_a_retirer: !r c("G") # Sélection des lots à retirer du jeu de données ; tyl_libelle  = G (cf ref_type_lot)
+  #type_lot_a_retirer: !r c("G") # Sélection des lots à retirer du jeu de données ; tyl_libelle  = G (cf ref_type_lot)
   type_peche_a_inclure: !r c("Pêche complète à un ou plusieurs passages",
                             "Pêche partielle par points (grand milieu)",
                             "Pêche par ambiances",
@@ -122,20 +122,15 @@ Suppression des passages, des répétitions et des lots non souhaités du jeu de
 mei_ope_selection <- mei_ope_selection %>% 
   filter(!pas_numero %in% params$passage_a_retirer,
          pro_libelle %in% params$type_peche_a_inclure,
-         !tyl_libelle%in% params$type_lot_a_retirer) %>% 
+         # !tyl_libelle%in% params$type_lot_a_retirer
+         ) %>% 
   distinct() %>% 
- # left_join(lop_esp_selection) %>% 
   mutate(esp_code_alternatif = 
            case_when(
              esp_code_alternatif == "VAN" ~ "VAR",
              esp_code_alternatif %in% c("CCX", "CMI", "CCU") ~ "CCO",
              TRUE ~ esp_code_alternatif))
-  #            ifelse (test = esp_code_alternatif == "VAN",
-  #                                      yes = "VAR",
-  #                                      no = esp_code_alternatif)) %>% 
-  # mutate(lop_esp_code_alternatif = ifelse (test = esp_code_alternatif == "CCX",
-  #                                          yes = "CCO",
-  #                                          no = esp_code_alternatif)) 
+
 
 # Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
 mei_ope_selection <- mei_ope_selection %>% 
@@ -243,8 +238,6 @@ mei_df_seuils <- aspeQual::qtp_seuils(df = esp_lt_data,
                                       var_a_tester = mei_taille,
                                       seuil_densite = 0.001)
 ```
-
-
 
 
 ```{r}

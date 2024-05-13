@@ -396,74 +396,49 @@ print(ope_indicateur_critere_A2a_graph)
 # Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
 reg_indicateur_critere_A2b <- reg_indicateur_complet %>%
   filter(stade == "ad") %>% 
-  select(indicateur %in% c("densite_surface", "biomasse")) %>% 
+  filter(indicateur %in% c("densite_surface", "biomasse")) %>% 
   arrange(esp_code_alternatif,
           annee) %>% 
   group_by(esp_code_alternatif) %>%
   mutate(annee_moins_generation = max(annee) - temps_generation) %>%
-  ungroup()
-
-
-
-
-
-
-
-reg_indicateur_max_annee <- reg_indicateur_complet %>%
-  filter(annee == max(annee)) %>%
-  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv", inutile dans la méthodo LRR
-  arrange(esp_code_alternatif, indicateur, stade, annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - temps_generation) %>%
-  ungroup()
+  ungroup() %>% 
+  filter(annee == "2023")
 
 
 # Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
 reg_indicateur_max_annee_moins_generation <- reg_indicateur_complet %>%
-  filter(!stade == "juv") %>%  # Exclure les données avec le stade "juv"
-  arrange(esp_code_alternatif, indicateur, stade, annee) %>% 
+  filter(stade == "ad") %>% 
+  filter(indicateur %in% c("densite_surface", "biomasse")) %>% 
+  arrange(esp_code_alternatif, indicateur, annee) %>% 
   group_by(esp_code_alternatif) %>%
   mutate(annee_moins_generation = max(annee) - temps_generation) %>%
   filter(annee == max(annee) - temps_generation) %>%
   ungroup()
 
 # Combiner les deux dataframes en un seul
-reg_indicateur_critere_a_extremite <- bind_rows(reg_indicateur_max_annee, reg_indicateur_max_annee_moins_generation)
+reg_indicateur_critere_A2b <- bind_rows(reg_indicateur_critere_A2b, reg_indicateur_max_annee_moins_generation)
 ```
-
-
 
 ```{r}
 # Calcul des pourcentages d'évolution des valeurs d'indicateurs
-reg_indicateur_critere_a_extremite <- reg_indicateur_critere_a_extremite %>%
-  group_by(esp_code_alternatif, stade, indicateur) %>% 
+reg_indicateur_critere_A2b <- reg_indicateur_critere_A2b %>%
+  group_by(esp_code_alternatif, indicateur) %>% 
   mutate(pourcentage_evo = ((first(valeur) - last(valeur))/ last(valeur))*100) %>% 
   ungroup()
 
-
-# Filtrer uniquement les colonnes nécessaires
-reg_indicateur_critere_a_extremite <- reg_indicateur_critere_a_extremite %>%
-  filter(!indicateur == "pourcentage_juveniles",
-         !indicateur == "pourcentage_presence_esp")  %>% 
-  select(esp_code_alternatif, stade, indicateur, pourcentage_evo)
 ```
 
 
 
 ```{r,fig.height = 8, fig.width = 10}
-reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a_extremite %>%
-  filter(stade == "ind") %>% 
-  filter (indicateur %in% c("effectif_total","biomasse","densite_surface")) %>% 
+reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b %>%
+  filter (indicateur %in% c("biomasse","densite_surface")) %>% 
   filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% 
   ggplot(aes(x = pourcentage_evo, 
              y = esp_code_alternatif, 
              fill = factor(sign(pourcentage_evo)))) + 
   geom_bar(stat = "identity") +
  geom_text(aes(label = esp_code_alternatif),
-  #           position = position_stack(vjust = 1,5), 
-  #           hjust = 0, 
-  #           size = 3.5, 
-  #           color = "black", 
             fontface = "bold") +
   facet_wrap(~ indicateur, scales = "free") +
   labs(x = "Pourcentage d'évolution", 
@@ -475,11 +450,11 @@ reg_indicateur_critere_a_graph_ind <- reg_indicateur_critere_a_extremite %>%
         panel.grid.major = element_line(color = "lightgrey", size = 0.1),
         panel.grid.minor = element_line(color = "lightgrey")) + 
   scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000",  "white","#92D050"), 
-                     labels = c("Diminution","Augmentation", ""), 
+  scale_fill_manual(values = c("#ed0000", "#92D050"), 
+                     labels = c("Diminution","Augmentation"), 
                      name = "Taux de croissance")
 
-print(reg_indicateur_critere_a_graph_ind)
+print(reg_indicateur_critere_A2b_graph)
 ```
 
 
@@ -489,21 +464,27 @@ Application du critère A2a, reposant sur l'observation directe :
 (a) : l'observation directe => nous sélectionnons alors notre indicateur "effectif_total". 
 
 ```{r}
-result_A2a_lrr <- reg_indicateur_critere_a_extremite %>%
-  filter(indicateur == "effectif_total") %>% 
+result_A2b_lrr <- reg_indicateur_critere_A2b %>% 
   mutate(statut_espece = case_when(
+    is.nan(pourcentage_evo) ~ "NaN",
     pourcentage_evo <= -80 ~ "en danger critique",
     (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
     (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
     TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
   )) %>% 
-  unique()
+  unique() %>% 
+  select(esp_code_alternatif,
+         pourcentage_evo,
+         statut_espece)
 
 #Représentation graphique du tableau 
-result_A2a_lrr%>%
+result_A2b_lrr%>%
   DT::datatable(rownames = FALSE)
 
+
+
 ```
+
 Application du critère A2B, reposant sur un indice d'abondance adapté au taxon (densité de surface) : 
 - Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
 

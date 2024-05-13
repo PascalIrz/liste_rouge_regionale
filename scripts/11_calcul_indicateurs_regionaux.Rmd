@@ -109,22 +109,32 @@ reg_indicateur <- ope_indicateur %>%
   distinct()
 ```
 
+
 ```{r Construction tab reg_indicateur part 2}
 taux_occ <- taux_occ %>% 
   select(names(reg_indicateur))
 
 reg_indicateur <- reg_indicateur %>% 
-  rbind(taux_occ)
+  rbind(taux_occ) %>% 
+  filter(!indicateur %in% c("pourcentage_presence_esp",
+                          "longueur_mediane",
+                          "densite_volumique"))
 
 ```
 
-```{r Representation graphique des données, fig.height = 26, fig.width = 10}
-# Représentation graphique des données : 
 
+```{r Representation graphique des données, fig.height = 26, fig.width = 10}
+
+reg_indicateur <- reg_indicateur %>% 
+  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR"))
+
+
+# Représentation graphique des données : 
 reg_indicateur_graph <- reg_indicateur %>%
   ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
-  geom_point() +
-  geom_smooth(se = FALSE) +
+  geom_point(shape = 1) +
   facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
   scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
                      name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
@@ -137,7 +147,19 @@ reg_indicateur_graph <- reg_indicateur %>%
         panel.background = element_rect(fill="#faf0e0"),
         panel.grid.major = element_line(color="lightgrey", size = 0.1),
         panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45))
+        axis.text.x = element_text(angle = 45)) +
+  geom_smooth(data = reg_indicateur %>% 
+                filter (annee %in% 2010:2023), 
+              aes(x= annee, y =valeur, group = stade, color = stade),
+              method = "lm",
+              se = FALSE) +
+  geom_smooth(data = reg_indicateur %>% 
+                filter (annee %in% 2000:2013), 
+              aes(x= annee, y =valeur, group = stade, color = stade),
+              method = "lm", 
+              se = FALSE,
+              linetype = "dashed")
+
 
 print(reg_indicateur_graph)
 

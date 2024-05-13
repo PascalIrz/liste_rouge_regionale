@@ -87,13 +87,16 @@ ope_effectif <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
            stade) %>%
-  summarise(valeur=sum(length(mei_id))) %>% 
+  distinct(lop_id, .keep_all = TRUE) %>% 
+  summarise(valeur=sum(lop_effectif)) %>% 
   mutate(indicateur= "effectif_total") %>% 
   select(ope_id,
          esp_code_alternatif,
          indicateur,
          valeur,
          stade)
+
+
 
 ope_effectif <- ope_effectif %>% 
   bind_rows(ope_effectif %>%

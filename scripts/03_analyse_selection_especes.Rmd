@@ -4,7 +4,7 @@ subtitle: "Sélection des espèces"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
-  annee_limite: 2013 # On fixe une année limite afin de calculer les densités
+  annee_limite: 1990 # On fixe une année limite afin de calculer les densités
   especes_lrr_2015: !r c("ABL","ALF","ANG","BRB","BRE","BRO","CCO","CHA","CHE",
                          "EPI","EPT","FLE","GAR","GOU","ALA","LPP","LPR","LPM",
                          "LOF","MUP","PER","ROT","SAT","TAN","TRF","VAI","VAR", 
@@ -100,7 +100,7 @@ lop_esp_selection_calcul <- filter(lop_esp_selection, annee >= params$annee_limi
 
 ```
 
-On calcul notre densité moyenne d'espèce sur les 10 dernières années :
+On calcul notre densité moyenne d'espèce sur les 30 dernières années :
 
 ```{r}
 
@@ -108,13 +108,13 @@ densite_moyenne <- lop_esp_selection_calcul %>%
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
-  summarise(effectif=sum(lop_effectif)) %>% 
+  summarise(effectif= sum(lop_effectif)) %>% 
   ungroup() %>% 
   mutate(indicateur= "densite_surface") %>% 
   mutate(valeur = effectif/ope_surface_calculee)
 
 # Calcul de l'effectif total pour chaque espèce
-densite_moyenne <- densite_moyenne%>%
+densite_moyenne <- densite_moyenne %>%
   group_by(esp_code_alternatif) %>%
   mutate(effectif_total = sum(effectif))
 
@@ -187,7 +187,7 @@ ggplot(
   labs(
     title = "Densité moyenne vs Pourcentage d'occurrence par espèce",
     subtitle = "Région Bretagne",
-    x = "Densité moyenne sur les 10 dernières années",
+    x = "Densité moyenne sur les 30 dernières années",
     y = "Pourcentage d'occurrence") +
   scale_color_manual(values = wesanderson::wes_palette("AsteroidCity1")[3:5],
                      name = "Espèces") +
