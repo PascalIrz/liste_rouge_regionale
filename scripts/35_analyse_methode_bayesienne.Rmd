@@ -1,0 +1,28 @@
+---
+title: "35_analyse_methode_bayesienne"
+author: "Léa Bouchet"
+date: "2024-05-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analyses en méthode bayésienne : 
+
+- Choix des espèces à traiter 
+- Choix des périodes de temps à traiter
+- Choix des stations
+
+
+Pour réaliser l'analyse bayésienne, seule les espèces d'intérêt son sélectionnées : en accord avec les résultats pré-liminaires observés dans le script 30, 13 espèces sont retenues pour les analyses : 
+
+- L'Anguille, le brochet, le chabot, le chevesne, le gardon, le goujon, la loche franche, la lamproie de Planner, le saumon atlantique, la truite commune, la perche commune, le vairon et la vandoise rostrée. 
+
+Il s'agit maintenant de définir, pour chacun de ces individus, la période sur laquelle réaliser les traitement de données. Pour cela, on réalise un tableau de bord par espèce 
+
+```{r cars}
+
+
+```

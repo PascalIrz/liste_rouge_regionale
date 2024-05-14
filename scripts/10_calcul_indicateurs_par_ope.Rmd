@@ -295,19 +295,19 @@ combinaisons <- expand.grid(esp_code_alternatif = unique(ope_biomasse1$esp_code_
                             ope_id = unique(ope_biomasse1$ope_id))
 
 # Fusionner les combinaisons avec le dataframe initial
-reg_pc_presence_esp <- combinaisons %>%
+reg_pc_site_presence_esp <- combinaisons %>%
   left_join(ope_biomasse1, by = c("esp_code_alternatif", "ope_id")) %>%
   mutate(present = !is.na(indicateur)) %>%
   group_by(esp_code_alternatif) %>%
   mutate(
     stade = "ind",
-    indicateur = "pourcentage_presence_esp",
+    indicateur = "pourcentage_site_presence_esp",
     valeur = sum(present) / n_distinct(ope_id) * 100
   ) %>%
   select(-present)
 
 # Affichage du résultat
-print(reg_pc_presence_esp)
+print(reg_pc_site_presence_esp)
 ```
 
 
@@ -321,7 +321,7 @@ ope_indicateur <- rbind(ope_lm,
                         ope_pc_juv,
                         ope_biomasse,
                         ope_effectif,
-                        reg_pc_presence_esp)
+                        reg_pc_site_presence_esp)
 ```
 
 

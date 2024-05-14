@@ -36,8 +36,6 @@ library(dplyr)
 library(ggh4x)
 library(kableExtra)
 
-
-
 library(ggthemes)
 library(tidyverse)
 library(aspe)
@@ -136,6 +134,143 @@ Les temps de génération à prendre en compte pour les différentes espèces so
 Catégorie Données Insuffisantes : Lorsque les informations disponibles sont considérées comme insuffisantes pour pouvoir évaluer une espèce, celle-ci est classée dans la catégorie Données insuffisantes (DD) dans l'attente de l'acquisition de nouvelle connaissances. De manière générale, il est souhaitable d'éviter le recours à cette catégorie, dès lors que les informations disponibles permettent d'apprécier raisonnablement la situation de l'espèce. 
 
 
+Afin de classer ou non une espèce en "DD", on observe l'occurrence de l'espèce par station ainsi que les occurrences temporelles. Si on observe que l'espèce en question apparait moins d'une fois sur quatre dans les séries, on peut supposer que les données disponibles ne sont pas suffisantes pour juger de l'état de menace de cette espèce. 
+
+
+
+# Point de vue global sur les données disponibles : 
+
+```{r}
+# Filtrer les données pour l'indicateur 'effectif_total'
+pnt_vue <- ope_indicateur %>%
+  filter(indicateur == 'effectif_total', 
+         stade == "ad") %>%
+  group_by(esp_code_alternatif, annee) %>%
+  summarize(effectif_total_cumule = sum(valeur)) %>%
+  pivot_wider(names_from = annee, values_from = effectif_total_cumule, values_fill = 0)
+
+print(pnt_vue)
+
+```
+
+
+
+
+# Prétraitement des dataframes 
+
+Les absences de valeurs d'effectifs (valeurs effectif = 0) doivent être intégrés dans les différents dataframe traités lorsque l'espèce a été présente au moins une fois sur une des station : 
+
+## Dataframe reg_indicateur : 
+```{r}
+
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
+                            indicateur = unique(reg_indicateur$indicateur),
+                            stade = unique(reg_indicateur$stade),
+                            esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
+
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+reg_indicateur_complet <- combinaisons_esp_sta %>%
+  left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(esp_code_alternatif,
+         annee,
+         stade,
+         indicateur, 
+         valeur)
+
+```
+
+
+## Dataframe ope_selection : On souhaite y ajouter les 0 aux valeurs manquantes, on réalise la même opération : 
+
+```{r}
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
+                            indicateur = unique(ope_indicateur$indicateur),
+                            stade = unique(ope_indicateur$stade),
+                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
+                            pop_id = unique(ope_indicateur$pop_id))
+
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+ope_indicateur_complet <- combinaisons_esp_ope %>%
+  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(esp_code_alternatif,
+         annee,
+         stade,
+         indicateur, 
+         valeur,
+         pop_id)
+
+```
+
+
+
+
+
+## Taux d'occurrence des espèces par station
+
+On observe l'allure de l'occurrence des espèces par station (les espèces au stade adulte) : 
+
+```{r Calcul taux occurrence, fig.height = 25, fig.width = 25}
+
+occur_sta_esp <- ope_indicateur_complet %>% 
+  filter(stade == "ad",
+         indicateur == "effectif_total") %>%
+  group_by(pop_id, annee, esp_code_alternatif)
+
+# Définir une palette de couleurs personnalisée
+my_palette <- c("grey", heat.colors(99))
+
+# Convertir pop_id en facteur
+occur_sta_esp$pop_id <- factor(occur_sta_esp$pop_id)
+
+# Créer le graphique avec ggplot2 et facettes pour chaque espèce
+ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur)) +
+  geom_point() +
+  scale_size_continuous(range = c(1, 8)) + # Ajuster la plage de taille des points selon vos préférences
+  scale_color_gradientn(colors = c("grey", heat.colors(99)), na.value = "grey") + # Utiliser une palette de couleurs personnalisée
+  scale_x_continuous(breaks = seq(min(occur_sta_esp$annee), max(occur_sta_esp$annee), by = 1)) +
+  facet_wrap(~ esp_code_alternatif, scales = "free") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+```
+
+
+
+```{r}
+nombre_total_stations <- n_distinct(occur_sta_esp$pop_id)
+nombre_valeurs_esp <- length(unique(occur_sta_esp$esp_code_alternatif))
+nombre_total_annee <- 33 # pas bien il faudra que je modifie
+
+# J'ai ici 43 stations, maintenant je cherche à savoir pour chaque espèces, combien d'occurence de présence au sein des stations elles sont présentes (et lesquelles).
+
+tableau_final <- occur_sta_esp %>%
+  group_by(esp_code_alternatif, pop_id) %>%
+  summarize(somme_obs_esp_sta = sum(valeur > 0)) %>% 
+  ungroup()
+
+
+# Filtrer les espèces présentes sur plus de 25% au sein de chacune des stations
+tableau_final <- tableau_final %>%
+  group_by(esp_code_alternatif) %>%
+  filter(somme_obs_esp_sta >= 0.25 * nombre_total_annee) %>% 
+  mutate(nombre_total_stations_25 = n_distinct(pop_id))
+
+# Afficher le tableau final filtré
+print(tableau_final)
+
+# J'ai donc produit un tableau où j'ai mes espèces et mes stations qui sont intéressantes à regarder ! 
+
+```
+
 
 Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données insufisantes : 
 
@@ -154,16 +289,19 @@ Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données 
 
 - Epinoche : trop peu de données renseignées sur elle durant les pêches.?.
 - Grande Alose : trop peu de données renseignées sur elle durant les pêches .?.
+- La carpe commune
 
 
 Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
 
 ```{r Mise en place DD}
-esp_code_DD <- c("ALF","FLE","MUP", "LPR", "TAN", "VAR", "EPI","ALA")
 
-reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_code_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
+esp_DD <- c("ALF","BRB", "BRE", "CCO","EPI", "EPT", "FLE","MUP", "LPR", "LPM","TAN", "VAR","ALA")
+
+reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
 
 ```
+
 
 On réalise une liste bilan des espèces qui vont être évaluées : 
 
@@ -175,7 +313,7 @@ mes_especes <- reg_espece %>%
   pull(esp_code_alternatif)
 
 
-# Construction d'u df avec espèce applicable et leurs temps de génération
+# Construction d'un df avec espèce applicable et leurs temps de génération
 reg_temps_generation <- reg_espece %>% 
   filter(statut_esp == "indigene",
           statut_lrr == "Applicable") %>% 
@@ -183,75 +321,12 @@ reg_temps_generation <- reg_espece %>%
          temps_generation) %>% 
   na.omit()
 
-```
-
-Réalisation d'un tableau bilan des espèces à traiter avec leurs temps de génération associés : 
-
-```{r Tableau liste espece a traiter}
-reg_espece_tab <- reg_espece %>% 
-  filter(statut_lrr == "Applicable") %>% 
-  select(esp_nom_commun,
-         esp_code_alternatif,
-         temps_generation)
-
-colnames(reg_espece_tab) <- c("Nom commun", "Nom de code", "Temps de génération")
-
-reg_espece_tab %>% 
-  flextable::flextable() %>% 
-  flextable::autofit() %>% 
-  flextable::colformat_int(j = c(1, 3), big.mark = " ")
-```
-
-# Préparation des jeux de données : 
-
-Les absences de valeurs d'effectifs (valeurs effectif = 0) doivent être intégrés dans les différents dataframe traités lorsque l'espèce a été présente au moins une fois sur une des station : 
-
-## Dataframe reg_indicateur : 
-```{r}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
-combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
-                            indicateur = unique(reg_indicateur$indicateur),
-                            stade = unique(reg_indicateur$stade),
-                            esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
-
-# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
-reg_indicateur_complet <- combinaisons_esp_sta %>%
-  left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(esp_code_alternatif,
-         annee,
-         stade,
-         indicateur, 
-         valeur)
 
 # Maintenant, reg_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans reg_indicateur
 reg_indicateur_complet <- reg_indicateur_complet %>%
   left_join(reg_temps_generation, by = "esp_code_alternatif") %>% 
   filter(esp_code_alternatif %in% mes_especes)
-```
 
-
-## Dataframe ope_selection : 
-
-Ce dataframe sera utile pour seulement les valeurs d'effectifs propres aux différentes stations pour le critère A : On réalise alors la même manip que ci-avant en ajoutant les 0 aux valeurs manquantes : 
-
-
-```{r}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
-combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
-                            indicateur = unique(ope_indicateur$indicateur),
-                            stade = unique(ope_indicateur$stade),
-                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif))
-
-# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
-ope_indicateur_complet <- combinaisons_esp_ope %>%
-  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(esp_code_alternatif,
-         annee,
-         stade,
-         indicateur, 
-         valeur)
 
 # Maintenant, ope_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans ope_indicateur
 ope_indicateur_complet <- ope_indicateur_complet %>%
@@ -264,8 +339,23 @@ ope_indicateur_complet <- ope_indicateur_complet %>%
 
 
 
+Réalisation d'un tableau bilan des espèces à traiter avec leurs temps de génération et temps d'études associés : 
 
+```{r Tableau liste espece a traiter}
+reg_espece_tab <- reg_espece %>% 
+  filter(statut_lrr == "Applicable") %>% 
+  select(esp_nom_commun,
+         esp_code_alternatif,
+         duree_etude_LRR,
+         temps_generation)
 
+colnames(reg_espece_tab) <- c("Nom commun", "Nom de code", "Durée d'étude LRR","Temps de génération")
+
+reg_espece_tab %>% 
+  flextable::flextable() %>% 
+  flextable::autofit() %>% 
+  flextable::colformat_int(j = c(1, 3), big.mark = " ")
+```
 
 
 
@@ -334,14 +424,15 @@ ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
   select (-temps_generation,
           -annee_moins_generation,
           -annee,
-          -effectif_total_cumule) %>% 
+          -effectif_total_cumule,
+          -pop_id) %>% 
   unique()
 
 ```
 
 
 ```{r}
-result_A2a_lrr <- ope_indicateur_critere_A2a %>%
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
   mutate(statut_espece = case_when(
     is.nan(pourcentage_evo) ~ "NaN",
     pourcentage_evo <= -80 ~ "en danger critique",
@@ -352,10 +443,10 @@ result_A2a_lrr <- ope_indicateur_critere_A2a %>%
   unique()
 
 #Représentation graphique du tableau 
-result_A2a_lrr%>%
+ope_indicateur_critere_A2a%>%
   DT::datatable(rownames = FALSE)
 
-result_lrr <- result_A2a_lrr %>% 
+result_lrr <- ope_indicateur_critere_A2a %>% 
   mutate(critere = "A2a")
 ```
 
@@ -388,7 +479,7 @@ print(ope_indicateur_critere_A2a_graph)
 
 
 
-
+#------------------------------------------------------------------------------------------------------
 
 ## Critère A2b : indice d'abondance adapté au taxon : densité_surface : 
 
@@ -429,42 +520,8 @@ reg_indicateur_critere_A2b <- reg_indicateur_critere_A2b %>%
 ```
 
 
-
-```{r,fig.height = 8, fig.width = 10}
-reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b %>%
-  filter (indicateur %in% c("biomasse","densite_surface")) %>% 
-  filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% 
-  ggplot(aes(x = pourcentage_evo, 
-             y = esp_code_alternatif, 
-             fill = factor(sign(pourcentage_evo)))) + 
-  geom_bar(stat = "identity") +
- geom_text(aes(label = esp_code_alternatif),
-            fontface = "bold") +
-  facet_wrap(~ indicateur, scales = "free") +
-  labs(x = "Pourcentage d'évolution", 
-       y = "Espèce") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey")) + 
-  scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000", "#92D050"), 
-                     labels = c("Diminution","Augmentation"), 
-                     name = "Taux de croissance")
-
-print(reg_indicateur_critere_A2b_graph)
-```
-
-
-Application du critère A2a, reposant sur l'observation directe : 
-- Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
-
-(a) : l'observation directe => nous sélectionnons alors notre indicateur "effectif_total". 
-
 ```{r}
-result_A2b_lrr <- reg_indicateur_critere_A2b %>% 
+reg_indicateur_critere_A2b <- reg_indicateur_critere_A2b %>% 
   mutate(statut_espece = case_when(
     is.nan(pourcentage_evo) ~ "NaN",
     pourcentage_evo <= -80 ~ "en danger critique",
@@ -478,69 +535,46 @@ result_A2b_lrr <- reg_indicateur_critere_A2b %>%
          statut_espece)
 
 #Représentation graphique du tableau 
-result_A2b_lrr%>%
+reg_indicateur_critere_A2b%>%
   DT::datatable(rownames = FALSE)
 
-
-
 ```
+
+
+
+```{r,fig.height = 8, fig.width = 10}
+# reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b %>%
+#   filter (indicateur %in% c("biomasse","densite_surface")) %>% 
+#   filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% 
+#   ggplot(aes(x = pourcentage_evo, 
+#              y = esp_code_alternatif, 
+#              fill = factor(sign(pourcentage_evo)))) + 
+#   geom_bar(stat = "identity") +
+#  geom_text(aes(label = esp_code_alternatif),
+#             fontface = "bold") +
+#   facet_wrap(~ indicateur, scales = "free") +
+#   labs(x = "Pourcentage d'évolution", 
+#        y = "Espèce") +
+#   theme_bw() +
+#   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+#         legend.position = "bottom",
+#         panel.background = element_rect(fill = "#faf0e0"),
+#         panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+#         panel.grid.minor = element_line(color = "lightgrey")) + 
+#   scale_y_discrete(labels = NULL, breaks = NULL) +
+#   scale_fill_manual(values = c("#ed0000", "#92D050"), 
+#                      labels = c("Diminution","Augmentation"), 
+#                      name = "Taux de croissance")
+# 
+# print(reg_indicateur_critere_A2b_graph)
+```
+
+
 
 Application du critère A2B, reposant sur un indice d'abondance adapté au taxon (densité de surface) : 
 - Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
 
 (b) : indice d'abondance adapté au taxon => densité de surface. 
-
-
-```{r}
-result_A2b_lrr <- reg_indicateur_critere_a_extremite %>%
-  filter(indicateur == "effectif_total") %>% 
-  mutate(statut_espece = case_when(
-    pourcentage_evo <= -80 ~ "en danger critique",
-    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
-    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
-    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
-  ))
-
-#Représentation graphique du tableau 
-result_A2b_lrr%>%
-  DT::datatable(rownames = FALSE)
-```
-
-Partie pour moi : je réaffiche mon tableau tab_reg_indicateur avec seulement mes espèces "En danger", "vulnérables" et "en danger critique d'extinction" : 
-
-
-
-```{r, fig.height = 26, fig.width = 10}
-
-reg_indicateur_graph_a <- reg_indicateur %>%
-  filter(esp_code_alternatif == mes_especes) %>% 
-  ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
-  geom_point() +
-  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
-  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
-  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
-       x = "Années", 
-       y = "Valeurs") +
-  theme_bw()+
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill="#faf0e0"),
-        panel.grid.major = element_line(color="lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45))
-
-print(reg_indicateur_graph_a)
-
-```
-
-
-
-
-
-
-
-
 
 
 
@@ -549,87 +583,59 @@ Toujours pour le critère A : On prend les données d'effectifs des individus ma
 
 Je fais un tableau de données avec juste les "ad" et aussi avec juste les années moins temps de générations : 
 
-Pour les effectifs totaux : 
-
-```{r}
-tendances_indicateur_critere_a_e <- reg_indicateur_critere_a %>% 
-  filter(stade == "ad",
-         indicateur == "effectif_total") 
-
-tendances_indicateur_critere_a_e <- tendances_indicateur_critere_a_e %>%
-  group_by(esp_code_alternatif) %>%
-  filter(annee >= annee_moins_generation) %>%
-  ungroup()
-
-tendances_indicateur_critere_a_e <- mk_st_by_group(tendances_indicateur_critere_a_e,
-                                      var_x = annee,
-                                      var_y = valeur,
-                                      esp_code_alternatif,
-                                      indicateur,
-                                      stade)
-```
-
-
-
 Pour la biomasse : 
 
 ```{r}
-tendances_indicateur_critere_a_b <- reg_indicateur_critere_a %>% 
-  filter(stade == "ad",
-         indicateur == "biomasse") 
-
-tendances_indicateur_critere_a_b <- tendances_indicateur_critere_a_b %>%
-  group_by(esp_code_alternatif) %>%
-  filter(annee >= annee_moins_generation) %>%
-  ungroup()
-
-tendances_indicateur_critere_a_b <- mk_st_by_group(tendances_indicateur_critere_a_b,
-                                      var_x = annee,
-                                      var_y = valeur,
-                                      esp_code_alternatif,
-                                      indicateur,
-                                      stade)
-```
-
-
-Pour la densité de surface : 
-
-```{r}
-tendances_indicateur_critere_a_d <- reg_indicateur_critere_a %>% 
-  filter(stade == "ad",
-         indicateur == "densite_surface") 
-
-tendances_indicateur_critere_a_d <- tendances_indicateur_critere_a_d %>%
-  group_by(esp_code_alternatif) %>%
-  filter(annee >= annee_moins_generation) %>%
-  ungroup()
-
-tendances_indicateur_critere_a_d <- mk_st_by_group(tendances_indicateur_critere_a_d,
-                                      var_x = annee,
-                                      var_y = valeur,
-                                      esp_code_alternatif,
-                                      indicateur,
-                                      stade)
+# tendances_indicateur_critere_a_b <- reg_indicateur_critere_a %>% 
+#   filter(stade == "ad",
+#          indicateur == "biomasse") 
+# 
+# tendances_indicateur_critere_a_b <- tendances_indicateur_critere_a_b %>%
+#   group_by(esp_code_alternatif) %>%
+#   filter(annee >= annee_moins_generation) %>%
+#   ungroup()
+# 
+# tendances_indicateur_critere_a_b <- mk_st_by_group(tendances_indicateur_critere_a_b,
+#                                       var_x = annee,
+#                                       var_y = valeur,
+#                                       esp_code_alternatif,
+#                                       indicateur,
+#                                       stade)
 ```
 
 
 
-Bon alors au niveau des effectifs j'ai un doute ... Je ne pense pas qu'il faille prendre la valeur de la médiane des effectifs de toutes mes stations, mais surement le cumul des effectifs pour les années qui m'interresse, je vais donc faire un tableau avec mes effectifs cumulé par années sur toutes mes stations : 
+
+Point de vue global sur la situation de mes espèces sélectionnées :
 
 
-```{r}
+```{r Calcul taux occurrence, fig.height = 25, fig.width = 25}
 
-# Filtrer les données pour l'indicateur 'effectif_total'
-resultat <- ope_indicateur %>%
-  filter(indicateur == 'effectif_total', 
-         stade == "ad") %>%
-  group_by(esp_code_alternatif, annee) %>%
-  summarize(effectif_total_cumule = sum(valeur)) %>%
-  pivot_wider(names_from = annee, values_from = effectif_total_cumule, values_fill = 0)
+occur_sta_esp_g <- occur_sta_esp %>% 
+  filter(esp_code_alternatif %in% mes_especes)
 
-# Afficher le résultat
-print(resultat)
+ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur)) +
+  geom_point() +
+  scale_size_continuous(range = c(1, 8)) + 
+  scale_color_gradientn(colors = c("grey", heat.colors(99)), na.value = "grey") + 
+  scale_x_continuous(breaks = seq(min(occur_sta_esp$annee), max(occur_sta_esp$annee), by = 1)) +
+  facet_wrap(~ esp_code_alternatif, scales = "free") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+print(ui)
+
 ```
+
+
+
+
+
 
 
 

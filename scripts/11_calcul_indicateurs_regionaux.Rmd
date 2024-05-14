@@ -116,7 +116,7 @@ taux_occ <- taux_occ %>%
 
 reg_indicateur <- reg_indicateur %>% 
   rbind(taux_occ) %>% 
-  filter(!indicateur %in% c("pourcentage_presence_esp",
+  filter(!indicateur %in% c("pourcentage_site_presence_esp",
                           "longueur_mediane",
                           "densite_volumique"))
 
@@ -243,7 +243,7 @@ tendance_indicateur %>%
 ```{r Représentation graphique tendance_indicateur ind, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
   filter(indicateur!="taux_occurrence",
-         indicateur!="pourcentage_presence_esp",
+         indicateur!="pourcentage_site_presence_esp",
          stade == "ind") %>% 
   group_by(indicateur,
            trend,
@@ -405,21 +405,6 @@ ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
 
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
