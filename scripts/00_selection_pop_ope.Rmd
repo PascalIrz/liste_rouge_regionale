@@ -83,7 +83,7 @@ mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages",
                    "Pêche partielle sur berge")
 
 ## Le nombre minimum d'années sur les séries de pêches  ----
-n_mini_annee <- 8 
+n_mini_annee <- 9 
 
 ## Le nombre d'années manquantes maximum sur cette série de pêches dans les données ----
 n_max_manquant <- 2
@@ -265,12 +265,70 @@ pop_serie_2 <- pop_serie_2 %>%
 
 ## Représentation graphique finale des séries temporelles sélectionnées et des types de pêches associées aux stations
 
+
+```{r}
+mes_ope <- mes_ope %>% 
+  filter(pop_id %in% mes_pop_id) %>% 
+  mef_ajouter_libelle_site()
+
+# Définir les règles de modification des libellés
+regles_modification <- tribble(
+  ~ancien_libelle,                        ~nouveau_libelle,
+  "VILAINE à SAINTE-MARIE",               "Vilaine à Sainte-Marie",
+  "Le Semnon à Poligne",                  "Semnon à Poligne",
+  "L'Aulne à Locmaria-berrien",           "Aulne à Locmaria-berrien",
+  "La Claie à Pleucadeuc",                "Claie à Pleucadeuc",
+  "Le Ruisseau de Loup à Plougonver",     "Ruisseau de Loup à Plougonver",
+  "La Cantache à Dompierre-du-chemin",    "Cantache à Dompierre-du-chemin",
+  "La Rivière de Pont l'abbé à Peumerit", "Rivière de Pont l'abbé à Peumerit",
+  "Le Kerambellec à Brasparts",           "Kerambellec à Brasparts",
+  "Le Gouessant à Andel",                 "Gouessant à Andel",
+  "La Vilaine à Chateaubourg",            "Vilaine à Chateaubourg",
+  "L'Arguenon à Dolo",                    "Arguenon à Dolo",
+  "Le Ruisseau la Mignonne (bras naturel ou aménagé) à Saint-urbain", "Ruisseau la Mignonne à Saint-urbain",
+  "Le Jet (bras naturel ou aménagé) à Elliant",  "Jet à Elliant",
+  "L'Ille à Montreuil-sur-ille",          "Ille à Montreuil-sur-ille",
+  "L'Ével à Baud",                        "Ével à Baud",
+  "L' Aven à Melgven",                    "Aven à Melgven",
+  "Le Guyoult à Mont-dol",                "Guyoult à Mont-dol",
+  "La Rance à Ereac",                     "Rance à Ereac",
+  "Le Couesnon à Romazy",                 "Couesnon à Romazy",
+  "L' Inam à Lanvenegen",                 "Inam à Lanvenegen",
+  "Le Nanson à Parigne",                  "Nanson à Parigne",
+  "LEGUER à PLOUBEZRE",                   "Leguer à Ploubezre",
+  "TRIEUX à PLESIDY",                     "Trieux à Plesidy",
+  "Le Larhon à Saint-maudan",             "Larhon à Saint-maudan",
+  "Le Kersault à Locarn",                 "Kersault à Locarn",
+  "La Sarre à Melrand",                   "Sarre à Melrand",
+  "Le Ruisseau le Sedon à Guegon",        "Ruisseau le Sedon à Guegon",
+  "L'Ellé au Faouet",                     "Ellé au Faouet",
+  "L'Élorn à la Roche-maurice",           "Élorn à la Roche-maurice",
+  "L' Aër au Croisty",                    "Aër au Croisty",
+  "La Vilaine à  Guichen",                "Vilaine à Guichen",
+  "Le Ruisseau l' Yvel à Neant-sur-yvel", "Ruisseau Yvel à Neant-sur-Yvel",
+  "L'Élorn à Commana",                    "Élorn à Commana",
+  "L'Horn à Mespaul",                     "Horn à Mespaul",
+  "Le Tarun à Plumelin",                  "Tarun à Plumelin",
+  "ISOLE à SAINT-THURIEN",                "Isole à Saint-Thurien",
+  "L'Aff à Paimpont",                     "Aff à Paimpont",
+  "LIE à LA PRENESSAYE",                  "Lié à la Prenessaye",
+  "Le Gozvoalet à Langonnet",             "Gozvoalet à Langonnet",
+  "GARVAN A DINEAULT",                    "Garvan à Dineault",
+  "MILIN PRAT A LOGUIVY-PLOUGRAS",        "Milin Prat à Loguivy-Plougras",
+  "MARZAN À MARZAN",                      "Marzan à Marzan")
+
+mes_ope <- mes_ope %>%
+  left_join(regles_modification, by = c("pop_libelle" = "ancien_libelle")) %>%
+  mutate(n_pop_libelle = coalesce(nouveau_libelle, pop_libelle)) %>%
+  select(-nouveau_libelle,
+         -pop_libelle) %>% 
+  rename(pop_libelle = n_pop_libelle)
+```
+
 ```{r Représentation séries temporelles, fig.height = 10, fig.width = 15}
 ## Représentation graphique des stations sélectionnées et des types de pêches associées ----
 
 mes_ope %>% 
-  filter(pop_id %in% mes_pop_id) %>% 
-  mef_ajouter_libelle_site() %>% 
   ggplot(aes(x = as.character(pop_libelle),
              y = annee, 
              fill= pro_libelle),
@@ -287,7 +345,8 @@ mes_ope %>%
         panel.grid.minor = element_line(color = "#ffffff"),
         panel.background = element_rect(fill="#faf0e6"),
         legend.position = "bottom") +
-  coord_flip()
+  coord_flip() +
+  scale_y_continuous(breaks = seq(min(mes_ope$annee), max(mes_ope$annee), by = 3))
 
 ```
 
@@ -453,6 +512,7 @@ sta_plusieurs_pop <- sta_plusieurs_pop %>%
   dplyr::select (sta_id, sta_libelle, pop_id, pop_libelle) %>% 
   dplyr::distinct() %>% 
   arrange(sta_libelle)
+
 
 sta_plusieurs_pop %>% 
   flextable::flextable() %>% 

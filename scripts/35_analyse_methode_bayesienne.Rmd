@@ -1,28 +1,430 @@
 ---
-title: "35_analyse_methode_bayesienne"
-author: "Léa Bouchet"
-date: "2024-05-14"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Méthode Bayésien - démographie des espèces de poissons d'eau douce de Bretagne"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  mes_especes: !r c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Analyses en méthode bayésienne : 
 
-- Choix des espèces à traiter 
-- Choix des périodes de temps à traiter
-- Choix des stations
+Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
 
 
-Pour réaliser l'analyse bayésienne, seule les espèces d'intérêt son sélectionnées : en accord avec les résultats pré-liminaires observés dans le script 30, 13 espèces sont retenues pour les analyses : 
+# Installation 
 
-- L'Anguille, le brochet, le chabot, le chevesne, le gardon, le goujon, la loche franche, la lamproie de Planner, le saumon atlantique, la truite commune, la perche commune, le vairon et la vandoise rostrée. 
+## Chargement des packages et des données
 
-Il s'agit maintenant de définir, pour chacun de ces individus, la période sur laquelle réaliser les traitement de données. Pour cela, on réalise un tableau de bord par espèce 
+Pour cette partie, la base de données ASPE doit être préalablement disponible sous forme de trames de données enregistrées dans votre calcul et votre chargement. Cette base de données est traitée à l’aide des pckages aspe, aspe2, dplyr et popdynmodel. Les packages aspe et aspe2 peuvent être installés à partir de Github en utilisant :
 
-```{r cars}
 
+```{r Chargement des packages}
+## Chargement des packages ----
+
+library(tidyr)
+library(aspe)
+library(aspe2)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(nimble)
+library(popdynmodel)
+library(mcmcplots)
+
+```
+
+```{r Chargement des données}
+# Chargement des données ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
+
+Code afin de pouvoir coder mes noms de fichiers (sorties de modèles bayésien) : 
+
+```{r Script nom fichier}
+dh <- Sys.time() %>% 
+  str_replace_all(pattern = "-|:| ", 
+                  replacement = "_") %>% 
+  str_sub(1, 19)
+
+esp <- params$mes_especes %>% 
+  paste(collapse = "_")
+
+nom_fichier <- paste("../processed_data/resultat_modele",
+                     esp,
+                     dh,
+                     ".rda",
+                     sep = "_")
+```
+
+
+## Traitement des données 
+
+Dans un premier temps, nous sélectionnons toutes les données pour le bassin Loire-Bretagne sur la période 1990-2023. Certaines opérations de pêche impliquant une pêche à plusieurs passes, cette information est inutile et nous ne gardons que la première passe.
+
+```{r Ajout paramètres}
+
+# Nous inscrivons les sta_id retenues dans nos analyses ultérieures
+mes_sta_id <- c("10468", "10502","10546","10565", "10647", "10734", "10844", "10925", "10950","11067",
+                "11158","11224", "11245", "11290", "11302", "11329", "11432","11456", "11539", "11593",
+                "11601","11602","11603","11605", "11735", "11743","11745", "11875", "11913", "12007",
+                "12060", "12118", "12148", "12291", "12316","12325","12371","12402","12436","12447",
+                "12453","12824","13103")
+
+
+# Nous sélectionnons les espèces de la liste rouge régionale
+mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+
+```
+
+
+```{r Ajout données tab mei_ope_selection}
+data <- mef_creer_passerelle () %>%
+  mef_ajouter_ope_date_complete() %>% # adding date, year, month and day
+  mef_ajouter_surf_calc() %>% # adding fishing surface
+  mef_ajouter_type_protocole() %>% # adding fishing protocol
+  mef_ajouter_passage() %>% # adding fishing pass numbers
+  left_join(select(point_prelevement, pop_id, pop_bas_id)) %>% # adding basin
+  filter(annee %in% 1990:2023, pop_bas_id == 4, pas_numero == 1) 
+
+```
+
+Certains points d’échantillonnage (pop id) peuvent être sondés plusieurs fois au cours de la même année. Nous filtrons donc les opérations de pêche (ope id) pour ne retenir qu’une seule opération par point d’échantillonnage et par année. Ici, nous retenons préférentiellement les opérations qui (1) sont liées à une surface de pêche, (2) minimisent les décalages du protocole de pêche sur les séries temporelles définies pour chaque point d’échantillonnage et (3) fournissent les séries de mois de pêche les plus homogènes.
+
+
+```{r}
+data <- mef_filtrer_operation(data,
+                              var_id = pop_id,
+                              var_tmp = annee,
+                              var_surf = ope_surface_calculee,
+                              var_pro = pro_libelle,
+                              var_date = mois,
+                              default = TRUE)
+```
+
+
+De nombreux points d’échantillonnage ne sont pas soumis à une surveillance régulière, de sorte que notre ensemble de données peut contenir des années manquantes en raison du manque d’opérations de pêche. Bien que les modèles d’ensembles imputent les états d’occupation manquants, les effectifs et les biomasses, cette imputation est susceptible d’entraîner des biais dans les estimations, surtout si les valeurs manquantes sont fréquentes ou déséquilibrées dans le temps. Ces biais peuvent être limités en ne sélectionnant que les points d’échantillonnage fréquemment étudiés. 
+
+Pour ce faire, nous définissons, à l’échelle des points d’échantillonnage, le nombre d’années impliquant une opération de pêche, les années consécutives sans pêche, les protocoles de pêche et les changements de protocole pour chaque combinaison de protocoles. Comme nous utiliserons plus tard la fonction mod popgrow qui ne tient pas compte des protocoles de pêche (et les changements de protocole peuvent entraîner des estimations biaisées), nous sélectionnons les points d’échantillonnage et les opérations de manière à obtenir des séries avec 1 procotol, au moins sept ans de relevés de pêche et au plus trois années consécutives sans pêche.
+
+
+```{r}
+def <- def_compter_obs(data,
+                       var_id = pop_id,
+                       var_tmp = annee,
+                       var_pro = pro_libelle
+                       )
+
+data <- mef_filtrer_obs(data,
+                        def,
+                        var_id = pop_id,
+                        var_pro = pro_libelle,
+                        min_obs = 9,
+                        max_na_cons = 3,
+                        max_pro = 3)
+
+data_filter <- data %>% 
+  filter(sta_id == mes_sta_id)
+
+```
+
+Au cours d’une opération de pêche, les poissons capturés sont identifiés en espèces, comptés et regroupés en lots. Nous ajoutons des informations sur les lots (effectifs et codes d’espèces) à notre base de données et nous reconstituons la taille des captures par point d’échantillonnage, année, opération de pêche et espèces.
+
+```{r}
+data_filter <- mef_ajouter_lots(data_filter) %>%
+  summarise(catch_size = sum(lop_effectif),
+            .by = c(pop_id,
+                    annee, 
+                    esp_code_alternatif, 
+                    ope_id, 
+                    ope_surface_calculee))
+```
+
+
+La base de données des NCECF se compose de données sur la présence seulement et, par conséquent, des années manquantes liées à l’absence d’opérations de pêche. Cependant, les modèles de paquets nécessitent des séries chronologiques complètes par point d’échantillonnage et par taxon et reposent sur des données de présence-absence pour estimer les états d’occupation des points d’échantillonnage. Il faut donc reconstituer les absences et ajouter les années manquantes. Pour un taxon donné, les absences (c.-à-d. non-observations de ce taxon pendant les opérations de pêche sur les points d’échantillonnage où il est habituellement présent) peuvent être reconstituées à partir des observations disponibles pour d’autres taxons.
+
+
+```{r}
+data_filter <- mef_ajouter_absence(data_filter,
+                            var_id = pop_id,
+                            var_taxon = esp_code_alternatif,
+                            var_abs = catch_size,
+                            var_obs = ope_id)
+```
+
+
+Maintenant, nous sélectionnons seulement les données sur les taxons de la liste rouge régionale (contenu dans les values "mes_especes_lrr"). Nous devons encore ajouter les années manquantes en raison du manque d'opération de pêche. 
+
+
+```{r}
+data_lrr <- filter(data_filter, esp_code_alternatif %in% mes_especes_lrr) %>%
+  mef_ajouter_na(var_id = pop_id,
+                 var_taxon = esp_code_alternatif,
+                 var_obs = annee,
+                 vec_obs = 1990:2023)
+```
+
+
+Les surfaces de pêche peuvent varier d’une année à l’autre et la taille des captures dépend largement de la surface de pêche. Ainsi, nous tiendrons compte des variations interannuelles de surface de pêche dans le processus de modélisation. Notre ensemble de données comporte des valeurs manquantes sur les surfaces de pêche que les modèles ne sont pas en mesure d’imputer. Par conséquent, nous devons avant d’imputer ces valeurs manquantes. Pour ce faire, à l’échelle des points d’échantillonnage, ces valeurs manquantes sont remplacées par la valeur de l’année précédente ou, à défaut, par la valeur de l’année suivante : 
+
+
+```{r}
+data_lrr <- data_lrr %>%
+  mutate(ope_surface_calculee = ifelse(ope_surface_calculee == 0, NA,
+                                       ope_surface_calculee)) %>%
+  mef_imputevalue(var_id="pop_id",
+                  var_tmp="annee",
+                  var_imp="ope_surface_calculee")
+```
+
+
+```{r}
+data_trf <- data_lrr %>% 
+  filter(esp_code_alternatif == "TRF")
+
+```
+
+
+
+# Exécution du modèle de croissance démographique : 
+
+Cette partie nécessite le chargement des paquets popdynmodel et nimble.
+
+Utilisons la fonction mod_popgrow pour estimer la croissance de la population des espèces à tester pour la liste rouge régionale sur la période 1990-2023, de l’ajustement du modèle de croissance à l’ensemble de données sur les espèces. Comme nous souhaitons tenir compte des variations annuelles de l’effort d’échantillonnage (ici la surface de pêche), nous devons spécifier l’argument var_surf. Nous souhaitons également les estimations de croissance démographique sur la période 2013-2018 et 2018-2023, nous spécifions donc la période = list(c(2016,2018),c(2018,2023)) (la fonction retournera également des taux de croissance sur toute la période définie par l’ensemble de données sans avoir besoin).
+
+Enfin, dans un souci de simplification, nous demandons uniquement le taux de croissance annuel moyen à l’échelle du bassin Loire-Bretagne (i.e. sur tous les points d’échantillonnage) en spécifiant les paramètres save = "N mulambda". Comme un modèle bayésien prend généralement beaucoup de temps, nous conservons les valeurs par défaut, c.-à-d. 3 chaînes MCMC avec 10000 itérations réduites à un tirage à chaque 100e itération ayant éliminé une période de rodage de 2500 itérations. Mais cela pourrait ne pas être suffisant pour fournir des estimations suffisamment précises.
+
+
+Pour le jeu de données data_lrr : 
+```{r}
+result <- mod_popgrow(data_lrr,
+                      var_id = "pop_id",
+                      var_tax = "esp_code_alternatif",
+                      var_tmp = "annee",
+                      var_cnt = "catch_size",
+                      var_surf = "ope_surface_calculee",
+                      period = list(c(2000,2013),
+                                    c(2010,2023)),
+                      n_iter = 1005000,
+                      n_thin = 100,
+                      n_burnin = 5000)
+
+save(result,
+     file = nom_fichier)
+```
+
+
+Je dispose donc maintenant des résultats du modèle / 
+
+Je regarde les N_PGR au niveau de mes 3 périodes de temps différentes et de mes différentes espèces : 
+
+```{r, fig.height = 26, fig.width = 10}
+
+r <- result$mcmc_summary
+
+r_filtered <- r[!is.na(r$period),]
+r_filtered <- r_filtered %>% 
+  filter(parameter == "N_PGR")
+
+r_PGR_graph <- 
+  ggplot(r_filtered, aes(x = period, y = mean, fill = period)) +
+  geom_point(stat = "identity") +
+  facet_wrap(~ esp_code_alternatif, ncol = 1) +
+  theme_bw()+
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill="#faf0e0"),
+        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+print(r_PGR_graph)
+
+```
+
+
+
+
+
+
+
+
+
+```{r}
+traplot(result_trf$mcmc_chain, parms = c("p.col_id[1, 4]"))
+traplot(result$mcmc_chain, parms = c("p.col_id[1, 4]"))        
+
+traplot(result$mcmc_chain, parms = c("p.col_id[2, 10]"))  
+
+```
+
+
+
+
+
+#-------------------------------------------------------------------------------
+
+Plot des résultats : 
+
+```{r, fig.height = 1, fig.width = 5}
+
+library(mcmcplots)
+
+traplot(result$mcmc_chain)
+denplot(r[r$parameter %in% "N_lambda",])
+
+r <- result$mcmc_summary
+a <- result$mcmc_chain
+rr <- r[r$parameter %in% "N_lambda",]
+
+# ANG : taux de croissance régional anuel moyen
+r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N"),]
+a <- r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N_mulambda"),]
+
+
+denplot(result$mcmc_chain)
+
+
+traplot(result$mcmc_chain, parms = c("N_mulambda [2,1,1]"))
+  
+```
+
+
+```{r}
+# Ajout des protocoles dans le jeu de données data_esp_1
+data_lrr <- left_join(data_lrr, def, by = "pop_id")
+# Sélectionner uniquement les colonnes nécessaires
+data_lrr <- data_lrr %>% 
+  select(pop_id,
+         annee,
+         esp_code_alternatif,
+         ope_id, 
+         ope_surface_calculee,
+         catch_size,
+         pro_libelle)
+
+result_popgrowAlt <- mod_popgrowAlt(data_lrr,
+                                    var_id = "pop_id",
+                                    var_tax = "esp_code_alternatif",
+                                    var_tmp = "annee",
+                                    var_cnt = "catch_size",
+                                    var_surf = "ope_surface_calculee",
+                                    var_pro = "pro_libelle",
+                                         period = list(c(1990,2023)),
+                                         n_iter = 502000,
+                                         n_thin = 500,
+                                         n_burnin = 2000)
+```
+
+
+
+
+
+
+
+
+
+Je réalise le modèle mod_popgrowAlt sur data_esp_1
+
+```{r}
+# Ajout des protocoles dans le jeu de données data_esp_1
+data_esp_1 <- left_join(data_esp_1, def, by = "pop_id")
+# Sélectionner uniquement les colonnes nécessaires
+data_esp_1 <- data_esp_1 %>% 
+  select(pop_id,
+         annee,
+         esp_code_alternatif,
+         ope_id, 
+         ope_surface_calculee,
+         catch_size,
+         pro_libelle)
+
+
+
+result_esp1_popgrowAlt <- mod_popgrowAlt(data_esp_1,
+                                         var_id = "pop_id",
+                                         var_tax = "esp_code_alternatif",
+                                         var_tmp = "annee",
+                                         var_cnt = "catch_size",
+                                         var_surf = "ope_surface_calculee",
+                                         var_pro = "pro_libelle",
+                                         period = list(c(1990,2023)),
+                                         n_iter = 502000,
+                                         n_thin = 500,
+                                         n_burnin = 2000)
+```
+
+
+
+La fonction mod popgrow retourne une liste avec les résumés des principales statistiques associées à l’estimation des paramètres demandés (mcmc_summary), les chaînes MCMC (mcmc_chain) et la liste des indices de paramètres (subscript) : 
+
+```{r}
+result$mcmc_summary
+```
+
+
+# Vérification de la convergence du modèle et de la qualité de l’ajustement
+## Rhat
+
+
+La statistique de Rhat est un indice utile pour évaluer la convergence d’un algorithme MCMC vers une distribution postérieure stationnaire (son estimation nécessite plus d’une chaîne MCMC). Cette statistique, basée sur le rapport entre la variance inter-chaîne et la variance intra-chaîne, doit être proche de 1 et inférieure à 1,1. 
+
+Une valeur de Rhat supérieure à 1 signifie que les chaînes MCMC n’ont pas convergé vers une distribution commune. Cela peut être dû à un nombre insuffisant d’itérations, à une mauvaise spécification du modèle ou à une mauvaise qualité des données. Ici, les valeurs de Rhat signifient que les chaînes MCMC ont suffisamment convergé et peuvent fournir des estimations précises pour N mulambda[1, 1, 1] et N mulambda[1, 1, 3]. Cependant, la valeur obtenue pour N mulambda[1, 1, 2] indique que d’autres itérations sont nécessaires.
+
+
+
+
+## n. eff.
+
+La taille effective de l’échantillon n.eff peut être utilisée pour vérifier l’autocorrélation dans les estimations de paramètres. En fait, les échantillons successifs d’une simulation MCMC sont autocorrélés. Idéalement, les estimations des paramètres devraient être fondées sur des échantillons de MCMC indépendants, de sorte qu’un taux d’amincissement (n mince) est appliqué pour ne conserver que certains échantillons de MCMC pour les estimations des paramètres afin de réduire cette autocorrélation. Le rapport de n.eff à la taille totale de l’échantillon (n chaînes x (n iter - n burnin) / n mince) fournit une mesure du taux d’autocorrélation dans les estimations de paramètres. Plus ce rapport est faible, plus le taux d’autocorrélation est élevé. Des taux d’autocorrélation élevés indiquent que de nombreuses itérations sont nécessaires pour simuler des distributions postérieures précises, même si les chaînes MCMC ont convergé. De manière arbitraire, il est souvent admis que n.eff devrait être supérieur à 10% de la taille totale de l’échantillon. Dans cet exemple, les rapports de n.eff à la taille totale de l’échantillon sont fermés à 1, ce qui suggère un faible degré d’autocorrélation dans les échantillons MCMC utilisés pour les estimations des paramètres. Le paquet coda offre des fonctions pour vérifier l’autocorrélation dans les chaînes MCMC qui peuvent vous aider à déterminer un taux d’amincissement approprié (autocorr et autocorr.plot).
+
+
+# Distributions marginales postérieures
+
+Une façon simple de vérifier la qualité de l’ajustement du modèle est de regarder les distributions marginales postérieures des paramètres. Pour un paramètre donné, la distribution marginale postérieure représente l’incertitude autour de l’estimation du paramètre après la mise à jour de la distribution précédente avec les connaissances fournies par les données. La première vérification consiste à rechercher les différences entre les distributions antérieures et postérieures. Les distributions postérieures très similaires aux distributions précédentes signifient que les données n’ont pas fourni suffisamment de connaissances sur les paramètres pour mettre à jour les distributions précédentes. Parfois, cela peut également être dû à un nombre insuffisant d’itérations. Notez que les fonctions de paquet sont conçues pour être appliquées à un large éventail d’espèces et donc elles utilisent des distributions priori peu ou très peu informatives. Les distributions postérieures ne doivent donc jamais être similaires aux distributions précédentes. Une autre vérification consiste à examiner la forme des distributions marginales postérieures. Les distributions postérieures doivent être lisses et unimodales, sinon cela signifie que les chaînes MCMC ne sont pas complètement mélangées et non convergentes et que les statistiques associées aux estimations des paramètres ne sont pas fiables.
+
+Pour tracer les distributions marginales postérieures, vous pouvez utiliser la fonction denplot du paquet mcmcplots:
+
+```{r Représentation graphique, fig.height = 145, fig.width = 140}
+denplot(result$mcmc_chain, collapse = TRUE)
+
+temp <- result[["mcmc_summary"]]
+temp %>% 
+  filter(is.na(pop_id)) %>% 
+  nrow
+  Sys.time()
+```
+
+
+```{r}
+save(result,
+     file = "../processed_data/modelisation_croissance_demographique_esp_1_2_3_4_5.rda")
+```
+
+
+```{r}
+result_trf <- mod_popgrow(data_trf,
+                      var_id = "pop_id",
+                      var_tax = "esp_code_alternatif",
+                      var_tmp = "annee",
+                      var_cnt = "catch_size",
+                      var_surf = "ope_surface_calculee",
+                      period = list(c(2000,2013),
+                                    c(2010,2023)),
+                      n_iter = 1005000,
+                      n_thin = 100,
+                      n_burnin = 5000)
 
 ```
