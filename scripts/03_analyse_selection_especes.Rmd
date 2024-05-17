@@ -4,11 +4,10 @@ subtitle: "Sélection des espèces"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
-  annee_limite: 1990 # On fixe une année limite afin de calculer les densités
-  especes_lrr_2015: !r c("ABL","ALF","ANG","BRB","BRE","BRO","CCO","CHA","CHE",
-                         "EPI","EPT","FLE","GAR","GOU","ALA","LPP","LPR","LPM",
-                         "LOF","MUP","PER","ROT","SAT","TAN","TRF","VAI","VAR", 
-                         "GRE")
+  annee_depart: 1990 # On fixe une année limite afin de calculer les densités
+  especes_lrr_2015: !r c("ABL","ANG","ALA","BRB","BRE","BRO","CCO","CHA","CHE",
+                         "EPI","EPT","GAR","GOU","GRE","LPP","LPM",
+                         "LOF","PER","ROT","SAT","TAN","TRF","VAI","VAR")
   especes_a_retirer: !r c("APP","ASL","BRX","CAX","CYP","HBG","OCL","PCC","PFL",
                        "CCU","CAS") # Sélection des espèces à retirer du jeu de données initial
 output:
@@ -25,15 +24,14 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 03_analyse_selection_especes
 
-Pour les opérations sélectionnées, on cherche à savoir quelles espèces seront sélectionnées pour les futures analyses. On souhaite réaliser un graphique bi_varié et de sélectionner les espèces à partir d'un seuil déterminé. 
+Après avoir sélectionné les points de prélèvements et opérations de pêche de l'aire géographique ciblée, un tri des données sur les espèces péchées durant les opérations est réalisé. Il s'agit de retirer du jeu final les données inintéressantes ou obsolètes pour notre étude. 
 
-Donc : on réalise une sélection non pas sur les espèces appartenant à la liste rouge régionale de 2015 mais à partir de seuils. Pour chaque espèce on fait un graphique bivarié : on met pour chaque espèce le nombre de fois où elle a été observée et sa densité moyenne sur la période des 10 dernières années. A partir de ce graphique on élimine les espèces qui sont trop rares, pour lesquelles nous n'avons pas assez de données. Les espèces qui sont trop peu abondantes sont aussi abandonnées. On fixe donc un seuil qui nous donnera une liste d'espèce. 
 
 # Installation 
 
 ## Chargement des packages et des données 
 
-```{r}
+```{r Chargement des packages et des données}
 ## Chargement des packages ----
 
 library(tidyverse)
@@ -57,13 +55,16 @@ load(mei_table)
 
 ```
 
+
 # Constitution du jeu de données
 
-## Création d'un df contenant les données d'opérations et d'effectifs des années sélectionnées :
+## Création du dataframe
 
-```{r}
+Un dataframe contenant les données d'opérations et d'effectifs des années sélectionnées est créer à partir de la passerelle étbalie. 
+
+```{r Création df esp_ope_selection}
 #Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
-lop_esp_selection <- passerelle %>% 
+esp_ope_selection <- passerelle %>% 
   left_join(y=lot_poissons %>% 
               select(lop_id,
                      esp_id = lop_esp_id,
@@ -74,10 +75,7 @@ lop_esp_selection <- passerelle %>%
   left_join (y=operation %>% 
                select (ope_id, 
                        ope_surface_calculee,
-                       passage$pas_numero))
-
-
-lop_esp_selection <- lop_esp_selection %>% 
+                       passage$pas_numero)) %>% 
   mef_ajouter_ope_date() %>% 
   select(ope_id,
          lop_effectif,
@@ -86,125 +84,184 @@ lop_esp_selection <- lop_esp_selection %>%
          annee,
          ope_surface_calculee) %>% 
   distinct()
+```
 
 
+## Tri du dataframe
+
+Dans le cadre de notre étude, seules les espèces de poissons d'eau douce nous intéressent. Nous retirons alors les espèces inutiles du dataframe esp_ope_selection établis (cf params : "especes_a_retier")
+
+Dans le cas de la Bretagne, des spécificités sur certaines espèces sont prises en compte. Par exemple, un changement de noms de code pour une même espèce est intervenus au cours des années : VAR et VAN désignent tout deux la même espèce. 
+
+```{r Tri espèces esp_ope_selection}
 # Je remplace les VAN par les VAR (vandoises Rostrées)
-lop_esp_selection <- lop_esp_selection %>% 
+esp_ope_selection <- esp_ope_selection %>% 
   mutate(esp_code_alternatif = ifelse (test = esp_code_alternatif == "VAN",
                                        yes = "VAR",
                                        no = esp_code_alternatif)) %>% 
   filter(!(esp_code_alternatif %in% params$especes_a_retirer))
-
-# On réduit le jeu de donnée à notre année limite (paramètre)
-lop_esp_selection_calcul <- filter(lop_esp_selection, annee >= params$annee_limite)
-
 ```
 
-On calcul notre densité moyenne d'espèce sur les 30 dernières années :
 
 ```{r}
+# On réduit le jeu de donnée à notre année limite (paramètre)
+esp_ope_selection <- filter(esp_ope_selection, annee >= params$annee_depart)
+```
 
-densite_moyenne <- lop_esp_selection_calcul %>% 
+
+#  Analyse des données espèces
+
+On souhaite obtenir une vision globale des données contenues dans le dataframe esp_ope_selection afin de savoir si les espèces sélectionnées dans la liste rouge régionale 2015 sont bien cohérentes avec les espèces que nous pouvons sélectionner pour l'étude de la réactualisation de la LRR. 
+
+Pour obtenir un point de vue générale sur les espèces, un graphique bivarié est réalisé : il représente le pourcentage d'occurrence des espèces en fonction de la densité moyenne des espèces sur les 30 dernières années. 
+
+
+
+
+## Densité des espèces
+
+La densité de surface moyenne de chaque espèce est calculée sur les 30 dernières années de données dans "esp_densite" :
+
+```{r Calcul densité des espèces}
+ope_esp_densite <- esp_ope_selection %>% 
   group_by(ope_id,
            esp_code_alternatif,
            ope_surface_calculee) %>% 
   summarise(effectif= sum(lop_effectif)) %>% 
   ungroup() %>% 
-  mutate(indicateur= "densite_surface") %>% 
-  mutate(valeur = effectif/ope_surface_calculee)
+  mutate(valeur = effectif/ope_surface_calculee) # Densité de surface par espèces, par opérations
 
-# Calcul de l'effectif total pour chaque espèce
-densite_moyenne <- densite_moyenne %>%
-  group_by(esp_code_alternatif) %>%
-  mutate(effectif_total = sum(effectif))
+ope_esp_densite_cal <- ope_esp_densite %>% 
+  select(ope_id,
+         esp_code_alternatif,
+         valeur)
 
-# Calcul de la densité moyenne pour chaque espèce
-densite_moyenne <- densite_moyenne %>%
+# Calcul de la densité moyenne pour chaque espèce (toutes opérations confondues)
+esp_densite_moyenne <- ope_esp_densite %>%
   group_by(esp_code_alternatif) %>%
-  mutate(densite_moyenne = mean(valeur))
+  summarise(densite_moy = mean(valeur)) 
+
 ```
 
-On réalise le calcul du pourcentage d'occurrence qui se trouvera en ordonnée : 
 
-```{r}
-ope_id <- unique(lop_esp_selection_calcul$ope_id)
-esp_code_alternatif <- unique(lop_esp_selection_calcul$esp_code_alternatif)
+## Effectif des espèces
 
-annees <- lop_esp_selection_calcul %>% 
+L'effectif moyen de chaque espèce est calculée sur les 30 dernières années de données dans "esp_effectif" :
+
+```{r Calcul effectifs des espèces}
+# Calcul de l'effectif total pour chaque espèce sur toutes les opérations
+esp_effectif <- ope_esp_densite %>%
+  group_by(esp_code_alternatif) %>%
+  summarise(effectif_total = sum(effectif))
+
+```
+
+
+
+## Pourcentage d'occurrence
+
+Un tableau regroupant toutes les combinaisons d'opérations et d'espèces est réalisé. 
+
+```{r Création tab_occurrence}
+ope_id <- unique(esp_ope_selection$ope_id) # Ope_id uniques contenus dans le df esp_ope_selection
+esp_code_alternatif <- unique(esp_ope_selection$esp_code_alternatif) # Esp_code_alternatif uniques contenus dans le df esp_ope_selection
+
+ope_annees <- esp_ope_selection %>% 
   ungroup() %>% 
   select(ope_id,
          annee) %>% 
   distinct()
 
-tab_oc <- crossing(ope_id, esp_code_alternatif) 
-
-#Calcul du pourcentage d'occurrence (nombre de pêches avec présence / nombre de pêches)
-taux_occurrence <- tab_oc %>% 
-  left_join(densite_moyenne) %>% 
-  mutate(valeur_oc = ifelse(is.na(valeur), 0, valeur)) %>% 
-  left_join(annees) %>% 
-  group_by(esp_code_alternatif,
-           annee) %>% 
-  summarise(n_ope = n_distinct(ope_id),
-            n_oc = n_distinct(ope_id[valeur_oc > 0]),
-            taux_oc = (n_oc / n_ope)*100) %>% 
-  group_by(esp_code_alternatif) %>% 
-  mutate(moy_taux_oc = mean(taux_oc))
-
-
-donnees_graphique <- left_join(densite_moyenne, taux_occurrence, by = "esp_code_alternatif")
-
-donnees_graphique <- donnees_graphique %>%
-  mutate(couleur = ifelse (esp_code_alternatif %in% params$especes_lrr_2015, 
-                           "Liste Rouge Régionale Bretagne 2015",
-                           "Présentes en Bretagne"))
+tab_occurrence <- crossing(ope_id, esp_code_alternatif)
 
 ```
 
 
-# Représentation graphique des résultats 
+A partir de ce tableau, le calcul du pourcentage d'occurrence peut être réalisé et stocké dans un tableau regroupant les densités moyennes par espèces ainsi que les taux d'occurrence. 
 
-```{r, fig.height = 10, fig.width = 10}
+```{r Création tab_taux_occurrence}
+#Calcul du pourcentage d'occurrence (nombre de pêches avec présence / nombre de pêches)
+tab_taux_occurrence <- tab_occurrence %>% 
+  left_join(ope_esp_densite_cal) %>% 
+  mutate(valeur_oc = ifelse(is.na(valeur), 0, valeur)) %>% 
+  left_join(ope_annees) %>% 
+  group_by(esp_code_alternatif,
+           annee) %>% 
+  mutate(n_ope = n_distinct(ope_id),
+            n_oc = n_distinct(ope_id[valeur_oc > 0]),
+            taux_occurrence = (n_oc / n_ope)*100) %>% 
+  group_by(esp_code_alternatif) %>% 
+  mutate(taux_occurrence_moy = mean(taux_occurrence)) %>% 
+  select(esp_code_alternatif,
+         taux_occurrence_moy) %>% 
+  distinct()
+```
+
+## Tableau final
+
+```{r Compilation finale densite / occurrence}
+tab_densite_occurrence <- left_join(esp_densite_moyenne, tab_taux_occurrence, by = "esp_code_alternatif")
+```
+
+
+
+
+# Représentation graphique
+
+En amont de la réalisation d'une représentation graphique, les statuts de présence dans la précédente liste rouge régionale est renseigné pour chaque espèce. Cela permettra d'observer où se situe chaque espèce dans la relation ainsi que leurs statuts individuels. 
+
+
+```{r Mise en place statut LRR 2015}
+tab_densite_occurrence <- tab_densite_occurrence %>%
+  mutate(statut_lrr = ifelse (esp_code_alternatif %in% params$especes_lrr_2015, 
+                           "Liste Rouge Régionale Bretagne 2015",
+                           "Présente en Bretagne"))
+
+```
+
+
+La représentation graphique est ensuite effectuée : 
+
+```{r Représentation graphique occurrence densite, fig.height = 10, fig.width = 10}
 
 # Visualisation du graphique avec ggplot2
-ggplot(
-  donnees_graphique,
-  aes(
-    x = densite_moyenne,
-    y = moy_taux_oc,
-    label = esp_code_alternatif,
-    color = couleur
-  )) +
+ggplot(tab_densite_occurrence,aes(x = densite_moy,
+                               y = taux_occurrence_moy,
+                               label = esp_code_alternatif,
+                               color = statut_lrr)) +
   geom_point(size = 3,
              shape = 16) +
-  geom_text(
-    hjust = -0.4,
-    vjust = 1.3,
-    size = 3,
-    fontface = "bold",
-    color = "black"
- ) +
-  labs(
-    title = "Densité moyenne vs Pourcentage d'occurrence par espèce",
-    subtitle = "Région Bretagne",
-    x = "Densité moyenne sur les 30 dernières années",
-    y = "Pourcentage d'occurrence") +
+  geom_text(hjust = -0.4,
+            vjust = 1.3,
+            size = 3,
+            fontface = "bold",
+            color = "black") +
+  labs(title = "Densité moyenne vs Pourcentage d'occurrence par espèce",
+       subtitle = "Région Bretagne",
+       x = "Densité moyenne sur les 30 dernières années",
+       y = "Pourcentage d'occurrence") +
   scale_color_manual(values = wesanderson::wes_palette("AsteroidCity1")[3:5],
                      name = "Espèces") +
   scale_x_log10() +  # axe des x en échelle logarithmique
   scale_y_log10() +  # axe des y en échelle logarithmique
   theme_light(base_size = 11) +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.major = element_line(color = "#ffffff", size = 0.1),
-    panel.grid.minor = element_line(color = "#ffffff"),
-    panel.background = element_rect(fill = "#faf0e6"),
-    legend.position = "bottom") 
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_line(color = "#ffffff", size = 0.1),
+        panel.grid.minor = element_line(color = "#ffffff"),
+        panel.background = element_rect(fill = "#faf0e6"),
+        legend.position = "bottom") 
 ```
+
+
+À partir de ce graphique, on élimine les espèces qui sont trop rares, ayant une densité et un taux d'occurrence très faible (c'est-à-dire pour lesquelles nous n'avons pas assez de données). Les espèces ayant le plus de données sur lesquelles s'appuyer apparaissent en haut à droite du graphique : ce sont les espèces qui ont une forte occurrence ainsi qu'une forte densité moyenne. 
+
+Dans le cadre de notre étude, on observe que les espèces étudiées pour la précédente apparaissent pour la quasi-totalité dans la partie supérieure droite du graphique, à l'exception de la carpe commune (CCP) et de l'épinoche (EPI). Une analyse postérieure confirmera ou non le manque de données pour ces espèces.
+
+
 
 # Sauvegarde : 
 ```{r}
-save(lop_esp_selection,
+save(esp_ope_selection,
      file = "../processed_data/analyse_selection_especes.rda")
 ```
 
