@@ -96,10 +96,13 @@ Dans le cas de la Bretagne, des spécificités sur certaines espèces sont prise
 ```{r Tri espèces esp_ope_selection}
 # Je remplace les VAN par les VAR (vandoises Rostrées)
 esp_ope_selection <- esp_ope_selection %>% 
-  mutate(esp_code_alternatif = ifelse (test = esp_code_alternatif == "VAN",
-                                       yes = "VAR",
-                                       no = esp_code_alternatif)) %>% 
+  mutate(esp_code_alternatif = 
+           case_when(
+             esp_code_alternatif == "VAN" ~ "VAR",
+             esp_code_alternatif %in% c("CCX", "CMI", "CCU") ~ "CCO",
+             TRUE ~ esp_code_alternatif)) %>% 
   filter(!(esp_code_alternatif %in% params$especes_a_retirer))
+
 ```
 
 

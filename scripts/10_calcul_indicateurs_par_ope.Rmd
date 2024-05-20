@@ -72,7 +72,6 @@ source(file = "../R/calcul_ecart_interquartile.R")
 source(file = "../R/calcul_25_percentile.R")
 source(file = "../R/calcul_75_percentile.R")
 source(file = "../R/calcul_densite_surface.R")
-
 ```
 
 
@@ -83,10 +82,11 @@ source(file = "../R/calcul_densite_surface.R")
 ### Effectif total des espèces par opération de pêche
 
 ```{r Creation tableau effectif total par ope}
-ope_effectif <- mei_ope_selection %>%
+ope_effectif <- mei_esp_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
-           stade) %>%
+           stade
+           ) %>%
   distinct(lop_id, .keep_all = TRUE) %>% 
   summarise(valeur=sum(lop_effectif)) %>% 
   mutate(indicateur= "effectif_total") %>% 
@@ -94,7 +94,8 @@ ope_effectif <- mei_ope_selection %>%
          esp_code_alternatif,
          indicateur,
          valeur,
-         stade)
+         stade
+         )
 
 
 
@@ -112,7 +113,7 @@ ope_effectif <- ope_effectif %>%
 ```{r Création tableau biomasse totale par ope}
 # Calcul de la biomasse par opération : par espèce et par stade : 
 
-ope_biomasse <- mei_ope_selection %>%
+ope_biomasse <- mei_esp_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
            stade) %>%
@@ -136,8 +137,8 @@ ope_biomasse <- ope_biomasse %>%
 ### Densité surfacique par opération 
 
 ```{r Ajout des données de surfaces calculées}
-# Ajout des données de surfaces échantillonnées dans mei_ope_selection ----
-mei_ope_selection <- mei_ope_selection %>% 
+# Ajout des données de surfaces échantillonnées dans mei_esp_ope_selection ----
+mei_ope_selection <- mei_esp_ope_selection %>% 
   left_join (y=operation %>% 
                select (ope_id, 
                        ope_surface_calculee,
