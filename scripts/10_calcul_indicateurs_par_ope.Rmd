@@ -82,7 +82,7 @@ source(file = "../R/calcul_densite_surface.R")
 ### Effectif total des espèces par opération de pêche
 
 ```{r Creation tableau effectif total par ope}
-ope_effectif <- mei_esp_ope_selection %>%
+ope_effectif <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
            stade
@@ -96,9 +96,10 @@ ope_effectif <- mei_esp_ope_selection %>%
          valeur,
          stade
          )
+```
 
 
-
+```{r Creation tableau effectif total par ope 2}
 ope_effectif <- ope_effectif %>% 
   bind_rows(ope_effectif %>%
       filter(stade %in% c("ad", "juv")) %>%
@@ -113,7 +114,7 @@ ope_effectif <- ope_effectif %>%
 ```{r Création tableau biomasse totale par ope}
 # Calcul de la biomasse par opération : par espèce et par stade : 
 
-ope_biomasse <- mei_esp_ope_selection %>%
+ope_biomasse <- mei_ope_selection %>%
   group_by(ope_id,
            esp_code_alternatif,
            stade) %>%
@@ -138,7 +139,7 @@ ope_biomasse <- ope_biomasse %>%
 
 ```{r Ajout des données de surfaces calculées}
 # Ajout des données de surfaces échantillonnées dans mei_esp_ope_selection ----
-mei_ope_selection <- mei_esp_ope_selection %>% 
+mei_ope_selection <- mei_ope_selection %>% 
   left_join (y=operation %>% 
                select (ope_id, 
                        ope_surface_calculee,
@@ -148,7 +149,7 @@ mei_ope_selection <- mei_esp_ope_selection %>%
 Partie optionnelle : Vérification du Jeu De Données : Je vérifie que j'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30) : 
 
 ```{r Vérification effectif 1}
-# verif_effectif <- mei_ope_selection %>%
+# verif_effectif <- mei_esp_ope_selection %>%
 #   group_by(lop_id,lop_effectif) %>%
 #   summarise(nbr_lignes = n()) %>%
 #   ungroup()
@@ -160,7 +161,7 @@ Partie optionnelle : Vérification du Jeu De Données : Je vérifie que j'ai aut
 Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
 
 ```{r Vérification effectif 2}
-# nb_unique <- mei_ope_selection %>%
+# nb_unique <- mei_esp_ope_selection %>%
 #   summarise(nb_unique = n_distinct(mei_id))
 # 
 # print(nb_unique)
@@ -169,10 +170,11 @@ Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique
 
 ```{r Calcul densités surfaces}
 ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
-                                            ope_surface_calculee,
-                                            ope_id,esp_code_alternatif, 
-                                            stade,
-                                            mei_id)
+                                           ope_surface_calculee,
+                                           ope_id,
+                                           esp_code_alternatif,
+                                           stade,
+                                           mei_id)
 ```
 
 
@@ -220,6 +222,7 @@ ope_pc_juv <- ope_effectif %>%
 ```{r Calcul pourcentage juvéniles}
 ope_pc_juv <- ope_pc_juv %>% 
   ungroup() %>% 
+  na.omit() %>% 
   complete(ope_id,
            esp_code_alternatif,
            stade,

@@ -123,14 +123,15 @@ reg_indicateur <- reg_indicateur %>%
 ```
 
 
-```{r Representation graphique des données, fig.height = 26, fig.width = 10}
-
+```{r Representation graphique des données}
 reg_indicateur <- reg_indicateur %>% 
   filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
                                     "PER", "GAR", "GOU", "LOF", "LPP",
                                     "SAT", "TRF", "VAI", "VAR"))
+```
 
 
+```{r Representation graphique des données 2, fig.height = 26, fig.width = 10}
 # Représentation graphique des données : 
 reg_indicateur_graph <- reg_indicateur %>%
   ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 

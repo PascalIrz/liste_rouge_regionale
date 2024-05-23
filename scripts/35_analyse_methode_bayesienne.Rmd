@@ -17,6 +17,20 @@ Ce script permet de s'interesser à la croissance démographique des espèces. I
 
 # Installation 
 
+Installation du package : 
+
+```{r}
+# install.packages(c("dplyr", "magrittr", "MCMCvis", "nimble", "rlang", "stringr", "tidyr", "tidyverse"))
+# library(devtools)
+# install_github("manue6/popdynmodel")
+
+```
+
+
+
+
+
+
 ## Chargement des packages et des données
 
 Pour cette partie, la base de données ASPE doit être préalablement disponible sous forme de trames de données enregistrées dans votre calcul et votre chargement. Cette base de données est traitée à l’aide des pckages aspe, aspe2, dplyr et popdynmodel. Les packages aspe et aspe2 peuvent être installés à partir de Github en utilisant :
@@ -124,8 +138,7 @@ Pour ce faire, nous définissons, à l’échelle des points d’échantillonnag
 def <- def_compter_obs(data,
                        var_id = pop_id,
                        var_tmp = annee,
-                       var_pro = pro_libelle
-                       )
+                       var_pro = pro_libelle)
 
 data <- mef_filtrer_obs(data,
                         def,
@@ -190,14 +203,6 @@ data_lrr <- data_lrr %>%
 ```
 
 
-```{r}
-data_trf <- data_lrr %>% 
-  filter(esp_code_alternatif == "TRF")
-
-```
-
-
-
 # Exécution du modèle de croissance démographique : 
 
 Cette partie nécessite le chargement des paquets popdynmodel et nimble.
@@ -209,7 +214,7 @@ Enfin, dans un souci de simplification, nous demandons uniquement le taux de cro
 
 Pour le jeu de données data_lrr : 
 ```{r}
-result <- mod_popgrow(data_lrr,
+result_21_05 <- mod_popgrow(data_lrr,
                       var_id = "pop_id",
                       var_tax = "esp_code_alternatif",
                       var_tmp = "annee",
@@ -221,8 +226,9 @@ result <- mod_popgrow(data_lrr,
                       n_thin = 100,
                       n_burnin = 5000)
 
-save(result,
-     file = nom_fichier)
+
+save(result_21_05,
+     file = "../processed_data/modelisation_croissance_demographique_result_21_05.rda")
 ```
 
 
@@ -239,7 +245,7 @@ r_filtered <- r_filtered %>%
   filter(parameter == "N_PGR")
 
 r_PGR_graph <- 
-  ggplot(r_filtered, aes(x = period, y = mean, fill = period)) +
+  ggplot(gg, aes(x = period, y = mean, fill = period)) +
   geom_point(stat = "identity") +
   facet_wrap(~ esp_code_alternatif, ncol = 1) +
   theme_bw()+
@@ -255,17 +261,57 @@ print(r_PGR_graph)
 ```
 
 
+```{r}
+traplot(result$mcmc_chain, parms = c("p.col_id[1, 0 ]"))        
 
 
-
-
+gg <- r %>%
+  filter(period == "2010-2023") %>% 
+  filter(parameter == "N_PGR") %>% 
+  select(mean,
+         esp_code_alternatif)
+```
 
 
 
 ```{r}
-traplot(result_trf$mcmc_chain, parms = c("p.col_id[1, 4]"))
-traplot(result$mcmc_chain, parms = c("p.col_id[1, 4]"))        
+gg <- gg %>%
+  ggplot(aes(x = mean, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(mean)))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif),
+            fontface = "bold") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey"),
+        panel.grid.minor = element_line(color = "lightgrey")) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "#92D050"), 
+                     labels = c("Diminution","Augmentation"), 
+                     name = "Taux de croissance")
 
+print(gg)
+
+```
+
+
+
+```{r}
+traplot(result$mcmc_chain, parms = c("N_mulambda[1, 1, 1]"))
+```
+
+
+
+```{r}
+denplot(result$mcmc_chain, parms = c("N_mulambda[3, 1, 3]"))
+```
+
+
+```{r}
+traplot(result$mcmc_chain)     
 traplot(result$mcmc_chain, parms = c("p.col_id[2, 10]"))  
 
 ```
@@ -314,7 +360,10 @@ data_lrr <- data_lrr %>%
          ope_surface_calculee,
          catch_size,
          pro_libelle)
+```
 
+
+```{r}
 result_popgrowAlt <- mod_popgrowAlt(data_lrr,
                                     var_id = "pop_id",
                                     var_tax = "esp_code_alternatif",
@@ -322,10 +371,18 @@ result_popgrowAlt <- mod_popgrowAlt(data_lrr,
                                     var_cnt = "catch_size",
                                     var_surf = "ope_surface_calculee",
                                     var_pro = "pro_libelle",
-                                         period = list(c(1990,2023)),
-                                         n_iter = 502000,
-                                         n_thin = 500,
-                                         n_burnin = 2000)
+                                    period = list(c(2000,2013),
+                                                  c(2010,2023)),
+                                    n_iter = 1005000,
+                                    n_thin = 100,
+                                    n_burnin = 5000)
+
+
+
+
+save(result_popgrowAlt,
+     file = "../processed_data/modelisation_croissance_demographique_result_popgrowAlt_22_05.rda")
+
 ```
 
 
