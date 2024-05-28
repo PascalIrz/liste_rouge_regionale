@@ -228,6 +228,7 @@ pop_id <- tab_analyse_bay %>%
 ```{r Sauvegarde}
 # SAUVEGARDE ----
 save(tab_analyse_bay,
+     ope_indicateur_complet,
      file = "../processed_data/pre_traitement_criteres_lrr_uicn.rda")
 ```
 
@@ -349,7 +350,8 @@ On observe plus en détail l'allure de l'occurrence des espèces par station (le
 
 occur_sta_esp <- ope_indicateur_complet %>% 
   filter(stade == "ad",
-         indicateur == "effectif_total") %>%
+         indicateur == "effectif_total", 
+         esp_code_alternatif == "ANG") %>%
   group_by(pop_id, annee, esp_code_alternatif)
 
 # Convertir pop_id en facteur

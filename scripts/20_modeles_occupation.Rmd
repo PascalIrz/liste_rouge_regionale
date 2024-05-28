@@ -1,217 +1,162 @@
 ---
-title: "20_modeles_occupation"
-author: "Léa Bouchet"
-date: "2024-04-08"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Méthode Bayésien - démographie des espèces de poissons d'eau douce de Bretagne"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  mes_especes: !r c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Modèles d'occupation
-
-On souhaite ici appliquer le package "spOccupancy": On souhaite structurer notre jeu de données de la même manière afin de pouvoir réaliser les mêmes analyses avec nos données ASPE Bretagne.La première étape est de transformer le jeu de données en détection / non détection (présence / absence d'un espèce : TRUE / FALSE) sur un site donné. Le premier modèle tester est un modèle d'occupation d'une seule espèce (donc à l'espèce).
 
 
-## Installation 
+Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
 
-### Chargement des packages, fonctions et des données 
 
-```{r Chargement des packages}
-## Chargement des packages ----
-library(ggthemes)
-library(tidyverse)
-library(aspe)
-library(ggplot2)
-library (khroma)
-library(dplyr)
-library(wesanderson)
-library(zoo)
-library(lemon)
-library(trend)
-library(ggh4x)
-library(spOccupancy)
-library(coda)
-library(stars)
+# Installation 
+
+Installation du package : 
+
+```{r}
+# install.packages(c("dplyr", "magrittr", "MCMCvis", "nimble", "rlang", "stringr", "tidyr", "tidyverse"))
+# library(devtools)
+# install_github("manue6/popdynmodel")
+
 ```
 
 
-```{r Chargement des sauvegardes}
-## Chargement des sauvegardes ----
-load(file = "../processed_data/selection_pop_ope.rda")
-load(file = "../processed_data/pre_traitements_donnees_env.rda")
+
+## Chargement des packages et des données
+
+Pour cette partie, la base de données ASPE doit être préalablement disponible sous forme de trames de données enregistrées dans votre calcul et votre chargement. Cette base de données est traitée à l’aide des pckages aspe, aspe2, dplyr et popdynmodel. Les packages aspe et aspe2 peuvent être installés à partir de Github en utilisant :
+
+
+```{r Chargement des packages}
+## Chargement des packages ----
+
+library(tidyr)
+library(aspe)
+library(aspe2)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(nimble)
+library(popdynmodel)
+library(mcmcplots)
+
+```
+
+```{r Chargement des données}
+# Chargement des données ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
+
+
+
+
+
+
+
+```{r}
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
 ```
 
 
-```{r Chargement des palettes de couleurs}
-# Définition des couleurs de l'OFB en format RGB
-pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97B30", "#B9D9EB")
-```
 
 
-# Constitution du jeu de données
+On essaye de partir de mon mei_ope_selection pour le bayésien : 
 
-On souhaite transformer notre jeu de données en ABSENCE / PRESENCE : où absence = 0 et présence = 1 : 
-Réalisation pour le Brochet (BRO) dans un premier temps: "Extract Detection-nondetection Data"
+```{r}
+library(dplyr)
 
-```{r Paramétrage ABS PRE espèce}
-mon_espece <- "BRO"
-```
-
-
-```{r Pré-traitements création df ABS PRE pour BRO}
-ope_ind <- ope_indicateur %>% 
-  filter(indicateur == "densite_surface") %>% 
-  select (ope_id,
-          esp_code_alternatif
-           ) %>% 
-  unique() %>% 
-  mutate (presence = 1)
-
-
-mes_combinaisons <- expand.grid(ope_ind$ope_id, ope_ind$esp_code_alternatif) %>% 
-  distinct() %>% 
-  rename(ope_id = Var1,
-         esp_code_alternatif = Var2)
-```
-
-
-```{r Création df ABS PRE pour BRO}
-y <- mes_combinaisons %>% 
-  left_join(y = ope_ind) %>% 
-  mutate(presence = ifelse(is.na(presence), 0, presence)) %>% 
-  left_join(y = ope_selection %>% 
-              select(ope_id,
-                     pop_id,
-                     annee
-                    # ope_date
-                     )) %>% 
-              select(-ope_id) %>% 
-              distinct() %>% 
-#  mutate(annee = paste0("a_", annee)) %>% 
-  filter(esp_code_alternatif == mon_espece) %>% 
-  select(-esp_code_alternatif) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = presence) %>% 
-  arrange(pop_id)
-```
-
-
-## Covariables d'occurrence : 
-
-Les covariables d’occurrence sont stockées sous forme de matrice ou de base de données, avec des lignes correspondant aux sites et des colonnes correspondant aux différentes covariables que nous souhaitons inclure dans le modèle. Ici, nous avons une seule covariable (elev) et nous la convertissons en une base de données dans le bloc de code suivant.
-
-```{r Détermination co-variables occurrence part 1}
-occ.covs <- ope_selection_param_env %>% 
-  group_by(pop_id, parametre) %>% 
-  summarise(valeur = median(valeur, na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  mutate(valeur = log10(valeur)) %>% 
-  pivot_wider(names_from = parametre,
-              values_from = valeur) %>% 
-  arrange(pop_id)
-```
-
-
-```{r Détermination co-variables occurrence part 2}
-test <- ope_selection %>% 
-  mutate(jour = lubridate::yday(ope_date)) %>% 
-  mutate(protocole = as.factor(pro_libelle),
-         protocole = as.integer(protocole)) %>% 
+mei_ope_selection_ang <- mei_ope_selection %>% 
   select(pop_id,
+         sta_id,
          annee,
-         jour,
-         protocole)
+         esp_code_alternatif,
+         ope_id,
+         ope_surface_calculee,
+         lop_effectif,
+         lop_id) %>%
+  filter(sta_id %in% c("10502",
+                       "10546",
+                       "10844", 
+                       "10950",
+                       "11224", 
+                       "11290",
+                       "11432",
+                       "11539",
+                       "11593",
+                       "11601",
+                       "11602",
+                       "11735", 
+                       "11605",
+                       "11743",
+                       "12007",
+                       "12060", 
+                       "12118", 
+                       "12291", 
+                       "12316",
+                       "12325",
+                       "12371",
+                       "12402",
+                       "12436")) %>%
+  group_by(ope_id, 
+           pop_id,
+           annee,
+           ope_surface_calculee) %>%
+  distinct(lop_id, .keep_all = TRUE) %>% 
+  mutate(catch_size = sum(lop_effectif)) %>%
+  ungroup() %>% 
+  select(-lop_id, -lop_effectif) %>% 
+  distinct() %>%
+  filter(esp_code_alternatif == "ANG") %>% 
+  select(-sta_id)
 
-jour <- test %>% 
-  select(-protocole) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = jour) %>% 
-  arrange(pop_id)
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons <- expand.grid(ope_id = unique(mei_ope_selection_ang$ope_id),
+                            esp_code_alternatif = unique(mei_ope_selection_ang$esp_code_alternatif))
 
-protocole <- test %>% 
-  select(-jour) %>% 
-  arrange(annee) %>% 
-  pivot_wider(names_from = annee,
-              values_from = protocole) %>% 
-  arrange(pop_id)
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+mei_ope_selection_ang_complet <- combinaisons %>%
+  left_join(mei_ope_selection_ang, by = c("ope_id", "esp_code_alternatif")) %>%
+  mutate(catch_size = ifelse(is.na(catch_size), 0, catch_size))
 
-modele_bro <- list()
+
 ```
 
 
-```{r Application des co-variables}
-modele_bro$y <- y
-modele_bro$occ.covs <- occ.covs
-modele_bro$det.covs$jour <- jour
-modele_bro$det.covs$protocole <- protocole
-```
 
-
-```{r Etablissement des formules}
-bro.occ.formula <- ~ scale(profondeur) + scale(pente) + scale(temp_juillet)
-bro.det.formula <- ~ scale(jour) + scale(protocole) + I(scale(jour)^2)
-```
-
+Pour le jeu de données data_lrr : 
 ```{r}
-bro.inits <- list(alpha = 0, 
-                   beta = 0, 
-                   z = apply(modele_bro$y, 1, max, na.rm = TRUE))
-```
-
-```{r}
-bro.priors <- list(alpha.normal = list(mean = 0, var = 2.72), 
-                    beta.normal = list(mean = 0, var = 2.72))
-```
-
-```{r}
-n.samples <- 5000
-n.burn <- 3000
-n.thin <- 2
-n.chains <- 3
-```
-
-```{r}
-out <- PGOcc(occ.formula = bro.occ.formula, 
-             det.formula = bro.det.formula, 
-             data = modele_bro, 
-             inits = bro.inits, 
-             n.samples = n.samples, 
-             priors = bro.priors, 
-             n.omp.threads = 1, 
-             verbose = TRUE, 
-             n.report = 1000, 
-             n.burn = n.burn, 
-             n.thin = n.thin, 
-             n.chains = n.chains)
-```
+result_27_05_ang <- mod_popgrow(mei_ope_selection_ang,
+                      var_id = "pop_id",
+                      var_tax = "esp_code_alternatif",
+                      var_tmp = "annee",
+                      var_cnt = "catch_size",
+                      var_surf = "ope_surface_calculee",
+                      period = list(c(2010,2023),
+                                    c(2000,2013)),
+                      n_iter = 1005000,
+                      n_thin = 100,
+                      n_burnin = 5000)
 
 
-Représentation visuelle des résultats : 
-Pour 'beta' : 
-
-```{r Représentation plot beta}
-plot(out, 'beta', density = FALSE) # Occupancy parameters.
-```
-
-
-Pour 'alpha' : 
-
-```{r Représentation plot alpha}
-plot(out, 'alpha', density = FALSE) # Detection parameters.
-```
-
-
-# Sauvegarde
-
-```{r Sauvegarde}
-save(ope_indicateur,
-     modele_bro,
-     file = "../processed_data/modeles_occupation.rda")
+save(result_27_05_ang,
+     file = "../processed_data/modelisation_croissance_demographique_result_27_05_ang.rda")
 ```
 

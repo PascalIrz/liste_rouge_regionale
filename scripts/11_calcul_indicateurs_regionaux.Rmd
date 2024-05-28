@@ -41,6 +41,8 @@ library(lemon)
 library(trend)
 library(ggh4x)
 library(purrr)
+library(broom)
+library(ggforce)
 ```
 
 
@@ -95,7 +97,7 @@ taux_occ <- occur %>%
 ```
 
 
-# Indicateurs à l'Echelle régionale
+# Regroupement des indicateurs à l'Echelle régionale
 
 ```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
@@ -123,6 +125,8 @@ reg_indicateur <- reg_indicateur %>%
 ```
 
 
+## Tri des espèces LRR
+
 ```{r Representation graphique des données}
 reg_indicateur <- reg_indicateur %>% 
   filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
@@ -131,45 +135,92 @@ reg_indicateur <- reg_indicateur %>%
 ```
 
 
-```{r Representation graphique des données 2, fig.height = 26, fig.width = 10}
-# Représentation graphique des données : 
+
+## Significativité des indicateurs
+
+```{r}
+# Fonction pour effectuer les régressions linéaires et extraire les p-values
+get_pvalues <- function(data, start_year, end_year) {
+  data_filtered <- data %>% filter(annee >= start_year & annee <= end_year)
+  results <- data_filtered %>%
+    group_by(stade, indicateur, esp_code_alternatif) %>%
+    do(tidy(lm(valeur ~ annee, data = .)))
+  results %>% filter(term == "annee") %>% select(stade, indicateur, esp_code_alternatif, p.value)
+}
+
+pvalues_2010_2023 <- get_pvalues(reg_indicateur, 2010, 2023)
+pvalues_2000_2013 <- get_pvalues(reg_indicateur, 2000, 2013)
+```
+
+
+```{r, fig.height = 26, fig.width = 10}
+# Ajouter la colonne de signification
+pvalues_2010_2023 <- pvalues_2010_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant"))
+
+pvalues_2000_2013 <- pvalues_2000_2013 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant"))
+
+# Joindre les p-values aux données d'origine
+reg_indicateur <- reg_indicateur %>%
+  left_join(pvalues_2010_2023 %>% select(-p.value), by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  left_join(pvalues_2000_2013 %>% select(-p.value), by = c("stade", "indicateur", "esp_code_alternatif"), suffix = c("_2010_2023", "_2000_2013"))
+```
+
+
+
+
+# Représentation graphique des tendances démographiques : 
+
+```{r, fig.height = 26, fig.width = 10}
+# Créer le graphique
 reg_indicateur_graph <- reg_indicateur %>%
-  ggplot(aes(x= annee, y =valeur, group = stade, color = stade)) + 
+  ggplot(aes(x = annee, y = valeur, group = stade, color = stade)) +
   geom_point(shape = 1) +
-  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") + 
+  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
   scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
                      name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs") +
-  theme_bw()+
+  theme_bw() +
   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
         legend.position = "bottom",
-        panel.background = element_rect(fill="#faf0e0"),
-        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
         panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45)) +
-  geom_smooth(data = reg_indicateur %>% 
-                filter (annee %in% 2010:2023), 
-              aes(x= annee, y =valeur, group = stade, color = stade),
-              method = "lm",
-              se = FALSE) +
-  geom_smooth(data = reg_indicateur %>% 
-                filter (annee %in% 2000:2013), 
-              aes(x= annee, y =valeur, group = stade, color = stade),
-              method = "lm", 
-              se = FALSE,
-              linetype = "dashed")
+        axis.text.x = element_text(angle = 45))
 
+# Ajouter les lignes de régression avec des styles différents selon la signification
+reg_indicateur_graph <- reg_indicateur_graph +
+  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "significant"),
+              aes(x = annee, y = valeur, group = stade, color = stade),
+              method = "lm", se = FALSE, linetype = "solid") +
+  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "non_significant"),
+              aes(x = annee, y = valeur, group = stade, color = stade),
+              method = "lm", se = FALSE, linetype = "dashed") +
+  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "significant"),
+              aes(x = annee, y = valeur, group = stade, color = stade),
+              method = "lm", se = FALSE, linetype = "solid") +
+  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "non_significant"),
+              aes(x = annee, y = valeur, group = stade, color = stade),
+              method = "lm", se = FALSE, linetype = "dashed")
 
 print(reg_indicateur_graph)
 
 ```
 
 
+
+
+
+
+
+
 ## Tendances globales 
 
 Il s'agit d'observer les différentes tendances présentes sur les indicateurs précedement établis. 
+
 
 ```{r Fonction mk_st_by_group, fig.height = 25, fig.width = 10}
 tendance_indicateur <- mk_st_by_group(ope_indicateur,
@@ -184,7 +235,10 @@ tendance_indicateur <- mk_st_by_group(ope_indicateur,
 
 
 ```{r Représentation graphique tendance_indicateur ad, fig.height = 25, fig.width = 10}
-tendance_indicateur %>% 
+tendance_indicateur %>%
+    filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR")) %>% 
   filter(indicateur!="taux_occurrence",
          stade == "ad") %>% 
   group_by(indicateur,
@@ -214,6 +268,9 @@ tendance_indicateur %>%
 
 ```{r Représentation graphique tendance_indicateur juv, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
+    filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR")) %>% 
   filter(indicateur!="taux_occurrence",
          stade == "juv") %>% 
   group_by(indicateur,
@@ -243,6 +300,9 @@ tendance_indicateur %>%
 
 ```{r Représentation graphique tendance_indicateur ind, fig.height = 25, fig.width = 10}
 tendance_indicateur %>% 
+    filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR")) %>% 
   filter(indicateur!="taux_occurrence",
          indicateur!="pourcentage_site_presence_esp",
          stade == "ind") %>% 
@@ -325,6 +385,9 @@ print(taux_evol_graph)
 
 ```
 
+
+
+
 ### Vérification des taux d'évolutions obtenus 
 
 On souhaite ici avoir une vérification de la cohérence des données obtenues sur les taux d'évolution, on souhaite alors regarder les taux d'évolution sur un paramètres particulier : les effectifs. 
@@ -360,6 +423,9 @@ tendance_indicateur_eff <- tendance_indicateur_eff %>%
 ```
 
 
+
+
+
 Observation de ce qu'il se passe au niveau des taux d'évolution : On s'attend, sur le graphique produit, à avoir les données d'espèces d'aligner sur une droite : 
 
 ```{r}
@@ -376,12 +442,6 @@ tendance_indicateur_gra <- tendance_indicateur_eff %>%
  
 print(tendance_indicateur_gra)
 ```
-
-
-
-
-
-
 
 
 Je souhaite visualiser l'évolution de la densité d'une espèce sur un point de prélèvement dans le temps : 
@@ -408,7 +468,6 @@ ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
 ```
 
 
-
 # Sauvegarde : 
 
 ```{r Sauvegarde}
@@ -417,124 +476,4 @@ save(taux_occ,
      reg_indicateur,
      taux_evol_1990,
      file = "../processed_data/calcul_indicateurs_regionaux.rda")
-```
-
-
-
-
-
-
-
---------------------------------------------------------------------------------
-
-Optionnel (expérimentale) :
-
-# Modèles Linéaires Généralisés (GLM) :
-
-Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
-
-
-Transformer les valeurs de densités (surface et volume) en log pour les analyses (car les valeurs sont parfois très élevées) : 
-
-```{r Transformation données densités en log}
-data <- ope_selection %>% 
-  select(ope_id,
-         pro_libelle) 
-
-glm_ope_indicateur <- ope_indicateur %>% 
-  mutate (valeur_l = ifelse (grepl("densite", indicateur),
-                               log(1 + valeur),
-                               valeur)) %>%  
-  left_join(data)
-```
-
-
-
-Exclure du jeu de données les lignes avec moins de 5 années de données (données trop peu robuste pour réaliser une analyse) : 
-
-```{r Paramétrage années minimum GLM}
-nb_annee_glm <- 5
-```
-
-
-```{r Construction tableau glm_ope_indicateur}
-glm_ope_indicateur <- glm_ope_indicateur %>%
-  group_by(esp_code_alternatif, indicateur, stade) %>%
-  filter(n_distinct(annee) >= nb_annee_glm) %>%
-  ungroup() %>% 
-  select(-valeur)
-```
-
-
-## Réalisation GLM (Individuel)
-
-```{r Réalisation GLM Individuel}
-mon_espece <- "ANG"
-mon_stade <- "ind"
-mon_indicateur <- "densite_volumique"
-
-glm_data_ang <- glm_ope_indicateur %>% 
-  ungroup() %>% 
-  filter(indicateur == mon_indicateur,
-         esp_code_alternatif == mon_espece,
-         stade == mon_stade)
-
-glm_ang <- calcul_glm_non_groupe(glm_data_ang)
-glm_ang <- glm_ang %>% 
-  mutate(esp_code_alternatif = "ANG",
-         stade = "ind",
-         indicateur = "densite_volumique")
-
-```
-
-
-## Réalisation GLM (Collectif)
-
-```{r Realisation GLM collectif}
-combinaisons_glm_coll <- unique(select(glm_ope_indicateur, esp_code_alternatif, stade, indicateur))
-
-glm_collectif <- combinaisons_glm_coll %>%  # Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
-  pmap_dfr(~calcul_glm_non_groupe(glm_ope_indicateur %>%
-                                    filter(esp_code_alternatif == ..1 & stade == ..2 & indicateur == ..3)) %>%
-             mutate(esp_code_alternatif = ..1, 
-                     stade = ..2, 
-                     indicateur = ..3)) %>% 
-  rename (glm_intercept = intercept,
-          glm_pvalue = pvalue,
-          glm_annee = annee) %>% 
-  select (esp_code_alternatif,
-          stade,
-          indicateur,
-          glm_intercept, 
-          glm_annee,
-          glm_pvalue)
-
-```
-
-
-Représentation visuelle des résultats GLM collectif
-
-```{r Attribution significativité Tab GLM, fig.height = 5, fig.width = 10}
-glm_collectif <- glm_collectif %>%
-  mutate(significativité = case_when(
-    glm_pvalue <= 0.001 ~ '***',
-    glm_pvalue <= 0.01 ~ '**',
-    glm_pvalue <= 0.05 ~ '*',
-    glm_pvalue <= 0.1 ~ '.',
-    TRUE ~ ' '
-  ))
-```
-
-
-```{r Représentation Tab GLM, fig.height = 5, fig.width = 10}
-glm_collectif %>%
-  gt() %>%
-  tab_header(
-    title = "Résultats des modèles GLM",
-    subtitle = "Tableau synthétique des coefficients, années et p-values"
-  ) %>%
-  fmt_number(
-    columns = vars(glm_intercept, glm_annee, glm_pvalue),
-    decimals = 3
-  )
 ```

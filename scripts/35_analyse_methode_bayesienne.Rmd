@@ -12,24 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
-
-
-# Installation 
-
-Installation du package : 
-
-```{r}
-# install.packages(c("dplyr", "magrittr", "MCMCvis", "nimble", "rlang", "stringr", "tidyr", "tidyverse"))
-# library(devtools)
-# install_github("manue6/popdynmodel")
-
-```
-
-
-
-
-
 
 ## Chargement des packages et des données
 
@@ -64,6 +46,11 @@ mei_table <- misc_nom_dernier_fichier(
 load(mei_table)
 
 ```
+
+
+
+
+
 
 Code afin de pouvoir coder mes noms de fichiers (sorties de modèles bayésien) : 
 
@@ -104,6 +91,37 @@ mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF"
 ```
 
 
+```{r}
+mes_sta_id_ang <- c("10502",
+                    "10546",
+                    "10844", 
+                    "10950",
+                    "11224", 
+                    "11290",
+                    "11432",
+                    "11539",
+                    "11593",
+                    "11601",
+                    "11602",
+                    "11735", 
+                    "11605",
+                    "11743",
+                    "12007",
+                    "12060", 
+                    "12118", 
+                    "12291", 
+                    "12316",
+                    "12325",
+                    "12371",
+                    "12402",
+                    "12436")
+
+
+mon_espece_lrr <- c("ANG")
+
+```
+
+
 ```{r Ajout données tab mei_ope_selection}
 data <- mef_creer_passerelle () %>%
   mef_ajouter_ope_date_complete() %>% # adding date, year, month and day
@@ -111,7 +129,15 @@ data <- mef_creer_passerelle () %>%
   mef_ajouter_type_protocole() %>% # adding fishing protocol
   mef_ajouter_passage() %>% # adding fishing pass numbers
   left_join(select(point_prelevement, pop_id, pop_bas_id)) %>% # adding basin
-  filter(annee %in% 1990:2023, pop_bas_id == 4, pas_numero == 1) 
+  filter(annee %in% 2010:2023, 
+         pop_bas_id == 4, 
+        # pas_numero == 1,
+         sta_id == mes_sta_id_ang) 
+
+data$pas_numero[is.na(data$pas_numero)] <- 1
+
+data <- data %>% 
+  filter(pas_numero == 1)
 
 ```
 
@@ -144,19 +170,17 @@ data <- mef_filtrer_obs(data,
                         def,
                         var_id = pop_id,
                         var_pro = pro_libelle,
-                        min_obs = 9,
+                        min_obs = 8,
                         max_na_cons = 3,
                         max_pro = 3)
 
-data_filter <- data %>% 
-  filter(sta_id == mes_sta_id)
 
 ```
 
 Au cours d’une opération de pêche, les poissons capturés sont identifiés en espèces, comptés et regroupés en lots. Nous ajoutons des informations sur les lots (effectifs et codes d’espèces) à notre base de données et nous reconstituons la taille des captures par point d’échantillonnage, année, opération de pêche et espèces.
 
 ```{r}
-data_filter <- mef_ajouter_lots(data_filter) %>%
+data_filter <- mef_ajouter_lots(data) %>%
   summarise(catch_size = sum(lop_effectif),
             .by = c(pop_id,
                     annee, 
@@ -182,7 +206,8 @@ Maintenant, nous sélectionnons seulement les données sur les taxons de la list
 
 
 ```{r}
-data_lrr <- filter(data_filter, esp_code_alternatif %in% mes_especes_lrr) %>%
+data_lrr <- filter(data_filter, 
+                   esp_code_alternatif %in% mon_espece_lrr) %>%
   mef_ajouter_na(var_id = pop_id,
                  var_taxon = esp_code_alternatif,
                  var_obs = annee,
@@ -214,21 +239,20 @@ Enfin, dans un souci de simplification, nous demandons uniquement le taux de cro
 
 Pour le jeu de données data_lrr : 
 ```{r}
-result_21_05 <- mod_popgrow(data_lrr,
+result_27_05_ang <- mod_popgrow(data_lrr,
                       var_id = "pop_id",
                       var_tax = "esp_code_alternatif",
                       var_tmp = "annee",
                       var_cnt = "catch_size",
                       var_surf = "ope_surface_calculee",
-                      period = list(c(2000,2013),
-                                    c(2010,2023)),
+                      period = list(c(2015,2023)),
                       n_iter = 1005000,
                       n_thin = 100,
                       n_burnin = 5000)
 
 
-save(result_21_05,
-     file = "../processed_data/modelisation_croissance_demographique_result_21_05.rda")
+save(result_27_05_ang,
+     file = "../processed_data/modelisation_croissance_demographique_result_27_05_ang.rda")
 ```
 
 
@@ -485,3 +509,12 @@ result_trf <- mod_popgrow(data_trf,
                       n_burnin = 5000)
 
 ```
+
+
+
+
+
+
+
+
+

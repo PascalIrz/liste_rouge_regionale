@@ -1,0 +1,156 @@
+---
+title: "13_GLM"
+author: "Léa Bouchet"
+date: "2024-05-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages}
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(gt)
+library(lemon)
+library(trend)
+library(ggh4x)
+library(purrr)
+library(broom)
+library(ggforce)
+```
+
+
+```{r Chargement des données}
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+```
+
+
+
+
+Optionnel (expérimentale) :
+
+# Modèles Linéaires Généralisés (GLM) :
+
+Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
+
+
+Transformer les valeurs de densités (surface et volume) en log pour les analyses (car les valeurs sont parfois très élevées) : 
+
+```{r Transformation données densités en log}
+data <- ope_selection %>% 
+  select(ope_id,
+         pro_libelle) 
+
+glm_ope_indicateur <- ope_indicateur %>% 
+  mutate (valeur_l = ifelse (grepl("densite", indicateur),
+                               log(1 + valeur),
+                               valeur)) %>%  
+  left_join(data)
+```
+
+
+
+Exclure du jeu de données les lignes avec moins de 5 années de données (données trop peu robuste pour réaliser une analyse) : 
+
+```{r Paramétrage années minimum GLM}
+nb_annee_glm <- 5
+```
+
+
+```{r Construction tableau glm_ope_indicateur}
+glm_ope_indicateur <- glm_ope_indicateur %>%
+  group_by(esp_code_alternatif, indicateur, stade) %>%
+  filter(n_distinct(annee) >= nb_annee_glm) %>%
+  ungroup() %>% 
+  select(-valeur)
+```
+
+
+## Réalisation GLM (Individuel)
+
+```{r Réalisation GLM Individuel}
+mon_espece <- "ANG"
+mon_stade <- "ind"
+mon_indicateur <- "densite_volumique"
+
+glm_data_ang <- glm_ope_indicateur %>% 
+  ungroup() %>% 
+  filter(indicateur == mon_indicateur,
+         esp_code_alternatif == mon_espece,
+         stade == mon_stade)
+
+glm_ang <- calcul_glm_non_groupe(glm_data_ang)
+glm_ang <- glm_ang %>% 
+  mutate(esp_code_alternatif = "ANG",
+         stade = "ind",
+         indicateur = "densite_volumique")
+
+```
+
+
+## Réalisation GLM (Collectif)
+
+```{r Realisation GLM collectif}
+combinaisons_glm_coll <- unique(select(glm_ope_indicateur, esp_code_alternatif, stade, indicateur))
+
+glm_collectif <- combinaisons_glm_coll %>%  # Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
+  pmap_dfr(~calcul_glm_non_groupe(glm_ope_indicateur %>%
+                                    filter(esp_code_alternatif == ..1 & stade == ..2 & indicateur == ..3)) %>%
+             mutate(esp_code_alternatif = ..1, 
+                     stade = ..2, 
+                     indicateur = ..3)) %>% 
+  rename (glm_intercept = intercept,
+          glm_pvalue = pvalue,
+          glm_annee = annee) %>% 
+  select (esp_code_alternatif,
+          stade,
+          indicateur,
+          glm_intercept, 
+          glm_annee,
+          glm_pvalue)
+
+```
+
+
+Représentation visuelle des résultats GLM collectif
+
+```{r Attribution significativité Tab GLM, fig.height = 5, fig.width = 10}
+glm_collectif <- glm_collectif %>%
+  mutate(significativité = case_when(
+    glm_pvalue <= 0.001 ~ '***',
+    glm_pvalue <= 0.01 ~ '**',
+    glm_pvalue <= 0.05 ~ '*',
+    glm_pvalue <= 0.1 ~ '.',
+    TRUE ~ ' '
+  ))
+```
+
+
+```{r Représentation Tab GLM, fig.height = 5, fig.width = 10}
+glm_collectif %>%
+  gt() %>%
+  tab_header(
+    title = "Résultats des modèles GLM",
+    subtitle = "Tableau synthétique des coefficients, années et p-values"
+  ) %>%
+  fmt_number(
+    columns = vars(glm_intercept, glm_annee, glm_pvalue),
+    decimals = 3
+  )
+```
