@@ -78,7 +78,8 @@ taille_buffer <- 1000
 ## Réseaux de pêches ----
 mes_reseaux <- c("RCS – Réseau de Contrôle de Surveillance",
                  "RRP – Réseau de Référence Pérenne",
-                 "RHP – Réseau Hydrobiologique Piscicole")
+                 "RHP – Réseau Hydrobiologique Piscicole"
+                 )
 
 ## Types de pêches ----
 mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages",

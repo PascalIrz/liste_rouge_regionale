@@ -69,11 +69,11 @@ esp_ope_selection <- passerelle %>%
               select(lop_id,
                      esp_id = lop_esp_id,
                      lop_effectif)) %>% 
-  left_join (y= ref_espece %>% 
+  left_join(y= ref_espece %>% 
                select(esp_id,
                       esp_code_alternatif)) %>% 
-  left_join (y=operation %>% 
-               select (ope_id, 
+  left_join(y=operation %>% 
+               select(ope_id, 
                        ope_surface_calculee,
                        passage$pas_numero)) %>% 
   mef_ajouter_ope_date() %>% 
