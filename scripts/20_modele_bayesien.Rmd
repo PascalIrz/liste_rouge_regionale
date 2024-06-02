@@ -1,0 +1,199 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Méthode Bayésien - démographie des espèces de poissons d'eau douce de Bretagne"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+params:
+  mes_especes: !r c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
+
+
+# Installation 
+
+Installation du package : 
+
+```{r}
+# install.packages(c("dplyr", "magrittr", "MCMCvis", "nimble", "rlang", "stringr", "tidyr", "tidyverse"))
+# library(devtools)
+# install_github("manue6/popdynmodel")
+
+```
+
+
+## Chargement des packages et des données
+
+Pour cette partie, la base de données ASPE doit être préalablement disponible sous forme de trames de données enregistrées dans votre calcul et votre chargement. Cette base de données est traitée à l’aide des pckages aspe, aspe2, dplyr et popdynmodel. Les packages aspe et aspe2 peuvent être installés à partir de Github en utilisant :
+
+
+```{r Chargement des packages}
+## Chargement des packages ----
+
+library(tidyr)
+library(aspe)
+library(aspe2)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(nimble)
+library(popdynmodel)
+library(mcmcplots)
+
+```
+
+```{r Chargement des données}
+# Chargement des données ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
+
+```{r}
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+```
+
+
+
+On ne doit pas partir de esp_ope_selection car ce ne sont que les espèces qui ont été trié et pas les passages etc...
+On essaye de partir de mon mei_ope_selection pour le bayésien : 
+
+```{r}
+mei_ope_selection_ang <- mei_ope_selection %>% 
+  select(pop_id,
+         sta_id,
+         annee,
+         esp_code_alternatif,
+         ope_id,
+         ope_surface_calculee,
+         lop_effectif,
+         lop_id) %>%
+  filter(sta_id %in% c("10502","10546","10844","10950","11224", 
+                       "11290","11432","11539","11593","11601",
+                       "11602","11735","11605", "11743","12007",
+                       "12060","12118","12291","12316","12325",
+                       "12371","12402","12436")) %>%
+  group_by(esp_code_alternatif,
+           ope_id, 
+           pop_id,
+           annee,
+           ope_surface_calculee) %>%
+  #distinct(lop_id, .keep_all = TRUE) %>% 
+  mutate(catch_size = length(lop_effectif)) %>%
+  ungroup() %>% 
+  select(-lop_id, -lop_effectif) %>% 
+  distinct() %>%
+  filter(esp_code_alternatif == "ANG") %>% 
+  select(-sta_id) %>% 
+  ungroup()
+
+```
+
+
+On souhaite ajouter les absences : 
+```{r}
+
+toutes_annees <- unique(mei_ope_selection_ang$annee)
+toutes_especes <- unique(mei_ope_selection_ang$esp_code_alternatif)
+toutes_pop <- unique(mei_ope_selection_ang$pop_id)
+
+
+base_complete <- expand.grid(annee = toutes_annees,
+                             esp_code_alternatif = toutes_especes, 
+                             pop_id = toutes_pop)
+```
+
+
+
+
+```{r}
+# Fonction pour ajouter des effectifs de 0 pour les absences
+ajouter_absences <- function(data) {
+  # Identifier toutes les années, stations, espèces, opérations de pêche et stations uniques
+  toutes_annees <- unique(data$annee)
+  toutes_pop <- unique(data$pop_id)
+  toutes_especes <- unique(data$esp_code_alternatif)
+
+  
+  # Créer une base complète de toutes les combinaisons possibles
+  base_complete <- expand.grid(annee = toutes_annees, pop_id = toutes_pop, 
+                               esp_code_alternatif = toutes_especes)
+  
+  # Joindre la base complète avec les données initiales
+  resultat <- base_complete %>%
+    left_join(data, by = c("annee", "pop_id", "esp_code_alternatif")) %>%
+    mutate(catch_size = ifelse(is.na(catch_size), 0, catch_size))
+  
+  # Filtrer pour ne pas ajouter de 0 aux années avant la première observation
+  resultat <- resultat %>%
+    group_by(pop_id, esp_code_alternatif) %>%
+    mutate(premiere_observation = min(annee[catch_size != 0])) %>%
+    ungroup() %>%
+    filter(annee >= premiere_observation) %>%
+    select(-premiere_observation)
+  
+  return(resultat)
+}
+
+mei_ope_selection_ang_f <- ajouter_absences(mei_ope_selection_ang)
+
+```
+
+
+J'observe qu'il me manque les données de surfaces calculées pour faire fonctionner les modèles, il faut donc que je les rajoutes sur mon dataframe : 
+
+
+```{r}
+mei_ope_selection_ang_f1 <- mei_ope_selection_ang_f %>%
+  group_by(pop_id) %>%
+  mutate(ope_surface_calculee = ifelse(is.na(ope_surface_calculee),
+                                       mean(ope_surface_calculee, na.rm = TRUE),
+                                       ope_surface_calculee)) %>%
+  ungroup()
+
+```
+
+
+```{r}
+mei_ope_selection_ang_f1$ope_surface_calculee <- as.numeric(mei_ope_selection_ang_f1$ope_surface_calculee)
+mei_ope_selection_ang_f1$catch_size <- as.numeric(mei_ope_selection_ang_f1$catch_size)
+mei_ope_selection_ang_f1$annee <- as.numeric(mei_ope_selection_ang_f1$annee)
+mei_ope_selection_ang_f1$pop_id <- as.numeric(mei_ope_selection_ang_f1$pop_id)
+mei_ope_selection_ang_f1$ope_id <- as.numeric(mei_ope_selection_ang_f1$ope_id)
+```
+
+
+Pour le jeu de données data_lrr : 
+```{r}
+result_27_05_ang <- mod_popgrow(mei_ope_selection_ang_f1,
+                      var_id = "pop_id",
+                      var_tax = "esp_code_alternatif",
+                      var_tmp = "annee",
+                      var_cnt = "catch_size",
+                      var_surf = "ope_surface_calculee",
+                      period = list(c(2010,2023),
+                                    c(2000,2013)),
+                      n_iter = 1005000,
+                      n_thin = 100,
+                      n_burnin = 5000)
+
+
+save(result_27_05_ang,
+     file = "../processed_data/modelisation_croissance_demographique_result_27_05_ang.rda")
+```
+

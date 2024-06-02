@@ -1,0 +1,78 @@
+---
+title: "15_pre_traitement_modele_bayesien"
+author: "Léa Bouchet"
+date: "2024-05-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Selection des stations par espèces pour le traitement bayésien 
+
+Sélection des stations à retenir pour analyse bayésien au sein des mes 43 stations déjà préselectionnées pour les espèces que je vais étudier. 
+
+
+
+```{r}
+
+# Nous inscrivons les sta_id retenues dans nos analyses ultérieures
+mes_sta_id <- c("10468", "10502","10546","10565", "10647", "10734", "10844", "10925", "10950","11067",
+                "11158","11224", "11245", "11290", "11302", "11329", "11432","11456", "11539", "11593",
+                "11601","11602","11603","11605", "11735", "11743","11745", "11875", "11913", "12007",
+                "12060", "12118", "12148", "12291", "12316","12325","12371","12402","12436","12447",
+                "12453","12824","13103")
+
+
+# Nous sélectionnons les espèces de la liste rouge régionale
+mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+
+
+
+
+
+occur_sta_esp <- ope_indicateur_complet %>% 
+  filter(stade == "ad",
+         indicateur == "effectif_total", 
+         esp_code_alternatif == mes_especes_lrr) %>%
+  group_by(pop_id, annee, esp_code_alternatif)
+
+
+
+# Filtrer les lignes où l'indicateur est "effectif_total" et la valeur de l'indicateur est supérieure à 0
+filtered_df <- occur_sta_esp %>%
+  filter(indicateur == "effectif_total" & valeur > 0)
+
+# Compter le nombre d'années par espèces et par pop_id
+result_df <- filtered_df %>%
+  group_by(esp_code_alternatif, pop_id) %>%
+  summarise(nb_annees = n_distinct(annee))
+
+# Afficher le résultat
+print(result_df)
+
+
+
+# Convertir pop_id en facteur
+occur_sta_esp$pop_id <- factor(occur_sta_esp$pop_id)
+
+# Créer le graphique avec ggplot2 et facettes pour chaque espèce
+ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur)) +
+  geom_point() +
+  scale_size_continuous(range = c(1, 8)) + # Ajuster la plage de taille des points selon vos préférences
+  scale_color_gradientn(colors = c("grey", heat.colors(99)), na.value = "grey") + # Utiliser une palette de couleurs personnalisée
+  scale_x_continuous(breaks = seq(min(occur_sta_esp$annee), max(occur_sta_esp$annee), by = 1)) +
+  facet_wrap(~ esp_code_alternatif, scales = "free") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+
+```
+
+
