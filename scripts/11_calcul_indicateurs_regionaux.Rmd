@@ -102,7 +102,10 @@ taux_occ <- occur %>%
 ```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
 # Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
 reg_indicateur <- ope_indicateur %>%
-  group_by(esp_code_alternatif, annee, indicateur, stade) %>%
+  group_by(esp_code_alternatif, 
+           annee, 
+           indicateur, 
+           stade) %>%
   summarize(valeur = case_when(
     indicateur == "pourcentage_juveniles" ~ mean(valeur),
     TRUE ~ median(valeur)
@@ -168,6 +171,15 @@ reg_indicateur <- reg_indicateur %>%
 ```
 
 
+Je souhaite éliminer une donnée abérantes qui perturbe ma représentation graphique :
+
+```{r}
+
+# Filtrer les données en conservant celles qui ne répondent pas aux critères
+reg_indicateur <- reg_indicateur %>%
+  filter(!(indicateur == "densite_surface" & esp_code_alternatif == "VAI" & valeur > 0.08))
+
+```
 
 
 # Représentation graphique des tendances démographiques : 
@@ -209,6 +221,45 @@ reg_indicateur_graph <- reg_indicateur_graph +
 print(reg_indicateur_graph)
 
 ```
+
+
+Cette représentation graphique est à priori trop compliquée et peu lisible (avec en plus des droites qui influencent beaucoup l'interprétation). Le fait qu'il y ai plusieurs stades peu biaiser la comprehension. On produit donc un graphique qu'avec les données d'adultes  : 
+
+
+```{r, fig.height = 26, fig.width = 10}
+reg_indicateur_graph_2 <- reg_indicateur %>%
+  filter((indicateur == "densite_surface" & stade == "ad") |
+    (indicateur == "pourcentage_juveniles" & stade == "ind") |
+    (indicateur == "taux_occurrence" & stade == "ind")) %>% 
+  ggplot(aes(x = annee, 
+             y = valeur, 
+             group = stade, 
+             color = indicateur)) +
+  geom_point(shape = 1) +
+  geom_smooth(method = "loess", se = FALSE) +  # Ajout des courbes de tendance loess
+  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
+  scale_color_manual(values = c("densite_surface" = "#A97B30", "taux_occurrence" = "black", "pourcentage_juveniles" = "#92D080" ),
+                     name = "Stade", labels = c("Adulte")) +
+  #scale_y_continuous(breaks = seq(0, max(reg_indicateur$valeur, na.rm = TRUE), by = 5)) +
+  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
+       x = "Années", 
+       y = "Valeurs") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45)) +
+  geom_vline(xintercept = 2010, linetype = "dashed", color = "red")
+
+print(reg_indicateur_graph_2)
+
+```
+
+
+
+
 
 
 
@@ -423,9 +474,6 @@ tendance_indicateur_eff <- tendance_indicateur_eff %>%
 ```
 
 
-
-
-
 Observation de ce qu'il se passe au niveau des taux d'évolution : On s'attend, sur le graphique produit, à avoir les données d'espèces d'aligner sur une droite : 
 
 ```{r}
@@ -444,29 +492,6 @@ print(tendance_indicateur_gra)
 ```
 
 
-Je souhaite visualiser l'évolution de la densité d'une espèce sur un point de prélèvement dans le temps : 
-
-```{r}
-# Filtrer les données pour une espèce donnée et une station donnée
-esp_specifique <- "ANG"  # Remplacer par le code de l'espèce spécifique
-pop_specifique <- "46221"  # Remplacer par l'ID de la station spécifique
-
-donnees_filtrees <- subset(ope_indicateur, esp_code_alternatif == esp_specifique & pop_id == pop_specifique)
-
-donnees_filtrees <- donnees_filtrees %>% 
-  filter(indicateur == "densite_surface",
-         stade == "ind")
-
-# Créer le graphique
-ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
-  geom_line() +
-  geom_point() +
-  labs(x = "Année", y = "Densité", title = paste("Évolution de la densité de l'espèce", esp_specifique, "sur la station", pop_specifique)) +
-  theme_minimal()
-
-
-```
-
 
 # Sauvegarde : 
 
@@ -475,5 +500,6 @@ ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
 save(taux_occ,
      reg_indicateur,
      taux_evol_1990,
+     ope_indicateur,
      file = "../processed_data/calcul_indicateurs_regionaux.rda")
 ```

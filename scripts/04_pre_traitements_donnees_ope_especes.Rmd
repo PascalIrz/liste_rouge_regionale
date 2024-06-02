@@ -113,41 +113,28 @@ mei_ope_selection <- passerelle %>%
          tlo_libelle)
 ```
 
-Nous ne retenons que les données en lien avec le dataframe esp_ope_selection et enlevons les passages >1 qui ne seront pas étudiés : 
-Suppression des passages, des répétitions et des lots non souhaités du jeu de données
-
+Nous ne retenons que les données en lien avec le dataframe esp_ope_selection et enlevons les passages >1 qui ne seront pas étudiés : Suppression des passages, des répétitions et des lots non souhaités du jeu de données :
 
 
 ```{r}
 mei_ope_selection <- mei_ope_selection %>% 
   filter(!pas_numero %in% params$passage_a_retirer,
          pro_libelle %in% params$type_peche_a_inclure) %>% 
+  mutate(pas_numero = replace_na(pas_numero,0)) %>% 
   distinct() %>% 
- # left_join(lop_esp_selection) %>% 
   mutate(esp_code_alternatif = 
            case_when(
              esp_code_alternatif == "VAN" ~ "VAR",
              esp_code_alternatif %in% c("CCX", "CMI", "CCU") ~ "CCO",
              TRUE ~ esp_code_alternatif))
+```
 
 
-# Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
-mei_ope_selection <- mei_ope_selection %>% 
-  dplyr::mutate(pas_numero = replace_na(pas_numero,0))
-
+```{r}
 #Suppression des "NA" restants ----
 mei_ope_selection <- na.omit(mei_ope_selection)
 ```
 
-
-```{r creation_df_mei_ope_selection}
-# mei_ope_selection <- mei_ope_selection %>% 
-#   left_join(mei_ope_selection) %>% 
-#   filter(!pas_numero%in%params$passage_a_retirer) %>%
-#   distinct() %>% # Retirer les éventuels doublons
-#   dplyr::mutate(pas_numero = replace_na(pas_numero,0))# Remplacement des passages = "NA" en "0" (= premier et unique passage) ----
-
-```
 
 
 Sélection des espèces présentes dans la liste rouge régionale 2015 :
@@ -158,16 +145,18 @@ mei_ope_selection <- mei_ope_selection %>%
   filter(espece_presence_lrr_2015 == "1")
 ```
 
+
+
+(Cette partie de code serait à mettre avant la ligne na.omit présente en ligne 135)
+
 ## Données Manquantes
 
 On observe dans le jeu de données des potentielles valeurs absentes / manquantes. Ceci peut être dû à des problèmes de retranscription dans la base de données ASPE. Parfois on observe une absence de marquage de valeurs individuelles. Je les recueilles dans un tableau : 
 
 ```{r}
-# valeur_na <- mei_esp_ope_selection %>% 
-#   filter(if_any(everything(), is.na))
-# 
-# mei_esp_ope_selection <- mei_esp_ope_selection %>% 
-#   na.omit(mei_esp_ope_selection)
+valeur_na <- mei_ope_selection %>%
+  filter(if_any(everything(), is.na))
+
 ```
 
 Je souhaite maintenant, pour la suite, y mettre des valeurs de tailles indicatrices moyennes selon l'opération dans lesquelles elles se trouvent. Je souhaite également indiquer la station à partir de l'opération. 
@@ -358,6 +347,7 @@ detecter_erreurs <- function(df) {
 erreurs_df <- detecter_erreurs(df = mei_ope_selection)
 
 ```
+
 
 # Sauvegarde
 

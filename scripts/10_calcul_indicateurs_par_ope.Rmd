@@ -81,13 +81,28 @@ source(file = "../R/calcul_densite_surface.R")
 ### Effectif total des espèces par opération de pêche
 
 ```{r Creation tableau effectif total par ope}
+
 ope_effectif <- mei_ope_selection %>%
+  group_by(ope_id, esp_code_alternatif) %>%
+  distinct(mei_id, .keep_all = TRUE) %>%
+  summarise(valeur = n_distinct(mei_id)) %>%
+  mutate(indicateur = "effectif_total", stade = "ind") %>%
+  select(ope_id, 
+         esp_code_alternatif, 
+         indicateur, 
+         valeur, 
+         stade)
+
+```
+
+
+```{r Creation tableau effectif total par ope 2}
+ope_effectif_stade <- mei_ope_selection %>% 
   group_by(ope_id,
            esp_code_alternatif,
            stade
            ) %>%
-  distinct(lop_id, .keep_all = TRUE) %>% 
-  summarise(valeur=sum(lop_effectif)) %>% 
+  summarise(valeur=length(lop_effectif)) %>% 
   mutate(indicateur= "effectif_total") %>% 
   select(ope_id,
          esp_code_alternatif,
@@ -95,15 +110,8 @@ ope_effectif <- mei_ope_selection %>%
          valeur,
          stade
          )
-```
 
-
-```{r Creation tableau effectif total par ope 2}
-ope_effectif <- ope_effectif %>% 
-  bind_rows(ope_effectif %>%
-      filter(stade %in% c("ad", "juv")) %>%
-      group_by(indicateur, ope_id, esp_code_alternatif) %>%
-      summarise(stade = "ind", valeur = sum(valeur)))
+ope_effectif <- rbind (ope_effectif,ope_effectif_stade)
 
 ```
 
@@ -219,7 +227,6 @@ ope_pc_juv <- ope_effectif %>%
 ```{r Calcul pourcentage juvéniles}
 ope_pc_juv <- ope_pc_juv %>% 
   ungroup() %>% 
-  na.omit() %>% 
   complete(ope_id,
            esp_code_alternatif,
            stade,
@@ -293,7 +300,7 @@ ope_biomasse1 <- ope_biomasse %>%
   filter (stade == "ind")
 
 combinaisons <- expand.grid(esp_code_alternatif = unique(ope_biomasse1$esp_code_alternatif),
-                            ope_id = unique(ope_biomasse1$ope_id))
+                            ope_id = unique(ope_biomasse$ope_id))
 
 # Fusionner les combinaisons avec le dataframe initial
 reg_pc_site_presence_esp <- combinaisons %>%

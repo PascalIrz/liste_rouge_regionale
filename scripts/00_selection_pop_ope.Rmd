@@ -16,12 +16,12 @@ knitr::opts_chunk$set(echo = TRUE,
 ```
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
-Script : 00-Selection_pop_ope
+Script : 00_Selection_pop_ope
 
-L'objectif de cette étude est d'évaluer les tendances démographiques des poissons d'eau douce de Bretagne. Ce travail vient en appui à la révision de la liste rouge régionale. Il s'agit, dans un premier temps, de produire un tableau de bord combinant divers indicateurs de la dynamique des populations des poissons d'eau douce de Bretagne depuis 1990. 
+L'objectif de cette étude est d'évaluer les tendances démographiques des poissons d'eau douce de Bretagne. Ce travail vient en appui à la révision de la liste rouge régionale de 2015. Il s'agit, dans un premier temps, de produire un tableau de bord combinant divers indicateurs de la dynamique des populations des poissons d'eau douce de Bretagne depuis 1990 jusqu'à 2023. 
 
 
-Ce script a pour objectif de constituer un premier dataframe regroupant les données de la base ASPE d'une zone géographique déterminée. Il s'agit de constituer un jeu de données regroupant différents réseaux de pêches à travers la région Bretagne. Ces données constitueront la base pour l'étude des séries temporelles qui suivra. 
+Ce script a pour objectif de constituer un premier dataframe regroupant une sélection de stations bretonnes à étudier tirées de la base ASPE. Ces données seront ensuite utilisées pour construires des séries temporelles des poissons d'eau douce représentatives du territoire breton.
 
 
 # Installation 
@@ -55,20 +55,17 @@ pal3 <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1
 
 ## Paramètres
 
-Plusieurs paramètres sont fixés dans cette étude. Ces paramètres sont modifiables selon les préférences et les objectifs visés. 
-Parmi ces paramètres : 
+Plusieurs paramètres sont fixés dans cette étude. Ces paramètres sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres : 
 
 - La taille du *buffer* (en mètres) : zone tampon entourant le département de la Bretagne. 
 
-- Les réseaux de pêches : sélection des différents réseaux : RCS - Réseau de Contrôle de Surveillance ; RRP - Réseaux de Référence Pérenne ;  RHP - Réseau Hydrobiologique Piscicole ; RCA - Réseau de contrôle additionnel ; RCO – Réseau Contrôle opérationnel. 
+- Les *réseaux de pêches* : sélection des différents réseaux : RCS - Réseau de Contrôle de Surveillance ; RRP - Réseaux de Référence Pérenne ;  RHP - Réseau Hydrobiologique Piscicole ; RCA - Réseau de contrôle additionnel ; RCO – Réseau Contrôle opérationnel. Seul les trois premiers réseaux seront conservés dans cette étude. 
 
-Dans notre étude, seul les trois premiers réseaux seront utilisés. Ces réseaux seront testés ensemble puis individuellement afin d'écarter un risque de biais d'objectif. En effet, les réseaux n'ont pas tous les mêmes "objectifs d'observations" : ex. le réseaux RPP est un réseau "témoin", qui ne doit pas subir d'influences extérieures, il doit seulement informer des potentiels effets provoqué par le changement climatique. 
+- Les *types de pêches* : sélection des différents types de pêche : pêche partielle par point, pêche par ambiance, pêche partielle sur berge, pêche complète à un ou plusieurs passages. 
 
-- Les types de pêches : sélection des différents types de pêche : pêche partielle par point, pêche par ambiance, pêche partielle sur berge, pêche complète à un ou plusieurs passages. 
+- Le *nombre minimum d'années* composant les séries de pêches. 
 
-- Le nombre minimum d'années composant les séries de pêches. 
-
-- Le nombre d'années manquantes consécutives maximum sur les séries de pêches. 
+- Le *nombre d'années manquantes consécutives maximum* sur les séries de pêches. 
 
 
 ```{r Mise en place des paramètres}
@@ -146,33 +143,18 @@ Les points de prélèvements sont alors représentés au sein de cette aire géo
 
 ```{r Visualisation point prélèvements}
 # Visualisation des points de prélèvements présents dans l'aire géographique sélectionnée
-pop_dep <- point_prelevement %>%
+pop_depts <- point_prelevement %>%
   sf::st_as_sf(coords = c("pop_coordonnees_x", 
                           "pop_coordonnees_y"),
                crs = 2154) %>% 
   aspe::geo_attribuer(buffer) %>% 
   filter(!is.na(DEP))
-```
 
-
-```{r, fig.height = 5, fig.width = 10}
-# Dessiner la carte
-ggplot(regions_metro_geo) +
-  geom_sf(data = mes_depts) +
-  geom_sf(data = buffer) +
-  geom_sf(data = pop_dep, aes(color = DEP), size = 2) +
-  scale_color_manual(values = pal3) +
-  theme_bw() +
-  # Ajouter une légende pour la variable DEP
-  labs(color = "Département")
-```
-
-```{r Visualisation point prélèvements 3}
 mapview(
   list(buffer, mes_depts),
   layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
   col.regions = list("#0A9F9D", "#FDE725FF")
-) + mapview (pop_dep, shape = 20, color = "darkred", lwd =1)
+) + mapview (pop_depts, shape = 20, color = "darkred", lwd =1)
 
 ```
 
@@ -182,7 +164,7 @@ Après visualisation de l'aire géographique et de ses points de prélèvements 
 ```{r Sauvegarde pop_id}
 # Sauvegarde des points de prélèvements sélectionnés dans la passerelle ----
 passerelle <- passerelle %>%
-  filter(pop_id %in% pop_dep$pop_id)
+  filter(pop_id %in% pop_depts$pop_id)
 ```
 
 
@@ -239,7 +221,6 @@ ope_selection <- ope_pro_libelle %>%
 Après avoir sélectionné les réseaux et les types de pêches, nous souhaitons sélectionner les sites (points de prélèvements) qui ont été suivis pendant suffisamment longtemps. Il s'agit de constituer les séries temporelles les plus longues possible. Une identification du nombre d’années de données disponibles par point de prélèvement est effectuée. Afin d’obtenir une robustesse statistique suffisante, une sauvegarde des stations avec au moins 10 années de données sur un même point de prélèvement est appliquée. C'est actions sont réalisée grâce à la fonction "borner_series".
 
 
-
 ```{r Création séries temporelles 1}
 ## Sélection des stations ayant 2 années maximum de suivis consécutifs manquants par station ----
 pop_serie_tempo <- ope_selection %>%
@@ -259,17 +240,23 @@ pop_serie_tempo <- pop_serie_tempo %>%
 
 ```
 
+Le dataframe ope_selection contient maintenant l'ensemble des opérations que nous étudierons. 
+
+```{r}
+ope_selection <- ope_selection %>% 
+  filter(pop_id %in% pop_serie_tempo) %>% 
+  mef_ajouter_libelle_site()
+
+```
+
+
 
 
 ### Représentation graphique
 
 Une représentation graphique bilan des séries temporelles constituées et des types de pêches associées aux opérations des séries est réalisé. Les libbelés des points de prélèvements sont remis en forme et ajoutés aux données. 
 
-
 ```{r Ajout libellés points de prélèvements}
-ope_selection <- ope_selection %>% 
-  filter(pop_id %in% pop_serie_tempo) %>% 
-  mef_ajouter_libelle_site()
 
 # Définir les règles de modification des libellés
 regles_modification <- tribble(
@@ -354,7 +341,7 @@ ope_selection %>%
 ```
 
 
-## Visualisation des efforts de pêche par points de prélèvements dans l'aire géographique sélectionnée
+## Visualisation des efforts de pêche par points de prélèvements sélectionnés
 
 ```{r Préparation visualisation efforts pêche}
 ope_selection_sta <- ope_selection %>%
@@ -366,12 +353,9 @@ ope_selection_sta <- ope_selection %>%
                            "pop_coordonnees_y"),
                 crs = 2154) %>% 
   aspe::geo_attribuer(buffer)
-```
 
-
-```{r Visualisation efforts pêche}
 # Pour la visualisation graphique je n'ai besoin que d'un seul exemple d'ope_id par station
-ope_selection_sta_n <- ope_selection_sta %>% 
+sta_id_ope_selection <- ope_selection_sta %>% 
   group_by(sta_id) %>% 
   sample_n(1) %>% 
   ungroup()
@@ -380,7 +364,7 @@ ope_selection_sta_n <- ope_selection_sta %>%
 mapview(list(buffer, mes_depts),
         layer.name = c("Bretagne avec un buffer de 1 km", "Bretagne"),
         col.regions = list("#440154FF", "#FDE725FF")) + 
-  mapview(ope_selection_sta_n,
+  mapview(sta_id_ope_selection,
           layer.name = "Nombre operation par station", 
           size_var = "nombre_ope_sta",
           cex = "sta_id",
@@ -388,9 +372,10 @@ mapview(list(buffer, mes_depts),
           col.regions = "#D693E0",
           alpha = 0.8,
           legend = TRUE,
-          labels = list(text = ope_selection_sta_n$nb_ope_par_sta, cex = 1.5))
+          labels = list(text = sta_id_ope_selection$nb_ope_par_sta, cex = 1.5))
           
 ```
+
 
 
 ```{r Enregistrement passerelle}
@@ -465,12 +450,13 @@ sta_plusieurs_pop %>%
 ```
 
 
-# Sauvegarde : 
+# Sauvegarde 
 
 ```{r Sauvegarde}
 # SAUVEGARDE ----
 save(pop_serie_tempo,
      ope_selection,
+     sta_id_ope_selection,
      passerelle,
      file = "../processed_data/selection_pop_ope.rda")
 ```
