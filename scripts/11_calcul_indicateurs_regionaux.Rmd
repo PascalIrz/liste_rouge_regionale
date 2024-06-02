@@ -57,9 +57,7 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 
 ```{r Chargement des fonctions}
 source(file = "../R/mk_st_by_group.R")
-source(file = "../R/mann_kendall_sen.R")
 source(file = "../R/calcul_taux_evolution.R")
-source(file = "../R/calcul_glm.R")
 ```
 
 
@@ -73,68 +71,65 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 
 ## Taux d'occurrence
 
-On calcul le taux d'occurrence des espèces : 
+Le taux d'occurrence des espèces par années (nombre de présence / nombre de stations échantillonnées) est calculé : 
 
 ```{r Calcul taux occurrence}
+
+# Filtre et compte les occurrences distinctes d'opérations pour chaque année et espèce
 occur <- ope_indicateur %>% 
-  filter(stade == "ind",
-         indicateur == "effectif_total",
-         valeur > 0) %>%
-  group_by(annee, esp_code_alternatif) %>% 
-  summarise(n_occur = n_distinct(ope_id))
+  filter(stade == "ind",                    # Filtre les lignes où le stade = "ind"
+         indicateur == "effectif_total",    # Filtre les lignes où l'indicateur = "effectif_total"
+         valeur > 0) %>%                   # Filtre les lignes où la valeur est supérieure à 0
+  group_by(annee, 
+           esp_code_alternatif) %>%         # Groupe par année et code alternatif de l'espèce
+  summarise(n_occur = n_distinct(ope_id))   # Compte le nombre d'ope_id et l'assigne à n_occur
 
-n_ope_par_an <- ope_indicateur %>% 
-  filter(stade == "ind",
-         indicateur == "effectif_total") %>%
-  group_by(annee) %>% 
-  summarise(n_ope = n_distinct(ope_id))
+# Compte le nombre total d'opérations distinctes pour chaque année
+n_ope_par_an <- ope_indicateur %>%
+  filter(stade == "ind",                        # Filtre les lignes où le stade ="ind"
+         indicateur == "effectif_total") %>% # Filtre les lignes où l'indicateur ="effectif_total"
+  group_by(annee) %>%                       # Groupe par année
+  summarise(n_ope = n_distinct(ope_id))     # Compte le nombre distinct d'ope_id et l'assigne à n_ope
 
+# Calcule les taux d'occurrences
 taux_occ <- occur %>% 
-  left_join(n_ope_par_an) %>% 
-  mutate(valeur = n_occur / n_ope,
-         indicateur = "taux_occurrence",
-         stade = "ind")
+  left_join(n_ope_par_an) %>%             
+  mutate(valeur = n_occur / n_ope,   # Calcule le taux d'occurrence en divisant n_occur par n_ope
+         indicateur = "taux_occurrence",  
+         stade = "ind")                   
+
 ```
 
 
-# Regroupement des indicateurs à l'Echelle régionale
+# Regroupement des indicateurs à l'échelle régionale
+
+Le dataframe reg_indicateur regroupe l'ensemble des indicateurs calculés à l'échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par année et par stade. Une exception est faite pour l'indicateur "pourcentage_juveniles", qui est agrégé en utilisant la moyenne, étant donné qu'il s'agit d'un pourcentage.
 
 ```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
-# Calcul des données par année et pop_id en calculant la médiane de la valeur de l'indicateur ----
+
+# Calcul des indicateurs régionaux en fonction des médianes annuelles et par stade avec une exception pour le pourcentage de juvéniles (utilisant la moyenne)
+
 reg_indicateur <- ope_indicateur %>%
-  group_by(esp_code_alternatif, 
-           annee, 
-           indicateur, 
-           stade) %>%
+  group_by(esp_code_alternatif,            # Regrouper par code alternatif de l'espèce
+           annee,                          # Regrouper par année
+           indicateur,                     # Regrouper par type d'indicateur
+           stade) %>%                       # Regrouper par stade
   summarize(valeur = case_when(
-    indicateur == "pourcentage_juveniles" ~ mean(valeur),
-    TRUE ~ median(valeur)
+    indicateur == "pourcentage_juveniles" ~ mean(valeur),  # Calculer la moyenne pour le pourcentage de juvéniles
+    TRUE ~ median(valeur)                                  # Calculer la médiane pour les autres indicateurs
   )) %>%
-  ungroup() %>%
-  distinct()
+  ungroup() %>%                            # Annuler le regroupement
+  distinct()                               # Supprimer les doublons
+
 ```
 
 
 ```{r Construction tab reg_indicateur part 2}
-taux_occ <- taux_occ %>% 
+taux_occ <- taux_occ %>% # Sélection des colonnes de taux_occ pour correspondre à celles de reg_indicateur
   select(names(reg_indicateur))
 
 reg_indicateur <- reg_indicateur %>% 
-  rbind(taux_occ) %>% 
-  filter(!indicateur %in% c("pourcentage_site_presence_esp",
-                          "longueur_mediane",
-                          "densite_volumique"))
-
-```
-
-
-## Tri des espèces LRR
-
-```{r Representation graphique des données}
-reg_indicateur <- reg_indicateur %>% 
-  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
-                                    "PER", "GAR", "GOU", "LOF", "LPP",
-                                    "SAT", "TRF", "VAI", "VAR"))
+  rbind(taux_occ) %>% # Ajout des valeurs de taux occurrence dans le df reg_indicateur
 ```
 
 
@@ -223,7 +218,36 @@ print(reg_indicateur_graph)
 ```
 
 
+
+
+
+
 Cette représentation graphique est à priori trop compliquée et peu lisible (avec en plus des droites qui influencent beaucoup l'interprétation). Le fait qu'il y ai plusieurs stades peu biaiser la comprehension. On produit donc un graphique qu'avec les données d'adultes  : 
+
+
+
+## Tri des espèces LRR
+
+```{r Tri espèces}
+reg_indicateur <- reg_indicateur %>% 
+  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR"))
+```
+
+
+## Tri dans les paramètres choisis
+
+```{r Tri indicateurs}
+
+reg_indicateur <- reg_indicateur %>% 
+filter(!indicateur %in% c("pourcentage_site_presence_esp",
+                          "longueur_mediane",
+                          "densite_volumique"))
+
+```
+
+
 
 
 ```{r, fig.height = 26, fig.width = 10}

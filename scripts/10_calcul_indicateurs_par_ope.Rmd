@@ -3,12 +3,10 @@ title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
 subtitle: "Calcul des indicateurs par opérations"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
-params:
-  passage_a_retirer: !r c("2","3") # Sélection du nombre de passage souhaité ; Remarque : si je souhaite enlever les 1ers passages, sélection "0","1" 
-  type_peche_a_inclure: !r c("Pêche complète à un ou plusieurs passages",
-                            "Pêche partielle par points (grand milieu)",
-                            "Pêche par ambiances",
-                            "Pêche partielle sur berge") # Selection des types de pêches à inclure au jeu de données (pro_libelle)
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -21,8 +19,7 @@ knitr::opts_chunk$set(echo = TRUE,
 10_calcul_indicateurs_par_ope
 
 
-Ce script permet de constituer les premiers tableaux de données nécessaires à la
-préparation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvéniles, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, soit séparement pour les juvéniles et les adultes, soit de manière combinée. 
+Ce script permet de constituer les tableaux de données nécessaires à la réalisation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvéniles, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, pour les juvéniles et les adultes, mais également de manière combinée (indeterminés). 
 
 
 # Installation 
@@ -72,6 +69,7 @@ source(file = "../R/calcul_25_percentile.R")
 source(file = "../R/calcul_75_percentile.R")
 source(file = "../R/calcul_densite_surface.R")
 ```
+
 
 
 # Les indicateurs par opération de pêche 
@@ -153,28 +151,6 @@ mei_ope_selection <- mei_ope_selection %>%
                        passage$pas_numero))
 ```
 
-Partie optionnelle : Vérification du Jeu De Données : Je vérifie que j'ai autant de ligne lop_id que lop_effectif (sauf quand le lot est S/M et à une valeur de 30) : 
-
-```{r Vérification effectif 1}
-# verif_effectif <- mei_esp_ope_selection %>%
-#   group_by(lop_id,lop_effectif) %>%
-#   summarise(nbr_lignes = n()) %>%
-#   ungroup()
-# 
-# resultat_verif_effectif <- verif_effectif %>%
-#   filter(nbr_lignes!= lop_effectif)
-```
-
-Je vérifie que je n'ai qu'un mei_id par ligne (et pas de doublons) : "nb_unique doit" être égal au nombre total de lignes dans la colonne. 
-
-```{r Vérification effectif 2}
-# nb_unique <- mei_esp_ope_selection %>%
-#   summarise(nb_unique = n_distinct(mei_id))
-# 
-# print(nb_unique)
-```
-
-
 ```{r Calcul densités surfaces}
 ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
                                            ope_surface_calculee,
@@ -187,7 +163,6 @@ ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
 
 ### Densité volumique par opération
 
- 
 ```{r Création df profondeur}
 #Ajout des données de profondeurs :
 ope_param_profondeur <- ope_selection_param_env %>% 
@@ -197,7 +172,6 @@ ope_param_profondeur <- ope_selection_param_env %>%
   rename(profondeur=valeur) %>% 
   distinct()
 ```
-
 
 
 ```{r Calcul densités volumiques}
@@ -268,7 +242,7 @@ ope_ecart_inter <- calcul_ecart_inter(mei_ope_selection,
 ```
 
 
-### Percentiles 25 et 75  pour les longueurs médianes :
+### Percentiles 25 et 75  pour les longueurs médianes
 
 Calcul des percentiles 25 et 75 des tailles des individus par opération : Création de la fonction "calcul_25_percentile" et "calcul_75_percentile" : 
 
@@ -321,6 +295,8 @@ print(reg_pc_site_presence_esp)
 
 # Création du tableau final empilé des indicateurs
 
+L'ensemble des indicateurs calculés sont regroupés dans le dataframe *ope_indicateur*. 
+
 ```{r Création df final "ope_indicateur"}
 # Création du tableau pré-final avec tous les indicateurs calculés
 ope_indicateur <- rbind(ope_lm,
@@ -332,6 +308,7 @@ ope_indicateur <- rbind(ope_lm,
                         reg_pc_site_presence_esp)
 ```
 
+Les années d'opérations ainsi que les identifiant des point de prélèvements sont ajoutés au tableau *ope_indicateur*. 
 
 ```{r Ajout données année et pop_id}
 # Ajout des années d'opération au site et à l'année (pop_id) et (ope_date)

@@ -5,6 +5,10 @@ author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
   passage_a_retirer: !r c("2","3") # Sélection du nombre de passage souhaité ; Remarque : si je souhaite enlever les 1ers passages, sélection "0","1"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -294,6 +298,30 @@ erreurs_df <- detecter_erreurs(df = mei_ope_selection)
 
 ```
 
+
+# Qualité des données de lots (lop_id / lop_effectif)
+
+Vérification du Jeu De Données : Dans le jeu de données "mei_ope_selection", il doit normalement y avoir autant de ligne *lop_id* que de ligne *lop_effectif*, sauf quand le lot est S/M et à une valeur de 30 : 
+
+```{r Vérification effectif 1}
+verif_effectif <- mei_ope_selection %>%
+  group_by(lop_id,lop_effectif) %>%
+  summarise(nbr_lignes = n()) %>%
+  ungroup()
+
+resultat_verif_effectif <- verif_effectif %>%
+  filter(nbr_lignes!= lop_effectif)
+```
+
+
+Il doit normalement n'y avoir qu'un *mei_id* par ligne (et pas de doublons) : ainsi, *nb_unique* doit théoriquement être égal au nombre total de lignes de "mei_ope_selection". 
+
+```{r Vérification effectif 2}
+nb_unique <- mei_ope_selection %>%
+  summarise(nb_unique = n_distinct(mei_id))
+
+print(nb_unique)
+```
 
 
 # Sauvegarde
