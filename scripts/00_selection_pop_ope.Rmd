@@ -461,3 +461,11 @@ save(pop_serie_tempo,
      file = "../processed_data/selection_pop_ope.rda")
 ```
 
+
+```{r Sauvegarde 2}
+save(sta_id_ope_selection,
+     buffer,
+     mes_depts,
+     file = "../processed_data/selection_pop_ope_carte.rda")
+```
+

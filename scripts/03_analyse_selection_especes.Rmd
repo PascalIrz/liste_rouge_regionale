@@ -60,7 +60,7 @@ load(mei_table)
 
 ## Création du dataframe
 
-Un dataframe contenant les données d'opérations et d'effectifs des années sélectionnées est créer à partir de la passerelle étbalie. 
+Un dataframe contenant les données d'opérations et d'effectifs des années sélectionnées est créer à partir de la passerelle établie. 
 
 ```{r Création df esp_ope_selection}
 #Je réalise un df contenant toutes les espèces présentes dans mes opérations de pêches
@@ -258,7 +258,7 @@ ggplot(tab_densite_occurrence,aes(x = densite_moy,
 
 À partir de ce graphique, on élimine les espèces qui sont trop rares, ayant une densité et un taux d'occurrence très faible (c'est-à-dire pour lesquelles nous n'avons pas assez de données). Les espèces ayant le plus de données sur lesquelles s'appuyer apparaissent en haut à droite du graphique : ce sont les espèces qui ont une forte occurrence ainsi qu'une forte densité moyenne. 
 
-Dans le cadre de notre étude, on observe que les espèces étudiées pour la précédente apparaissent pour la quasi-totalité dans la partie supérieure droite du graphique, à l'exception de la carpe commune (CCP) et de l'épinoche (EPI). Une analyse postérieure confirmera ou non le manque de données pour ces espèces.
+Dans le cadre de notre étude, on observe que les espèces étudiées pour la précédente apparaissent pour la quasi-totalité dans la partie supérieure droite du graphique, à l'exception de la carpe commune (CCP) et de l'épinoche (EPI). Une analyse postérieure confirmera ou non le manque de données pour ces espèces (SCRIPT 11_calcul_indicateurs_regionaux).
 
 
 

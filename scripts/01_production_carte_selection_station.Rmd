@@ -1,0 +1,123 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Production carte sélection opération"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
+01_production_carte_selection_station
+
+Après avoir sélectionné les points de prélèvements et opérations de pêche de l'aire géographique ciblée, une carte est réalisée.  
+
+
+# Installation 
+
+## Chargement des packages et des données 
+
+```{r Chargement des packages}
+## Chargement des packages ----
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(tidyverse)
+library(rnaturalearth)
+library(grid)
+library(gt)
+```
+
+
+```{r Chargement des données}
+## Chargement des données ----
+
+load(file = "../processed_data/selection_pop_ope_carte.rda")
+
+## Chargement de la palette de couleur ----
+pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
+```
+
+
+# Importation des données
+
+```{r}
+cours_eau_1 <- st_read("../QGIS/cours_eau/tx_dpme.gpkg")
+```
+
+
+# Création de la carte de situation
+
+```{r}
+france <- ne_countries(country = "france", returnclass = "sf")
+```
+
+
+```{r}
+carte_france_dept <- ggplot(data = france) + 
+  geom_sf(fill = "gray82",
+          color = "black") +
+  theme_void() +
+  geom_rect(aes(xmin = -3.58, 
+                xmax = -3.1, 
+                ymin = 47.60,
+                ymax = 47.80), 
+            fill = NA, 
+            color = "red",
+            size = 2) +
+  xlim(-5, 10) +
+  ylim(40, 52) +
+  theme(panel.background = element_rect(fill = "white",
+                                        color = "black"))
+carte_france_dept
+
+```
+
+```{r}
+# Dessiner la carte
+carte_france_dept_grob <- ggplotGrob(carte_france_dept)
+```
+
+
+
+# Production de la carte station
+
+```{r}
+carte_sta <- ggplot(sta_id_ope_selection) +
+  geom_sf(data = mes_depts) +
+  geom_sf(data = buffer) +
+  #geom_sf(data = cours_eau_1) +
+  geom_sf(data = sta_id_ope_selection, aes(color = DEP), size = 2) +
+  scale_color_manual(values = pal) +
+  theme_bw() +
+  # Ajouter une légende pour la variable DEP
+  labs(color = "Département")
+
+carte_sta
+
+```
+
+
+
+```{r}
+carte_note_grob <- carte_sta +
+  annotation_custom(
+    grob = carte_france_dept_grob,
+    xmin = -0.4,
+    xmax = -0.7,
+    ymin = 49.3, 
+    ymax = 48.5)
+  
+carte_note_grob
+```
+

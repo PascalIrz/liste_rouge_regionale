@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-04-03" />
+<meta name="date" content="2024-06-02" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -355,20 +355,21 @@ douce de Bretagne</h1>
 <h3 class="subtitle">Prétraitement des données opération et des données
 individuelles des espèces</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-04-03</h4>
+<h4 class="date">2024-06-02</h4>
 
 </div>
 
 
-<div id="objectif-dynamique-de-population-des-poissons-deau-douce-de-bretagne---04_pre_traitements_donnees_ope_especes" class="section level1">
+<div id="objectif-dynamique-de-population-des-poissons-deau-douce-de-bretagne--" class="section level1">
 <h1>Objectif : Dynamique de population des poissons d’eau douce de
-Bretagne - 04_pre_traitements_donnees_ope_especes</h1>
-<p>Il s’agit ici de réaliser une étape de pré-traitement sur la
-sélection des opérations et sur les données des espèces propres à
-chacune des opérations. Il s’agit notamment d’observer les valeurs
-aberrantes contenues dans les mesures individuelles des différentes
-espèces de poissons d’eau douce. Il s’agit donc également d’une mise en
-qualité des données (tailles / poids) par individu de poissons
+Bretagne -</h1>
+<p>04_pre_traitements_donnees_ope_especes</p>
+<p>Il s’agit ici de réaliser une étape de pré-traitement / mise en
+qualité sur la sélection des opérations et sur les données des espèces
+propre à chacune des opérations. Il s’agit notamment d’observer les
+valeurs aberrantes contenues dans les mesures individuelles des
+différentes espèces de poissons d’eau douce. Il s’agit donc d’une mise
+en qualité des données (tailles / poids) par individu de poissons
 pêchés.</p>
 </div>
 <div id="installation" class="section level1">
@@ -379,18 +380,13 @@ pêchés.</p>
 sont modifiables selon les préférences et les objectifs visés. Parmi ces
 paramètres :</p>
 <ul>
-<li><p>Sélection des passages de pêche à retirer : dans notre étude, les
-passages 2 et 3 sont retirés.</p></li>
-<li><p>Sélection des types de lots à retirer : dans notre étude, le type
-de lot “G” n’est pas souhaité.</p></li>
-<li><p>Les types de pêches : Il existe de nombreux types de pêches :
-pêche partielle par point, pêche par ambiance,…. Ce paramètre permet de
-sélectionner les types de pêches souhaitées dans l’étude.</p></li>
+<li>Sélection des passages de pêche à retirer : dans notre étude, les
+passages 2 et 3 sont retirés.</li>
 </ul>
 </div>
 <div id="chargement-des-packages-et-des-données" class="section level2">
 <h2>Chargement des packages et des données</h2>
-<pre class="r"><code>#devtools::install_github(&quot;PascalIrz/aspeQual&quot;)
+<pre class="r"><code>#devtools::install_github(&quot;PascalIrz/aspeQual&quot;) # Instalation du package &#39;aspeQual&#39;
 
 ## Chargement des packages ----
 library(aspe)
@@ -421,12 +417,14 @@ traits_biologiques &lt;- read_excel(&quot;../raw_data/traits_biologiques.xlsx&qu
 <h1>Constitution du jeu de données</h1>
 <div id="selection-des-tailles-de-maturité-des-espèces" class="section level2">
 <h2>Selection des tailles de maturité des espèces :</h2>
-<p>ATTENTION : Ici les tailles de maturité ont été calculées à partir de
-5 sources différentes (1 et 2 : ouvrages d’identification des poissons
-d’eau douce de France); 3 : observation des courbes de tailles dans le
-fichier R “estimation_taille_0+” à partir des données de taille du
-fichier ASPE ; 4 : les valeurs dans fishbase ; 5 : les valeurs de
-référence de l’Occitanie).</p>
+<p>Les tailles de maturité ont été calculées à partir de 5 sources
+différentes* pour chacune des espèces et une moyenne sur ces valeurs a
+été retenue pour être inscrite comme valeur de référence de
+maturité.</p>
+<p>*1 et 2 : ouvrages d’identification des poissons d’eau douce de
+France ; 3 : observation des courbes de tailles dans le fichier R
+“estimation_taille_0+” à partir des données de taille du fichier ASPE ;
+4 : Valeurs de “fishbase” ; 5 : Valeurs de référence de l’Occitanie</p>
 <pre class="r"><code># Construction d&#39;un dataframe contenant les tailles de maturité calculées : 
 traits_biologiques &lt;- traits_biologiques %&gt;% 
   select(esp_code_alternatif,
@@ -437,8 +435,8 @@ traits_biologiques &lt;- traits_biologiques %&gt;%
 <h2>Création d’un dataframe</h2>
 <p>Création d’un dataframe contenant les données individuelles relatives
 aux opérations contenues dans la passerelle et de ma sélection d’espèces
-(cf 00_selection_pop_ope et 03_analyse_selection_especes).</p>
-<p>La taille des poissons est indiquée en mm et le poids en gramme.</p>
+(cf 00_selection_pop_ope et 03_analyse_selection_especes). La taille des
+poissons est indiquée en mm et le poids en gramme.</p>
 <pre class="r"><code># Ajout des mesures individuelles en partant de mes mei_ope_selection ----
 mei_ope_selection &lt;- passerelle %&gt;%
   mef_ajouter_ope_date() %&gt;% 
@@ -461,48 +459,64 @@ mei_ope_selection &lt;- passerelle %&gt;%
          pro_libelle,
          annee,
          tlo_libelle)</code></pre>
-<p>Suppression des passages, des répétitions et des lots non souhaités
-du jeu de données</p>
+<p>Nous ne retenons que les données en lien avec le dataframe
+esp_ope_selection et enlevons les passages &gt;1 qui ne seront pas
+étudiés : Suppression des passages, des répétitions et des lots non
+souhaités du jeu de données :</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% 
-  filter(!pas_numero %in% params$passage_a_retirer,
-         pro_libelle %in% params$type_peche_a_inclure,
-         !tyl_libelle%in% params$type_lot_a_retirer) %&gt;% 
+  filter(!pas_numero %in% params$passage_a_retirer) %&gt;% 
+  mutate(pas_numero = replace_na(pas_numero,0)) %&gt;% 
   distinct() %&gt;% 
- # left_join(lop_esp_selection) %&gt;% 
   mutate(esp_code_alternatif = 
            case_when(
              esp_code_alternatif == &quot;VAN&quot; ~ &quot;VAR&quot;,
              esp_code_alternatif %in% c(&quot;CCX&quot;, &quot;CMI&quot;, &quot;CCU&quot;) ~ &quot;CCO&quot;,
-             TRUE ~ esp_code_alternatif))
-  #            ifelse (test = esp_code_alternatif == &quot;VAN&quot;,
-  #                                      yes = &quot;VAR&quot;,
-  #                                      no = esp_code_alternatif)) %&gt;% 
-  # mutate(lop_esp_code_alternatif = ifelse (test = esp_code_alternatif == &quot;CCX&quot;,
-  #                                          yes = &quot;CCO&quot;,
-  #                                          no = esp_code_alternatif)) 
-
-# Remplacement des passages = &quot;NA&quot; en &quot;0&quot; (= premier et unique passage) ----
-mei_ope_selection &lt;- mei_ope_selection %&gt;% 
-  dplyr::mutate(pas_numero = replace_na(pas_numero,0))
-
-#Suppression des &quot;NA&quot; restants ----
-mei_ope_selection &lt;- na.omit(mei_ope_selection)</code></pre>
-<p>Sélection des espèces présentes dans la liste rouge régionale 2015
-:</p>
+             TRUE ~ esp_code_alternatif))</code></pre>
+<p>Je sélectionne les espèces présentes dans la liste rouge régionale de
+2015 :</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% 
   left_join(traits_biologiques) %&gt;% 
   filter(espece_presence_lrr_2015 == &quot;1&quot;)</code></pre>
 </div>
+<div id="données-manquantes" class="section level2">
+<h2>Données Manquantes</h2>
+<p>On observe dans le jeu de données des potentielles valeurs absentes /
+manquantes. Ceci peut être dû à des problèmes de retranscription dans la
+base de données ASPE. Parfois on observe une absence de marquage de
+valeurs individuelles. Ces valeurs manquantes sont regroupées dans un
+dataframe “valeur_na”. Une taille médiane par espèce et station est
+assignée en cas de données manquantes.</p>
+<pre class="r"><code>#Sélection des lignes contenant une valeur de taille NA
+valeur_na &lt;- mei_ope_selection %&gt;%
+  filter(if_any(everything(), is.na))
+
+mei_ope_selection &lt;- na.omit(mei_ope_selection)</code></pre>
+<pre class="r"><code># Un dataframe contenant les tailles médiannes des espèces par station est créer 
+sta_tableau_reference_taille &lt;- mei_ope_selection %&gt;%
+  group_by(sta_id,
+           esp_code_alternatif) %&gt;%
+  summarise(mei_taille = median(mei_taille, na.rm = TRUE)) %&gt;%
+  ungroup()
+
+# Remplacement des valeurs de tailles manquantes par les valeurs du tableau de référence
+valeur_na_complet &lt;- valeur_na %&gt;%
+  left_join(sta_tableau_reference_taille, by = c(&quot;sta_id&quot;, &quot;esp_code_alternatif&quot;)) %&gt;% 
+  select(-mei_taille.x) %&gt;% 
+  rename(mei_taille = mei_taille.y)
+
+#Constitution du df &quot;mei_ope_selection&quot; complet
+mei_ope_selection &lt;- bind_rows(mei_ope_selection, valeur_na_complet)</code></pre>
+</div>
 <div id="distinction-des-classes-dâges" class="section level2">
 <h2>Distinction des classes d’âges</h2>
-<p>En complément de la base ASPE, un tableau indiquant por chaque espèce
-la maximale des 0+ est constitué (et donc la taille référence minimum
-adulte). On utilise donc la longueur du poisson comme proxy de son age.
-Une distinction des classes d’âges est réalisée : a chaque espèce
+<p>En complément de la base ASPE, un tableau indiquant pour chaque
+espèce la taille maximale des 0+ est constitué (= taille référence
+minimum adulte). La longueur du poisson est utilisé comme proxy de son
+age. Une distinction des classes d’âges est réalisée : à chaque espèce
 correspond alors 3 stades différents : - Adulte (individus dont la
 taille est supérieure à la taille_min_adulte) - Juvénile (individus dont
-la taille est inférieure à la taille_min_adulte) - Toutes : toute classe
-d’âge confondue</p>
+la taille est inférieure à la taille_min_adulte) - Indifférencié :
+toutes classes d’âge confondues (ad + juv)</p>
 <pre class="r"><code># Ajout du stade par individus ----
 mei_ope_selection &lt;- mei_ope_selection %&gt;% 
   mutate(stade = ifelse(mei_ope_selection$mei_taille &lt; mei_ope_selection$taille_maturite,
@@ -566,7 +580,8 @@ esp_lt_data &lt;- mei_ope_selection %&gt;%
   ungroup() %&gt;% 
   filter(tlo_libelle == &quot;Totale&quot;,
          esp_code_alternatif == esp_code_alternatif)</code></pre>
-<p>Calcul des seuils de taille mini et maxi pour chaque espèce :</p>
+<p>Calcul des seuils de taille minimum et maximum pour chaque espèce
+:</p>
 <pre class="r"><code>mei_df_seuils &lt;- aspeQual::qtp_seuils(df = esp_lt_data,
                                       var_taxon = esp_code_alternatif,
                                       var_a_tester = mei_taille,
@@ -591,207 +606,236 @@ mei_ope_selection &lt;- mei_ope_selection %&gt;%
 
 erreurs_df &lt;- detecter_erreurs(df = mei_ope_selection)</code></pre>
 <pre><code>##     ope_id esp_code_alternatif   mei_id mini maxi mei_taille
-## 1    50950                 LOF  7118164   16  141        150
-## 2    51357                 LOF  7124778   16  141        155
-## 3    51357                 LOF 11396368   16  141        147
-## 4    51357                 CHA  7124620   10  104        142
-## 5    51357                 CHA 11396176   10  104        114
-## 6    51357                 CHA 11396191   10  104        114
-## 7    51357                 CHA 11396217   10  104        109
-## 8    51357                 CHA 11396281   10  104        115
-## 9     6292                 SAT  1099226   26  613        690
-## 10    6194                 TAN  1068847   25  435        445
-## 11    6510                 GAR   858783   10  258        263
-## 12    6561                 VAI  1184467   12   99        373
-## 13    6292                 SAT  1099227   26  613        640
-## 14    5955                 BRE  1017652   27  450        650
-## 15    6292                 SAT  1099234   26  613        710
-## 16    6278                 GOU   841706   16  195         14
-## 17    6292                 SAT  1099237   26  613        620
-## 18    6517                 GAR   860858   10  258        270
-## 19    6292                 SAT  1099240   26  613        700
-## 20    5462                 GAR   956256   10  258        271
-## 21    6636                 TRF  1196308    3  388          0
-## 22    6292                 SAT  1099233   26  613        740
-## 23    6179                 TAN  1062147   25  435        454
-## 24    6308                 VAR  1106251   18  295        300
-## 25    6514                 GAR   860441   10  258        280
-## 26    6292                 SAT  1099228   26  613        650
-## 27    6292                 SAT  1099243   26  613        640
-## 28    6489                 BRE   859581   27  450        475
-## 29    6726                 GAR   881674   10  258        320
-## 30    6671                 TRF   874153    3  388        430
-## 31    6292                 SAT  1099235   26  613        650
-## 32    6150                 TRF  1051494    3  388        390
-## 33    6342                 GAR  1123082   10  258        327
-## 34    6755                 BRO   884387   58  672        740
-## 35    6292                 SAT  1099238   26  613        680
-## 36    6292                 SAT  1099224   26  613        690
-## 37    6568                 VAI  1186035   12   99        109
-## 38    6292                 SAT  1099231   26  613        670
-## 39    6726                 GAR   881379   10  258        270
-## 40    6292                 SAT  1099222   26  613        630
-## 41    6702                 VAI   876935   12   99        107
-## 42    6025                 GAR  1027873   10  258        320
-## 43    6615                 GAR   867951   10  258        272
-## 44    6153                 TAN   836121   25  435         23
-## 45    6568                 VAI  1186037   12   99        110
-## 46    6726                 GAR   881637   10  258        310
-## 47    6157                 GAR  1054033   10  258        272
-## 48    5514                 TAN   959397   25  435        440
-## 49    6568                 VAI  1186036   12   99        105
-## 50    6511                 GAR  1176970   10  258        273
-## 51    6161                 VAR  1055421   18  295         12
-## 52    6504                 TRF   858256    3  388        415
-## 53    6705                 BRE   878099   27  450         10
-## 54    6285                 VAI  1096209   12   99        104
-## 55    6292                 SAT  1099242   26  613        680
-## 56    6292                 SAT  1099236   26  613        620
-## 57    5940                 VAR  1015951   18  295        301
-## 58    6628                 SAT   869626   26  613        900
-## 59    5299                 GAR   937618   10  258        280
-## 60    6590                 SAT   866390   26  613          0
-## 61    6292                 SAT  1099230   26  613        620
-## 62    6620                 CCO   868309   30  693         23
-## 63    6292                 SAT  1099225   26  613        640
-## 64    6773                 GAR   887583   10  258        296
-## 65    6302                 GAR  1103700   10  258        271
-## 66    6171                 GAR  1059212   10  258        275
-## 67    6671                 SAT   874154   26  613        650
-## 68    6659                 GAR   871679   10  258        270
-## 69    6292                 SAT  1099232   26  613        680
-## 70    6726                 GAR   881411   10  258        260
-## 71    6195                 BRB   838894   13  346         12
-## 72    6179                 PER  1062155    3  385        414
-## 73   51357                 SAT  7124482   26  613         21
-## 74   50819                 TAN  7109680   25  435        440
-## 75   51265                 VAI  7123389   12   99        192
-## 76   51265                 VAI  7123397   12   99        191
-## 77   51151                 TAN  7121761   25  435        444
-## 78   51265                 VAI  7123392   12   99        175
-## 79   51265                 VAI  7123390   12   99        158
-## 80   50768                 GAR  7108450   10  258        270
-## 81   51004                 GAR  7119724   10  258        259
-## 82   51265                 VAI  7123394   12   99        156
-## 83   50768                 VAR  7108363   18  295        300
-## 84   51265                 VAI  7123395   12   99        170
-## 85   51265                 VAI  7123391   12   99        151
-## 86   50699                 VAR  7108152   18  295        308
-## 87   50699                 VAR  7108154   18  295        310
-## 88   51265                 VAI  7123387   12   99        235
-## 89   51265                 VAI  7123393   12   99        236
-## 90    6254                 ANG  1089548   32  797        840
-## 91   38673                 GAR  6754666   10  258        283
-## 92   38891                 VAI  6820520   12   99          6
-## 93   38891                 LPP  6820619    8  201          3
-## 94   38919                 VAI  6824909   12   99          7
-## 95   38919                 VAI  6824968   12   99          3
-## 96   38926                 CHA  6826857   10  104          8
-## 97   38943                 CHA  6830192   10  104        161
-## 98   38943                 CHA  6830205   10  104          3
-## 99   38943                 CHA  6830209   10  104          7
-## 100  38952                 CHA  6833404   10  104          3
-## 101  38952                 CHA  6833415   10  104          6
-## 102  38955                 VAI  6834524   12   99          9
-## 103  38956                 CHA  6834816   10  104          7
-## 104  38956                 CHA  6834881   10  104          5
-## 105  38962                 LOF  6837039   16  141          7
-## 106  38964                 CHA  6837328   10  104        136
-## 107  38964                 LOF  6837389   16  141          5
-## 108  38964                 CHA  6837442   10  104        137
-## 109  38964                 CHA  6837461   10  104        128
-## 110  81664                 GAR  7880301   10  258        267
-## 111  38917                 VAI  6823737   12   99          5
-## 112  82317                 VAI  8349458   12   99        101
-## 113  82364                 LOF  8379057   16  141        142
-## 114  82517                 LOF  8658191   16  141        199
-## 115  82696                 LOF  9174433   16  141        188
-## 116  82876                 VAI  9353382   12   99        100
-## 117  83341                 ANG 11046275   32  797        826
-## 118  83342                 GAR 11046491   10  258        303
-## 119  84516                 SAT 12779016   26  613        740
-## 120  84516                 GOU 12779226   16  195        215
-## 121  84550                 LOF 13382888   16  141        165
-## 122  85742                 GAR 17565114   10  258        360
-## 123  86944                 LOF 19143674   16  141        198
-## 124  86944                 VAI 19143729   12   99        100
-## 125  86977                 SAT 19193169   26  613        640
-## 126  87010                 GAR 19211262   10  258        342
-## 127  87012                 GAR 19213106   10  258        278
-## 128  87012                 ABL 19230596   12  185        198
-## 129   6918                 CHA   906454   10  104        111
-## 130   8218                 VAI  1581791   12   99         11
-## 131   6916                 CHA  1244836   10  104        748
-## 132   6514                 MUP   860262   27  145        500
-## 133   6866                 GOU   899951   16  195        197
-## 134   6489                 TAN   859722   25  435        500
-## 135   8249                 SAT  1550082   26  613        670
-## 136   5955                 GAR  1017644   10  258        260
-## 137   5300                 SAT   937702   26  613        680
-## 138   6925                 GOU   908720   16  195         13
-## 139   5955                 GAR  1017645   10  258        310
-## 140   6773                 MUP   887641   27  145        359
-## 141   6724                 MUP   880450   27  145        150
-## 142   8194                 BRO  1520217   58  672        900
-## 143   6918                 VAI   906476   12   99         11
-## 144   6859                 TRF  1233326    3  388       3192
-## 145   6514                 MUP   860306   27  145        505
-## 146   6489                 TAN   859769   25  435        470
-## 147   8218                 VAI  1540494   12   99         11
-## 148   7980                 GAR  1533894   10  258        265
-## 149   6894                 BRE   903688   27  450        475
-## 150   6115                 TAN  1043214   25  435        445
-## 151   6724                 MUP   880462   27  145        148
-## 152   6923                 TAN   907504   25  435         24
-## 153   6833                 GAR   895554   10  258        302
-## 154   5676                 VAR   978807   18  295        303
-## 155   6925                 GOU   908719   16  195         14
-## 156   6925                 LOF   908887   16  141         15
-## 157   5955                 GAR  1017648   10  258        285
-## 158  50772                 TAN  7108682   25  435        448
-## 159   7981                 CHE  1545632   11  488        493
-## 160   6844                 BRO   896454   58  672        870
-## 161   8174                 VAI  1570675   12   99        107
-## 162   6925                 CHA   909009   10  104        107
-## 163   6844                 BRO   896489   58  672        888
-## 164   6901                 GAR   905050   10  258        515
-## 165   8052                 CHA  1569670   10  104        106
-## 166   6499                 SAT   857384   26  613        675
-## 167   6861                 VAI  1234358   12   99        106
-## 168   6724                 MUP   880475   27  145        161
-## 169   5955                 GAR  1017647   10  258        260
-## 170   6923                 TAN   908324   25  435         18
-## 171   8051                 BRO  1515276   58  672         57
-## 172   6514                 MUP   860261   27  145        495
-## 173   6923                 MUP   907361   27  145        510
-## 174   5955                 TAN  1017634   25  435        460
-## 175   6301                 TAN   842512   25  435        437
-## 176   5955                 GAR  1017643   10  258        305
-## 177   6514                 MUP   860307   27  145        603
-## 178   8051                 BRO  1515309   58  672         53
-## 179   6400                 TRF   847498    3  388        432
-## 180   6892                 ROT   902410   20  355         19
-## 181   5955                 GAR  1017646   10  258        310
-## 182  87653                 GAR 20626537   10  258        290
-## 183  87950                 VAI 20803106   12   99        140
-## 184  87955                 VAI 20805274   12   99        115
-## 185  88035                 VAI 20849562   12   99        192
-## 186  88035                 VAI 20849564   12   99        182
-## 187  87994                 VAI 20859703   12   99         10
-## 188   6164                 LOF  1056309   16  141         15
-## 189   6309                 LOF  1107577   16  141        217
-## 190   6483                 LOF  1172785   16  141         10
-## 191   6375                 CHA  1142670   10  104        448
-## 192   6391                 SAT  1147873   26  613        695
-## 193   6689                 CHA  1205866   10  104        106
-## 194   6378                 LOF  1143983   16  141        150
-## 195   6418                 GAR   847910   10  258        262
-## 196   6098                 LOF  1040270   16  141         11
-## 197   6214                 CHA  1073888   10  104        139
-## 198   6391                 SAT  1147874   26  613        670
-## 199   6318                 LOF  1112679   16  141         14
-## 200  90507                 GAR 22661620   10  258        303
-## 201  90507                 CHE 22661640   11  488        542</code></pre>
+## 1    50950                 LOF  7118164   17  138        150
+## 2    51357                 LOF  7124778   17  138        155
+## 3    51357                 LOF  7124756   17  138        141
+## 4    51357                 LOF 11396311   17  138        139
+## 5    51357                 LOF 11396368   17  138        147
+## 6    51357                 CHA  7124620   12  102        142
+## 7    51357                 CHA 11396173   12  102        103
+## 8    51357                 CHA 11396176   12  102        114
+## 9    51357                 CHA 11396191   12  102        114
+## 10   51357                 CHA 11396217   12  102        109
+## 11   51357                 CHA 11396281   12  102        115
+## 12   51357                 CHA 11396294   12  102        103
+## 13    6292                 SAT  1099226   26  613        690
+## 14    6194                 TAN  1068847   25  435        445
+## 15    6510                 GAR   858783   10  258        263
+## 16    6561                 VAI  1184467   12   99        373
+## 17    6292                 SAT  1099227   26  613        640
+## 18    5955                 BRE  1017652   27  450        650
+## 19    6292                 SAT  1099234   26  613        710
+## 20    6278                 GOU   841706   16  195         14
+## 21    6292                 SAT  1099237   26  613        620
+## 22    6517                 GAR   860858   10  258        270
+## 23    6292                 SAT  1099240   26  613        700
+## 24    5462                 GAR   956256   10  258        271
+## 25    6636                 TRF  1196308    3  388          0
+## 26    6292                 SAT  1099233   26  613        740
+## 27    6179                 TAN  1062147   25  435        454
+## 28    6308                 VAR  1106251   18  295        300
+## 29    6514                 GAR   860441   10  258        280
+## 30    6292                 SAT  1099228   26  613        650
+## 31    6292                 SAT  1099243   26  613        640
+## 32    5707                 GAR 11687980   10  258        263
+## 33    5710                 GAR 11640751   10  258        272
+## 34    6489                 BRE   859581   27  450        475
+## 35    6726                 GAR   881674   10  258        320
+## 36    5719                 GAR 11450173   10  258        265
+## 37    6671                 TRF   874153    3  388        430
+## 38    6292                 SAT  1099235   26  613        650
+## 39    6150                 TRF  1051494    3  388        390
+## 40    6342                 GAR  1123082   10  258        327
+## 41    6755                 BRO   884387   58  672        740
+## 42    6292                 SAT  1099238   26  613        680
+## 43    6292                 SAT  1099224   26  613        690
+## 44    6568                 VAI  1186035   12   99        109
+## 45    6292                 SAT  1099231   26  613        670
+## 46    6726                 GAR   881379   10  258        270
+## 47    6292                 SAT  1099222   26  613        630
+## 48    6702                 VAI   876935   12   99        107
+## 49    6025                 GAR  1027873   10  258        320
+## 50    6112                 TAN 12002046   25  435         20
+## 51    6112                 TAN 12002050   25  435         24
+## 52    6112                 TAN 12002056   25  435         24
+## 53    6112                 TAN 12002057   25  435         22
+## 54    6112                 TAN 12002060   25  435         23
+## 55    6615                 GAR   867951   10  258        272
+## 56    6153                 TAN   836121   25  435         23
+## 57    6568                 VAI  1186037   12   99        110
+## 58    6726                 GAR   881637   10  258        310
+## 59    6157                 GAR  1054033   10  258        272
+## 60    5514                 TAN   959397   25  435        440
+## 61    6568                 VAI  1186036   12   99        105
+## 62    6511                 GAR  1176970   10  258        273
+## 63    6161                 VAR  1055421   18  295         12
+## 64    6504                 TRF   858256    3  388        415
+## 65    6705                 BRE   878099   27  450         10
+## 66    6030                 VAI 11727668   12   99         11
+## 67    6285                 VAI  1096209   12   99        104
+## 68    6292                 SAT  1099242   26  613        680
+## 69    6292                 SAT  1099236   26  613        620
+## 70    5940                 VAR  1015951   18  295        301
+## 71    6628                 SAT   869626   26  613        900
+## 72    5299                 GAR   937618   10  258        280
+## 73    6590                 SAT   866390   26  613          0
+## 74    6292                 SAT  1099230   26  613        620
+## 75    6620                 CCO   868309   30  693         23
+## 76    6127                 VAI 12033403   12   99        107
+## 77    6127                 VAI 12033406   12   99        101
+## 78    6127                 VAI 12033409   12   99        107
+## 79    6127                 VAI 12033420   12   99        103
+## 80    6127                 VAI 12033421   12   99        102
+## 81    6292                 SAT  1099225   26  613        640
+## 82    6773                 GAR   887583   10  258        296
+## 83    6302                 GAR  1103700   10  258        271
+## 84    6171                 GAR  1059212   10  258        275
+## 85    6671                 SAT   874154   26  613        650
+## 86    6659                 GAR   871679   10  258        270
+## 87    6292                 SAT  1099232   26  613        680
+## 88    5719                 GAR 11450120   10  258        330
+## 89    6726                 GAR   881411   10  258        260
+## 90    6195                 BRB   838894   13  346         12
+## 91    6179                 PER  1062155    3  385        414
+## 92   51357                 SAT  7124482   26  613         21
+## 93   50819                 TAN  7109680   25  435        440
+## 94   51265                 VAI  7123389   12   99        192
+## 95   51265                 VAI  7123397   12   99        191
+## 96   51151                 TAN  7121761   25  435        444
+## 97   51265                 VAI  7123392   12   99        175
+## 98   51265                 VAI  7123390   12   99        158
+## 99   50768                 GAR  7108450   10  258        270
+## 100  51004                 GAR  7119724   10  258        259
+## 101  51265                 VAI  7123394   12   99        156
+## 102  50768                 VAR  7108363   18  295        300
+## 103  51265                 VAI  7123395   12   99        170
+## 104  51265                 VAI  7123391   12   99        151
+## 105  50699                 VAR  7108152   18  295        308
+## 106  50699                 VAR  7108154   18  295        310
+## 107  51265                 VAI  7123387   12   99        235
+## 108  51265                 VAI  7123393   12   99        236
+## 109   6254                 ANG  1089548   32  796        840
+## 110  38673                 GAR  6754666   10  258        283
+## 111  38891                 VAI  6820520   12   99          6
+## 112  38891                 LPP  6820619    9  201          3
+## 113  38919                 VAI  6824909   12   99          7
+## 114  38919                 VAI  6824968   12   99          3
+## 115  38926                 CHA  6826857   12  102          8
+## 116  38943                 CHA  6830192   12  102        161
+## 117  38943                 CHA  6830205   12  102          3
+## 118  38943                 CHA  6830209   12  102          7
+## 119  38952                 CHA  6833404   12  102          3
+## 120  38952                 CHA  6833415   12  102          6
+## 121  38955                 VAI  6834524   12   99          9
+## 122  38956                 CHA  6834816   12  102          7
+## 123  38956                 CHA  6834881   12  102          5
+## 124  38962                 LOF  6837039   17  138          7
+## 125  38964                 CHA  6837328   12  102        136
+## 126  38964                 LOF  6837389   17  138          5
+## 127  38964                 CHA  6837442   12  102        137
+## 128  38964                 CHA  6837461   12  102        128
+## 129  81664                 GAR  7880301   10  258        267
+## 130  38917                 VAI  6823737   12   99          5
+## 131  82317                 VAI  8349458   12   99        101
+## 132  82364                 LOF  8379057   17  138        142
+## 133  82517                 LOF  8658191   17  138        199
+## 134  82696                 LOF  9174433   17  138        188
+## 135  82876                 VAI  9353382   12   99        100
+## 136  83341                 ANG 11046275   32  796        826
+## 137  83342                 GAR 11046491   10  258        303
+## 138  84516                 SAT 12779016   26  613        740
+## 139  84516                 GOU 12779226   16  195        215
+## 140  84550                 LOF 13382888   17  138        165
+## 141  85742                 GAR 17565114   10  258        360
+## 142  86944                 LOF 19143674   17  138        198
+## 143  86944                 VAI 19143729   12   99        100
+## 144  86977                 SAT 19193169   26  613        640
+## 145  87010                 GAR 19211262   10  258        342
+## 146  87012                 GAR 19213106   10  258        278
+## 147  87012                 ABL 19230596   12  184        198
+## 148   6918                 CHA   906454   12  102        111
+## 149   8218                 VAI  1581791   12   99         11
+## 150   6916                 CHA  1244836   12  102        748
+## 151   6514                 MUP   860262   27  145        500
+## 152   6866                 GOU   899951   16  195        197
+## 153   6489                 TAN   859722   25  435        500
+## 154   8249                 SAT  1550082   26  613        670
+## 155   5955                 GAR  1017644   10  258        260
+## 156   5300                 SAT   937702   26  613        680
+## 157   6925                 GOU   908720   16  195         13
+## 158   5955                 GAR  1017645   10  258        310
+## 159   6773                 MUP   887641   27  145        359
+## 160   6724                 MUP   880450   27  145        150
+## 161   8194                 BRO  1520217   58  672        900
+## 162   8051                 CHA  1515293   12  102         11
+## 163   6918                 VAI   906476   12   99         11
+## 164   6859                 TRF  1233326    3  388       3192
+## 165   6514                 MUP   860306   27  145        505
+## 166   6489                 TAN   859769   25  435        470
+## 167   8218                 VAI  1540494   12   99         11
+## 168   7980                 GAR  1533894   10  258        265
+## 169   8051                 CHA  1557147   12  102         11
+## 170   6894                 BRE   903688   27  450        475
+## 171   6115                 TAN  1043214   25  435        445
+## 172   6724                 MUP   880462   27  145        148
+## 173   6923                 TAN   907504   25  435         24
+## 174   6833                 GAR   895554   10  258        302
+## 175   5676                 VAR   978807   18  295        303
+## 176   6925                 GOU   908719   16  195         14
+## 177   6925                 LOF   908887   17  138         15
+## 178   8051                 CHA  1557167   12  102         11
+## 179   5955                 GAR  1017648   10  258        285
+## 180  50772                 TAN  7108682   25  435        448
+## 181   7981                 CHE  1545632   11  488        493
+## 182   6844                 BRO   896454   58  672        870
+## 183   8174                 VAI  1570675   12   99        107
+## 184   6925                 CHA   909009   12  102        107
+## 185   6844                 BRO   896489   58  672        888
+## 186   6901                 GAR   905050   10  258        515
+## 187   6876                 LOF  1237156   17  138        141
+## 188   8052                 CHA  1569670   12  102        106
+## 189   6499                 SAT   857384   26  613        675
+## 190   6861                 VAI  1234358   12   99        106
+## 191   6724                 MUP   880475   27  145        161
+## 192   5955                 GAR  1017647   10  258        260
+## 193   6923                 TAN   908324   25  435         18
+## 194   8051                 BRO  1515276   58  672         57
+## 195   6514                 MUP   860261   27  145        495
+## 196   6923                 MUP   907361   27  145        510
+## 197   5955                 TAN  1017634   25  435        460
+## 198   6301                 TAN   842512   25  435        437
+## 199   5955                 GAR  1017643   10  258        305
+## 200   6514                 MUP   860307   27  145        603
+## 201   8051                 BRO  1515309   58  672         53
+## 202   6400                 TRF   847498    3  388        432
+## 203   6892                 ROT   902410   20  355         19
+## 204   5955                 GAR  1017646   10  258        310
+## 205  87653                 GAR 20626537   10  258        290
+## 206  87950                 VAI 20803106   12   99        140
+## 207  87955                 VAI 20805274   12   99        115
+## 208  88035                 VAI 20849562   12   99        192
+## 209  88035                 VAI 20849564   12   99        182
+## 210  87994                 VAI 20859703   12   99         10
+## 211   6164                 LOF  1056309   17  138         15
+## 212   6177                 CHA  1061097   12  102        103
+## 213   6309                 LOF  1107577   17  138        217
+## 214   6483                 LOF  1172785   17  138         10
+## 215   6375                 CHA  1142670   12  102        448
+## 216   6391                 SAT  1147873   26  613        695
+## 217   6689                 CHA  1205866   12  102        106
+## 218   6689                 CHA 11616965   12  102        103
+## 219   6378                 LOF  1143983   17  138        150
+## 220   6418                 GAR   847910   10  258        262
+## 221   6098                 LOF  1040270   17  138         11
+## 222   6722                 LOF  1209428   17  138        140
+## 223   6214                 CHA  1073888   12  102        139
+## 224   6391                 SAT  1147874   26  613        670
+## 225   6318                 LOF  1112679   17  138         14
+## 226  90507                 GAR 22661620   10  258        303
+## 227  90507                 CHE 22661640   11  488        542</code></pre>
+<p>“erreur_df” rencense l’ensemble des données abérantes du jeu de
+données. Il est nécessaire de les corriger directement dans la base ASPE
+s’il s’agit de véritables erreurs de saisies.</p>
 </div>
 <div id="sauvegarde" class="section level1">
 <h1>Sauvegarde</h1>
