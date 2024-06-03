@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Production carte sélection opération"
+subtitle: "Production d'une carte des opérations sélectionnées"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -16,10 +16,11 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
-01_production_carte_selection_station
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne 
 
-Après avoir sélectionné les points de prélèvements et opérations de pêche de l'aire géographique ciblée, une carte est réalisée.  
+Script : 01_production_carte_selection_station
+
+Après avoir sélectionné les différentes stations / points de prélèvements et opérations de pêches de l'aire géographique ciblée, une carte est réalisée.  
 
 
 # Installation 
@@ -27,97 +28,94 @@ Après avoir sélectionné les points de prélèvements et opérations de pêche
 ## Chargement des packages et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
+## Chargement des packages 
 library(sf)
 library(ggplot2)
-library(dplyr)
-library(stringr)
-library(tidyverse)
+library(cowplot)
+library(png)
 library(rnaturalearth)
-library(grid)
-library(gt)
 ```
 
 
 ```{r Chargement des données}
-## Chargement des données ----
-
+## Chargement des données 
 load(file = "../processed_data/selection_pop_ope_carte.rda")
 
-## Chargement de la palette de couleur ----
+## Chargement de la palette de couleur 
 pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
 ```
 
 
-# Importation des données
 
-```{r}
-cours_eau_1 <- st_read("../QGIS/cours_eau/tx_dpme.gpkg")
-```
+# Création de la carte 
 
+## Création de la carte de situation
 
-# Création de la carte de situation
+Il s'agit de créer une petite carte de situation permettant de situer l'aire géographique étudiée à l'échelle de la France. 
 
-```{r}
+```{r Carte situation}
+# Sélection de la zone géographique d'ensemble (ici l'étude est en France)
 france <- ne_countries(country = "france", returnclass = "sf")
-```
 
-
-```{r}
+# Création de la carte de la France avec une zone de focus
 carte_france_dept <- ggplot(data = france) + 
-  geom_sf(fill = "gray82",
-          color = "black") +
+  geom_sf(fill = "gray82", color = "black") +
   theme_void() +
-  geom_rect(aes(xmin = -3.58, 
-                xmax = -3.1, 
-                ymin = 47.60,
-                ymax = 47.80), 
-            fill = NA, 
-            color = "red",
-            size = 2) +
+  annotate("path",
+           x = -3.34 + 1.5 * cos(seq(0, 2 * pi, length.out = 100)),
+           y = 48.2 + 1.0 * sin(seq(0, 2 * pi, length.out = 100)),
+           color = "red", size = 1) +
   xlim(-5, 10) +
   ylim(40, 52) +
-  theme(panel.background = element_rect(fill = "white",
-                                        color = "black"))
-carte_france_dept
+  theme(panel.background = element_rect(fill = "white", color = "black"))
 
 ```
 
-```{r}
-# Dessiner la carte
+```{r Carte convertie Grob}
+# Convertir la carte de France en un objet grob 
 carte_france_dept_grob <- ggplotGrob(carte_france_dept)
 ```
 
 
 
-# Production de la carte station
+## Création de la carte station
 
-```{r}
+```{r Création carte station}
 carte_sta <- ggplot(sta_id_ope_selection) +
   geom_sf(data = mes_depts) +
   geom_sf(data = buffer) +
-  #geom_sf(data = cours_eau_1) +
-  geom_sf(data = sta_id_ope_selection, aes(color = DEP), size = 2) +
+  geom_sf(aes(color = DEP), size = 2) +
   scale_color_manual(values = pal) +
   theme_bw() +
   # Ajouter une légende pour la variable DEP
-  labs(color = "Département")
-
-carte_sta
+  labs(color = "Département") +
+  theme(legend.position = "bottom")
 
 ```
 
 
 
-```{r}
-carte_note_grob <- carte_sta +
-  annotation_custom(
-    grob = carte_france_dept_grob,
-    xmin = -0.4,
-    xmax = -0.7,
-    ymin = 49.3, 
-    ymax = 48.5)
-  
-carte_note_grob
+# Carte finale
+
+Il s'agit de combiner les deux cartes créées ultérieurement. 
+
+```{r Construction carte finale}
+
+# Assemblage des cartes pré-créée
+carte_combinee <- ggdraw() +
+  draw_plot(carte_sta) +
+  draw_plot(carte_france_dept, x = 0, y = 0, width = 0.4, height = 0.25, hjust = 0.05, vjust = -0.75)
+
+# Charger l'image du logo
+logo <- readPNG( "../assets/ofb_logo.png")
+
+# Créer la carte combinée avec le logo
+carte_combinee <- carte_combinee + 
+  annotation_raster(logo, xmin = 0.8, xmax = 0.98, ymin = 0.015, ymax = 0.13)
+
+carte_combinee
 ```
+
+
+
 

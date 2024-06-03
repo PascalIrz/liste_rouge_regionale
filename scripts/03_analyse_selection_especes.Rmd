@@ -22,7 +22,9 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 03_analyse_selection_especes
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+
+Script : 03_analyse_selection_especes
 
 Après avoir sélectionné les points de prélèvements et opérations de pêche de l'aire géographique ciblée, un tri des données sur les espèces péchées durant les opérations est réalisé. Il s'agit de retirer du jeu final les données inintéressantes ou obsolètes pour notre étude. 
 
@@ -266,8 +268,9 @@ Dans le cadre de notre étude, on observe que les espèces étudiées pour la pr
 
 
 
-# Sauvegarde : 
-```{r}
+# Sauvegarde 
+
+```{r Sauvegarde}
 save(esp_ope_selection,
      file = "../processed_data/analyse_selection_especes.rda")
 ```
