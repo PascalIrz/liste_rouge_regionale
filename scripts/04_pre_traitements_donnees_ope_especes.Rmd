@@ -68,7 +68,7 @@ traits_biologiques <- read_excel("../raw_data/traits_biologiques.xlsx")
 
 # Constitution du jeu de données
 
-## Selection des tailles de maturité des espèces : 
+## Selection des tailles de maturité des espèces
 
 Les tailles de maturité ont été calculées à partir de 5 sources différentes* pour chacune des espèces et une moyenne sur ces valeurs a été retenue pour être inscrite comme valeur de référence de maturité.
 
@@ -322,6 +322,7 @@ nb_unique <- mei_ope_selection %>%
 
 print(nb_unique)
 ```
+
 
 
 # Sauvegarde

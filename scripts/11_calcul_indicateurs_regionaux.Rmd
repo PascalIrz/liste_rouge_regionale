@@ -383,6 +383,11 @@ tableau_final_gt
 
 
 
+On suspect un effet des réseaux et des protocoles dans ces résultats (en effet des changements de protocoles et de réseaux ont lieux au cours du temps). Le prochain script (13_glm) à pour but d'évaluer, grâce à des modèles linéaires mixtes, les éventuels effets de ces changements de réseaux et de protocoles. 
+
+
+
+
 # Sauvegarde 
 
 ```{r Sauvegarde}

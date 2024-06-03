@@ -1,35 +1,120 @@
 ---
-title: "15_pre_traitement_modele_bayesien"
-author: "Léa Bouchet"
-date: "2024-05-29"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Pré-traitement pour analyse bayésienne"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Selection des stations par espèces pour le traitement bayésien 
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+15_pre_traitement_modele_bayésien
+
+Ce script prépare les jeu de données à une analyse bayésienne (avec le package pop_dynmodel). 
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages}
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library(dplyr)
+
+library(lme4)
+library(lmerTest)
+library(car)
+library(flextable)
+
+
+library(aspe2)
+library(stringr)
+library(nimble)
+library(popdynmodel)
+library(mcmcplots)
+
+
+```
+
+
+```{r Chargement des données}
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+```
+
+
+```{r Chargement des tables ASPE}
+#Chargement des tables ASPE ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+```
+
+
+# Visualisation des stations par espèces pour le traitement bayésien 
 
 Sélection des stations à retenir pour analyse bayésien au sein des mes 43 stations déjà préselectionnées pour les espèces que je vais étudier. 
 
-
+## Sélection des stations étudiées 
 
 ```{r}
-
 # Nous inscrivons les sta_id retenues dans nos analyses ultérieures
 mes_sta_id <- c("10468", "10502","10546","10565", "10647", "10734", "10844", "10925", "10950","11067",
                 "11158","11224", "11245", "11290", "11302", "11329", "11432","11456", "11539", "11593",
                 "11601","11602","11603","11605", "11735", "11743","11745", "11875", "11913", "12007",
                 "12060", "12118", "12148", "12291", "12316","12325","12371","12402","12436","12447",
                 "12453","12824","13103")
+```
 
 
+## Sélection des espèces étudiées
+
+```{r}
 # Nous sélectionnons les espèces de la liste rouge régionale
 mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+```
 
 
+## Représentation des fréquences d'apparition des espèces sur les stations sélectionnées 
 
+```{r}
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
+                            indicateur = unique(ope_indicateur$indicateur),
+                            stade = unique(ope_indicateur$stade),
+                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
+                            pop_id = unique(ope_indicateur$pop_id))
+
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+ope_indicateur_complet <- combinaisons_esp_ope %>%
+  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
+  select(esp_code_alternatif,
+         annee,
+         stade,
+         indicateur, 
+         valeur,
+         pop_id)
 
 
 occur_sta_esp <- ope_indicateur_complet %>% 
@@ -48,10 +133,6 @@ filtered_df <- occur_sta_esp %>%
 result_df <- filtered_df %>%
   group_by(esp_code_alternatif, pop_id) %>%
   summarise(nb_annees = n_distinct(annee))
-
-# Afficher le résultat
-print(result_df)
-
 
 
 # Convertir pop_id en facteur
@@ -74,5 +155,125 @@ ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur))
 
 
 ```
+
+# Pré-traitement analyses bayésienne 
+
+Cette partie de pré-traitement suit le tuto "Tutorial_popdynmodel_V1" réalisé par Mme Emmanuelle Dortel :
+
+```{r}
+# 1.1 Data processing
+
+#library(devtools)
+#devtools::install_github("PascalIrz/aspe")
+#devtools::install_github("manue6/aspe2")
+
+data_bayesien <- mef_creer_passerelle() %>% # generating of link table
+  mef_ajouter_ope_date_complete() %>% # adding date, year, month and day
+  mef_ajouter_surf_calc() %>% # adding fishing surface
+  mef_ajouter_type_protocole() %>% # adding fishing protocol
+  mef_ajouter_passage() %>% # adding fishing pass numbers
+  left_join(select(point_prelevement, pop_id, pop_bas_id)) %>% # adding basin
+  filter(annee %in% 1990:2023, 
+         pop_bas_id == 4,
+         sta_id == mes_sta_id)
+
+data_bayesien$pas_numero[is.na(data_bayesien$pas_numero)] <- 1 # J'ajoute 1 lorsque le passage est "NA"
+
+data_bayesien <- data_bayesien %>% 
+  filter(pas_numero == 1)
+
+
+
+data_bayesien <- mef_filtrer_operation(data_bayesien,
+                              var_id = pop_id,
+                              var_tmp = annee,
+                              var_surf = ope_surface_calculee,
+                              var_pro = pro_libelle,
+                              var_date = mois,
+                              default = TRUE)
+
+
+def <- def_compter_obs(data_bayesien,
+                       var_id = pop_id,
+                       var_tmp = annee,
+                       var_pro = pro_libelle)
+
+
+data_bayesien <- mef_filtrer_obs(data_bayesien,
+                        def,
+                        var_id = pop_id,
+                        var_pro = pro_libelle,
+                        min_obs = 9,
+                        max_na_cons = 3,
+                        max_pro = 3)
+
+
+data_bayesien <- mef_ajouter_lots(data_bayesien) %>%
+  summarise(catch_size = sum(lop_effectif),
+            .by = c(pop_id,
+                    annee, 
+                    esp_code_alternatif, 
+                    ope_id, 
+                    ope_surface_calculee))
+
+
+
+data_bayesien <- mef_ajouter_absence(data_bayesien,
+                            var_id = pop_id,
+                            var_taxon = esp_code_alternatif,
+                            var_abs = catch_size,
+                            var_obs = ope_id)
+```
+
+
+
+```{r}
+# On réalise un tri pour les espèces de la LRR 2023
+
+data_bayesien_lrr <- filter(data_bayesien, 
+                   esp_code_alternatif %in% mes_especes_lrr) %>%
+  mef_ajouter_na(var_id = pop_id,
+                 var_taxon = esp_code_alternatif,
+                 var_obs = annee,
+                 vec_obs = 1990 : 2023)
+
+
+data_bayesien_lrr <- data_bayesien_lrr %>%
+  mutate(ope_surface_calculee = ifelse(ope_surface_calculee == 0, NA,
+                                       ope_surface_calculee)) %>%
+  mef_imputevalue(var_id="pop_id",
+                  var_tmp="annee",
+                  var_imp="ope_surface_calculee")
+
+
+```
+
+
+
+Le jeu de données constitué est maintenant prêt à être excécuté avec le modèle bayésien. 
+
+
+# Sauvegarde 
+
+```{r Sauvegarde}
+
+save(data_bayesien,
+     data_bayesien_lrr,
+     file = "../processed_data/pre_traitement_modele_bayesien.rda")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

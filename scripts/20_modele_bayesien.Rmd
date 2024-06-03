@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+# Objectif 
 
 Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieuremen, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
 

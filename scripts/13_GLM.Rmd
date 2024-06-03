@@ -1,8 +1,12 @@
 ---
-title: "13_GLM"
-author: "Léa Bouchet"
-date: "2024-05-28"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "GLM"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -10,159 +14,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## Chargement des packages, fonctions et des données 
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+13_GLM
 
-```{r Chargement des packages}
-## Chargement des packages ----
-library(ggthemes)
-library(tidyverse)
-library(aspe)
-library(ggplot2)
-library (khroma)
-library(dplyr)
-library(wesanderson)
-library(zoo)
-library(gt)
-library(lemon)
-library(trend)
-library(ggh4x)
-library(purrr)
-library(broom)
-library(ggforce)
-```
-
-
-```{r Chargement des données}
-## Chargement des données ----
-load(file = "../processed_data/selection_pop_ope.rda")
-load(file = "../processed_data/pre_traitements_donnees_env.rda")
-load(file = "../processed_data/assemblage_tab_par_ope.rda")
-load(file = "../processed_data/analyse_selection_especes.rda")
-```
-
-
-
-
-Optionnel (expérimentale) :
-
-# Modèles Linéaires Généralisés (GLM) :
-
-Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
-
-
-Transformer les valeurs de densités (surface et volume) en log pour les analyses (car les valeurs sont parfois très élevées) : 
-
-```{r Transformation données densités en log}
-data <- ope_selection %>% 
-  select(ope_id,
-         pro_libelle) 
-
-glm_ope_indicateur <- ope_indicateur %>% 
-  mutate (valeur_l = ifelse (grepl("densite", indicateur),
-                               log(1 + valeur),
-                               valeur)) %>%  
-  left_join(data)
-```
-
-
-
-Exclure du jeu de données les lignes avec moins de 5 années de données (données trop peu robuste pour réaliser une analyse) : 
-
-```{r Paramétrage années minimum GLM}
-nb_annee_glm <- 5
-```
-
-
-```{r Construction tableau glm_ope_indicateur}
-glm_ope_indicateur <- glm_ope_indicateur %>%
-  group_by(esp_code_alternatif, indicateur, stade) %>%
-  filter(n_distinct(annee) >= nb_annee_glm) %>%
-  ungroup() %>% 
-  select(-valeur)
-```
-
-
-## Réalisation GLM (Individuel)
-
-```{r Réalisation GLM Individuel}
-mon_espece <- "ANG"
-mon_stade <- "ind"
-mon_indicateur <- "densite_volumique"
-
-glm_data_ang <- glm_ope_indicateur %>% 
-  ungroup() %>% 
-  filter(indicateur == mon_indicateur,
-         esp_code_alternatif == mon_espece,
-         stade == mon_stade)
-
-glm_ang <- calcul_glm_non_groupe(glm_data_ang)
-glm_ang <- glm_ang %>% 
-  mutate(esp_code_alternatif = "ANG",
-         stade = "ind",
-         indicateur = "densite_volumique")
-
-```
-
-
-## Réalisation GLM (Collectif)
-
-```{r Realisation GLM collectif}
-combinaisons_glm_coll <- unique(select(glm_ope_indicateur, esp_code_alternatif, stade, indicateur))
-
-glm_collectif <- combinaisons_glm_coll %>%  # Appliquer la fonction calcul_glm_non_groupe à chaque combinaison
-  pmap_dfr(~calcul_glm_non_groupe(glm_ope_indicateur %>%
-                                    filter(esp_code_alternatif == ..1 & stade == ..2 & indicateur == ..3)) %>%
-             mutate(esp_code_alternatif = ..1, 
-                     stade = ..2, 
-                     indicateur = ..3)) %>% 
-  rename (glm_intercept = intercept,
-          glm_pvalue = pvalue,
-          glm_annee = annee) %>% 
-  select (esp_code_alternatif,
-          stade,
-          indicateur,
-          glm_intercept, 
-          glm_annee,
-          glm_pvalue)
-
-```
-
-
-Représentation visuelle des résultats GLM collectif
-
-```{r Attribution significativité Tab GLM, fig.height = 5, fig.width = 10}
-glm_collectif <- glm_collectif %>%
-  mutate(significativité = case_when(
-    glm_pvalue <= 0.001 ~ '***',
-    glm_pvalue <= 0.01 ~ '**',
-    glm_pvalue <= 0.05 ~ '*',
-    glm_pvalue <= 0.1 ~ '.',
-    TRUE ~ ' '
-  ))
-```
-
-
-```{r Représentation Tab GLM, fig.height = 5, fig.width = 10}
-glm_collectif %>%
-  gt() %>%
-  tab_header(
-    title = "Résultats des modèles GLM",
-    subtitle = "Tableau synthétique des coefficients, années et p-values"
-  ) %>%
-  fmt_number(
-    columns = vars(glm_intercept, glm_annee, glm_pvalue),
-    decimals = 3
-  )
-```
-
-
-
-
-
-
-
-
-
+Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur les tendances des indicateurs. On évalue également l'impact des changements de protocoles grâce à cette technique. 
 
 
 # Installation 
@@ -175,305 +30,88 @@ library(ggthemes)
 library(tidyverse)
 library(aspe)
 library(ggplot2)
-library (khroma)
 library(dplyr)
-library(wesanderson)
-library(zoo)
-library(gt)
-library(lemon)
-library(trend)
-library(ggh4x)
-library(purrr)
-library(broom)
-library(ggforce)
+
+library(lme4)
+library(lmerTest)
+library(car)
+library(flextable)
 ```
 
+```{r Chargement des données}
+## Chargement des données ----
+load(file = "../processed_data/selection_pop_ope.rda")
+
+## Chargement des tables ASPE ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+
+```
 
 ```{r Chargement des données}
 ## Chargement des données ----
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 ```
 
-
-
-Pour calculer le taux de colonisation et d'extinction des espèces de poissons, on peut utiliser le package island qui peut répondre à notre besoin : 
-
-"Taux de colonisation et d’extinction estimés à partir de la dynamique temporelle des communautés écologiques"
-
-
-MacKenzie a développé une approche de probabilité pour l’estimation des paramètres lorsque la détectabilité des espèces n’est pas parfaite. L’idée fondatrice de Mackenzie peut être utilisée pour obtenir de meilleures estimations de l’occupation du site (MacKenzie et coll., 2002) ainsi que des estimations non biaisées des paramètres du modèle de colonisation-extinction (MacKenzie, Nichols,Hines, Knutson et Franklin, 2003).
-
-
-
-Notre principale problématique : 
---> Nous avons des échantillonnages irréguliers au niveau des stations avec des échantillonnages parfois bi-annuels... 
-
-Package island fournit une nouvelle implémentation de la probabilité de MacKenzie pour des intervalles de temps inégaux et des plans d’échantillonnage clairsemés
-
-
-
-
-
-La fonction sss_cedp permet l'estimation d'un schéma d'échantillonnage unique avec des mesures répétées qui doivent être spécifiées avec les arguments Time, qui contiennent les temps d'échantillonnage uniques, et l'argument Transects qui spécifie le nombre de transects par temps d'échantillonnage.
-
-En revanche, mss_cedp permet l'estimation de taux avec une détectabilité parfaite ou imparfaite pour plusieurs schémas d'échantillonnage, via l'utilisation d'indicateurs pour les valeurs manquantes spécifiées par l'argument MV_FLAG, pour l'ensemble des données ou des groupes de facteurs.(je crois que c'est ce qui nous intéresse)
-
-
-
-
-On part de occur_sta_esp qui est dans le fichier 27_pre (contient que pour l'anguille)
-
-
 ```{r}
-# Filtrer les données pour l'indicateur 'effectif_total'
-ope_indicateur_effectif <- ope_indicateur %>%
-  filter(indicateur == 'effectif_total', stade == "ind") %>%
-  select(-indicateur, -stade) %>% 
-  mutate(presence = ifelse(valeur != 0, 1, 0)) %>% 
-  select(-valeur, -ope_id) %>% 
-  group_by(esp_code_alternatif, pop_id) %>%
-  pivot_wider(
-    names_from = annee, # Supposons que la colonne représentant les années s'appelle 'year'
-    values_from = presence,
-    values_fill = list(presence = 0) # Remplir avec 0 si pas de données
-  )
+#utils::install.packages("lme4", type = "source")
 ```
 
 
 
+# Modèles Linéaires Généralisés (GLM)
 
+Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
 
-```{r}
-library(island)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-COLONISATION ET DECOLONISATION STATION : 
-
-Je souhaite connaitre le taux de colonisation et d'extinction présent sur chacune des stationsétudiées / par espèces. 
-
-```{r, mise en place des paramètres}
-
-# Définir les périodes d'intérêt
-periode1_debut <- 2000
-periode1_fin <- 2013
-periode2_debut <- 2010
-periode2_fin <- 2023
-
-ope_indicateur_t <- ope_indicateur %>% 
-  filter(indicateur == "effectif_total")
-
-
-stade_esp <- c("ind")
-mon_espece <- c("TRF")
-
-
-data_filtrer <- ope_indicateur_t %>% 
-  filter(esp_code_alternatif == "TRF", 
-         stade == "ind") 
-
-total_stations <- data_filtrer %>% 
-  distinct(pop_id) %>% 
-  pull()
-
-
-
-calculate_rates <- function(data, 
-                            periode_debut, 
-                            periode_fin, 
-                            total_stations) {
-  
-  
-  data_periode <- data %>% 
-    filter(annee >= periode_debut & annee <= periode_fin)
-  
-  stations_debut <- data_periode %>% 
-    filter(annee == periode_debut) %>% 
-    select(pop_id) %>% 
-    distinct()
-  
-  stations_fin <- data_periode %>% 
-    filter(annee == periode_fin) %>% 
-    select(pop_id) %>% 
-    distinct()
-  
-  colonized_stations <- setdiff(stations_fin$pop_id, stations_debut$pop_id)
-  extinct_stations <- setdiff(stations_debut$pop_id, stations_fin$pop_id)
-  
-  colonization_rate <- length(colonized_stations) / total_stations * 100
-  extinction_rate <- length(extinct_stations) / total_stations * 100
-  
-  return(list(colonization_rate = colonization_rate, extinction_rate = extinction_rate))
-}
-
-
-
-
-r <- calculate_rates (data_filtrer,
-                      periode1_debut,
-                      periode1_fin, 
-                      total_stations = 40)
-
-print(r)
-
-```
-
-
-
-
-
-Nouvelle version qui calcul les taux d'extinction et de colonisation par années puis moyens sur une période de temps T :
-
-
+On souhaite construire un df avec les valeurs de l'indicateur "densite" et une espèces pour un exemple. on ajoute les réseaux et les protocoles : 
 
 ```{r}
-# Définir les périodes d'intérêt
-periode1_debut <- 2000
-periode1_fin <- 2013
-periode2_debut <- 2010
-periode2_fin <- 2023
-```
 
-
-```{r}
-# Filtrer les données pour l'espèce "TRF" et le stade "ind"
-data_filtrer <- ope_indicateur %>%
-  filter(indicateur == "effectif_total",
-         esp_code_alternatif == "TRF", 
-         stade == "ind")
-```
-
-
-```{r}
-# Calculer le nombre total de stations que compte cette espèce 
-total_stations <- data_filtrer %>%
-  distinct(pop_id) %>%
-  nrow()
-```
-
-
-```{r}
-# Fonction pour calculer les taux de colonisation et d'extinction annuels et en faire la moyenne sur une période
-calculate_average_annual_rates <- function(data, 
-                                           periode_debut, 
-                                           eriode_fin, 
-                                           total_stations) 
-  {
-  annual_rates <- data.frame(annee = integer(), colonization_rate = numeric(), extinction_rate = numeric())
-  
-  for (year in (periode_debut:(periode_fin - 1))) {
-    stations_debut <- data %>%
-      filter(annee == year) %>%
-      pull(pop_id) %>%
-      unique()
-    
-    stations_fin <- data %>%
-      filter(annee == (year + 1)) %>%
-      pull(pop_id) %>%
-      unique()
-    
-    colonized_stations <- setdiff(stations_fin, stations_debut)
-    extinct_stations <- setdiff(stations_debut, stations_fin)
-    
-    colonization_rate <- (length(colonized_stations) / total_stations) * 100
-    extinction_rate <- (length(extinct_stations) / total_stations) * 100
-    
-    annual_rates <- rbind(annual_rates, 
-                          data.frame(annee = year + 1, 
-                                     colonization_rate = colonization_rate, 
-                                     extinction_rate = extinction_rate))
-  }
-  
-  average_colonization_rate <- mean(annual_rates$colonization_rate)
-  average_extinction_rate <- mean(annual_rates$extinction_rate)
-  
-  return(list(average_colonization_rate = average_colonization_rate, 
-              average_extinction_rate = average_extinction_rate))
-}
-
-# Calcul des taux moyens pour les deux périodes
-rates_periode1 <- calculate_average_annual_rates(data_filtrer, 
-                                                 periode1_debut, 
-                                                 periode1_fin, 
-                                                 total_stations)
-
-
-
-
-
-rates_periode2 <- calculate_average_annual_rates(data_filtrer, 
-                                                 periode2_debut, 
-                                                 periode2_fin, 
-                                                 total_stations)
-
-
-print(rates_periode2)
-print(rates_periode1)
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Je souhaite visualiser l'évolution de la densité d'une espèce sur un point de prélèvement dans le temps :
-
-
-```{r}
-# Filtrer les données pour une espèce donnée et une station donnée
-esp_specifique <- "ANG"  # Remplacer par le code de l'espèce spécifique
-pop_specifique <- "46221"  # Remplacer par l'ID de la station spécifique
-
-donnees_filtrees <- subset(ope_indicateur, esp_code_alternatif == esp_specifique & pop_id == pop_specifique)
-
-donnees_filtrees <- donnees_filtrees %>% 
+ope_indicateur_glm_ex <- ope_indicateur %>% 
   filter(indicateur == "densite_surface",
-         stade == "ind")
+         stade == "ind",
+         esp_code_alternatif == "GAR") %>% 
+  mef_ajouter_type_protocole() %>% 
+  mef_ajouter_objectif() %>% 
+  select(-obi_id)
 
-# Créer le graphique
-ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
-  geom_line() +
-  geom_point() +
-  labs(x = "Année", y = "Densité", title = paste("Évolution de la densité de l'espèce", esp_specifique, "sur la station", pop_specifique)) +
-  theme_minimal()
+```
+
+## Effet réseaux - GLM 
+
+```{r}
+effet_reseaux <- lmer(valeur ~ annee + pro_libelle + (1 | obj_libelle / pop_id), 
+                      data = ope_indicateur_glm_ex)
+
+  # estimation du modèle
+effet_reseaux_test <- lmerTest::lmer (valeur ~ annee + pro_libelle + (1 | obj_libelle / pop_id), 
+                      data = ope_indicateur_glm_ex)
+
+# ajustement pour l'estimation des effets fixes
+mod_effet_reseaux_test <- update(effet_reseaux_test, REML=FALSE)
+
+summary(mod_effet_reseaux_test)
 
 
 ```
+
+
+
+```{r}
+  # estimation du modèle
+effet_reseaux_test_2 <- lmerTest::lmer (valeur ~ annee + (1 | obj_libelle / pop_id), 
+                      data = ope_indicateur_glm_ex)
+
+# ajustement pour l'estimation des effets fixes
+mod_effet_reseaux_test_2 <- update(effet_reseaux_test_2, REML=FALSE)
+
+summary(mod_effet_reseaux_test_2)
 ```
 
