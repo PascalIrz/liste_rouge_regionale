@@ -175,6 +175,119 @@ temp %>%
 
 
 
+Je dispose donc maintenant des résultats du modèle / 
+
+Je regarde les N_PGR au niveau de mes 3 périodes de temps différentes et de mes différentes espèces : 
+
+```{r, fig.height = 26, fig.width = 10}
+
+r <- result$mcmc_summary
+
+r_filtered <- r[!is.na(r$period),]
+r_filtered <- r_filtered %>% 
+  filter(parameter == "N_PGR")
+
+r_PGR_graph <- 
+  ggplot(gg, aes(x = period, y = mean, fill = period)) +
+  geom_point(stat = "identity") +
+  facet_wrap(~ esp_code_alternatif, ncol = 1) +
+  theme_bw()+
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill="#faf0e0"),
+        panel.grid.major = element_line(color="lightgrey", size = 0.1),
+        panel.grid.minor = element_line(color = "lightgrey"),
+        axis.text.x = element_text(angle = 45))
+
+print(r_PGR_graph)
+
+```
+
+
+```{r}
+traplot(result$mcmc_chain, parms = c("p.col_id[1, 0 ]"))        
+
+
+gg <- r %>%
+  filter(period == "2010-2023") %>% 
+  filter(parameter == "N_PGR") %>% 
+  select(mean,
+         esp_code_alternatif)
+```
+
+
+
+```{r}
+gg <- gg %>%
+  ggplot(aes(x = mean, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(mean)))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif),
+            fontface = "bold") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey"),
+        panel.grid.minor = element_line(color = "lightgrey")) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "#92D050"), 
+                     labels = c("Diminution","Augmentation"), 
+                     name = "Taux de croissance")
+
+print(gg)
+
+```
+
+
+
+```{r}
+traplot(result$mcmc_chain, parms = c("N_mulambda[1, 1, 1]"))
+```
+
+
+
+```{r}
+denplot(result$mcmc_chain, parms = c("N_mulambda[3, 1, 3]"))
+```
+
+
+Plot des résultats : 
+
+```{r, fig.height = 1, fig.width = 5}
+
+library(mcmcplots)
+
+traplot(result$mcmc_chain)
+denplot(r[r$parameter %in% "N_lambda",])
+
+r <- result$mcmc_summary
+a <- result$mcmc_chain
+rr <- r[r$parameter %in% "N_lambda",]
+
+# ANG : taux de croissance régional anuel moyen
+r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N"),]
+a <- r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N_mulambda"),]
+
+
+denplot(result$mcmc_chain)
+
+
+traplot(result$mcmc_chain, parms = c("N_mulambda [2,1,1]"))
+  
+```
+
+```{r Représentation graphique, fig.height = 145, fig.width = 140}
+denplot(result$mcmc_chain, collapse = TRUE)
+
+temp <- result[["mcmc_summary"]]
+temp %>% 
+  filter(is.na(pop_id)) %>% 
+  nrow
+  Sys.time()
+```
+
 
 # Test pop_growalt (effet prtocole)
 

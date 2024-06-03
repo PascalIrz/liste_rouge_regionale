@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
-"27_pre_traitement_criteres_lrr_uicn"
+"25_pre_traitement_criteres_lrr_uicn"
 
 
 Ce script à pour objectif de réaliser des pré-traitement avant l'appliquation de la méthodologie de la liste rouge régionale - UICN 2012 sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer. 
