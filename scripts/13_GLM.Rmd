@@ -154,3 +154,326 @@ glm_collectif %>%
     decimals = 3
   )
 ```
+
+
+
+
+
+
+
+
+
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages}
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(gt)
+library(lemon)
+library(trend)
+library(ggh4x)
+library(purrr)
+library(broom)
+library(ggforce)
+```
+
+
+```{r Chargement des données}
+## Chargement des données ----
+load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
+```
+
+
+
+Pour calculer le taux de colonisation et d'extinction des espèces de poissons, on peut utiliser le package island qui peut répondre à notre besoin : 
+
+"Taux de colonisation et d’extinction estimés à partir de la dynamique temporelle des communautés écologiques"
+
+
+MacKenzie a développé une approche de probabilité pour l’estimation des paramètres lorsque la détectabilité des espèces n’est pas parfaite. L’idée fondatrice de Mackenzie peut être utilisée pour obtenir de meilleures estimations de l’occupation du site (MacKenzie et coll., 2002) ainsi que des estimations non biaisées des paramètres du modèle de colonisation-extinction (MacKenzie, Nichols,Hines, Knutson et Franklin, 2003).
+
+
+
+Notre principale problématique : 
+--> Nous avons des échantillonnages irréguliers au niveau des stations avec des échantillonnages parfois bi-annuels... 
+
+Package island fournit une nouvelle implémentation de la probabilité de MacKenzie pour des intervalles de temps inégaux et des plans d’échantillonnage clairsemés
+
+
+
+
+
+La fonction sss_cedp permet l'estimation d'un schéma d'échantillonnage unique avec des mesures répétées qui doivent être spécifiées avec les arguments Time, qui contiennent les temps d'échantillonnage uniques, et l'argument Transects qui spécifie le nombre de transects par temps d'échantillonnage.
+
+En revanche, mss_cedp permet l'estimation de taux avec une détectabilité parfaite ou imparfaite pour plusieurs schémas d'échantillonnage, via l'utilisation d'indicateurs pour les valeurs manquantes spécifiées par l'argument MV_FLAG, pour l'ensemble des données ou des groupes de facteurs.(je crois que c'est ce qui nous intéresse)
+
+
+
+
+On part de occur_sta_esp qui est dans le fichier 27_pre (contient que pour l'anguille)
+
+
+```{r}
+# Filtrer les données pour l'indicateur 'effectif_total'
+ope_indicateur_effectif <- ope_indicateur %>%
+  filter(indicateur == 'effectif_total', stade == "ind") %>%
+  select(-indicateur, -stade) %>% 
+  mutate(presence = ifelse(valeur != 0, 1, 0)) %>% 
+  select(-valeur, -ope_id) %>% 
+  group_by(esp_code_alternatif, pop_id) %>%
+  pivot_wider(
+    names_from = annee, # Supposons que la colonne représentant les années s'appelle 'year'
+    values_from = presence,
+    values_fill = list(presence = 0) # Remplir avec 0 si pas de données
+  )
+```
+
+
+
+
+
+```{r}
+library(island)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COLONISATION ET DECOLONISATION STATION : 
+
+Je souhaite connaitre le taux de colonisation et d'extinction présent sur chacune des stationsétudiées / par espèces. 
+
+```{r, mise en place des paramètres}
+
+# Définir les périodes d'intérêt
+periode1_debut <- 2000
+periode1_fin <- 2013
+periode2_debut <- 2010
+periode2_fin <- 2023
+
+ope_indicateur_t <- ope_indicateur %>% 
+  filter(indicateur == "effectif_total")
+
+
+stade_esp <- c("ind")
+mon_espece <- c("TRF")
+
+
+data_filtrer <- ope_indicateur_t %>% 
+  filter(esp_code_alternatif == "TRF", 
+         stade == "ind") 
+
+total_stations <- data_filtrer %>% 
+  distinct(pop_id) %>% 
+  pull()
+
+
+
+calculate_rates <- function(data, 
+                            periode_debut, 
+                            periode_fin, 
+                            total_stations) {
+  
+  
+  data_periode <- data %>% 
+    filter(annee >= periode_debut & annee <= periode_fin)
+  
+  stations_debut <- data_periode %>% 
+    filter(annee == periode_debut) %>% 
+    select(pop_id) %>% 
+    distinct()
+  
+  stations_fin <- data_periode %>% 
+    filter(annee == periode_fin) %>% 
+    select(pop_id) %>% 
+    distinct()
+  
+  colonized_stations <- setdiff(stations_fin$pop_id, stations_debut$pop_id)
+  extinct_stations <- setdiff(stations_debut$pop_id, stations_fin$pop_id)
+  
+  colonization_rate <- length(colonized_stations) / total_stations * 100
+  extinction_rate <- length(extinct_stations) / total_stations * 100
+  
+  return(list(colonization_rate = colonization_rate, extinction_rate = extinction_rate))
+}
+
+
+
+
+r <- calculate_rates (data_filtrer,
+                      periode1_debut,
+                      periode1_fin, 
+                      total_stations = 40)
+
+print(r)
+
+```
+
+
+
+
+
+Nouvelle version qui calcul les taux d'extinction et de colonisation par années puis moyens sur une période de temps T :
+
+
+
+```{r}
+# Définir les périodes d'intérêt
+periode1_debut <- 2000
+periode1_fin <- 2013
+periode2_debut <- 2010
+periode2_fin <- 2023
+```
+
+
+```{r}
+# Filtrer les données pour l'espèce "TRF" et le stade "ind"
+data_filtrer <- ope_indicateur %>%
+  filter(indicateur == "effectif_total",
+         esp_code_alternatif == "TRF", 
+         stade == "ind")
+```
+
+
+```{r}
+# Calculer le nombre total de stations que compte cette espèce 
+total_stations <- data_filtrer %>%
+  distinct(pop_id) %>%
+  nrow()
+```
+
+
+```{r}
+# Fonction pour calculer les taux de colonisation et d'extinction annuels et en faire la moyenne sur une période
+calculate_average_annual_rates <- function(data, 
+                                           periode_debut, 
+                                           eriode_fin, 
+                                           total_stations) 
+  {
+  annual_rates <- data.frame(annee = integer(), colonization_rate = numeric(), extinction_rate = numeric())
+  
+  for (year in (periode_debut:(periode_fin - 1))) {
+    stations_debut <- data %>%
+      filter(annee == year) %>%
+      pull(pop_id) %>%
+      unique()
+    
+    stations_fin <- data %>%
+      filter(annee == (year + 1)) %>%
+      pull(pop_id) %>%
+      unique()
+    
+    colonized_stations <- setdiff(stations_fin, stations_debut)
+    extinct_stations <- setdiff(stations_debut, stations_fin)
+    
+    colonization_rate <- (length(colonized_stations) / total_stations) * 100
+    extinction_rate <- (length(extinct_stations) / total_stations) * 100
+    
+    annual_rates <- rbind(annual_rates, 
+                          data.frame(annee = year + 1, 
+                                     colonization_rate = colonization_rate, 
+                                     extinction_rate = extinction_rate))
+  }
+  
+  average_colonization_rate <- mean(annual_rates$colonization_rate)
+  average_extinction_rate <- mean(annual_rates$extinction_rate)
+  
+  return(list(average_colonization_rate = average_colonization_rate, 
+              average_extinction_rate = average_extinction_rate))
+}
+
+# Calcul des taux moyens pour les deux périodes
+rates_periode1 <- calculate_average_annual_rates(data_filtrer, 
+                                                 periode1_debut, 
+                                                 periode1_fin, 
+                                                 total_stations)
+
+
+
+
+
+rates_periode2 <- calculate_average_annual_rates(data_filtrer, 
+                                                 periode2_debut, 
+                                                 periode2_fin, 
+                                                 total_stations)
+
+
+print(rates_periode2)
+print(rates_periode1)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Je souhaite visualiser l'évolution de la densité d'une espèce sur un point de prélèvement dans le temps :
+
+
+```{r}
+# Filtrer les données pour une espèce donnée et une station donnée
+esp_specifique <- "ANG"  # Remplacer par le code de l'espèce spécifique
+pop_specifique <- "46221"  # Remplacer par l'ID de la station spécifique
+
+donnees_filtrees <- subset(ope_indicateur, esp_code_alternatif == esp_specifique & pop_id == pop_specifique)
+
+donnees_filtrees <- donnees_filtrees %>% 
+  filter(indicateur == "densite_surface",
+         stade == "ind")
+
+# Créer le graphique
+ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Année", y = "Densité", title = paste("Évolution de la densité de l'espèce", esp_specifique, "sur la station", pop_specifique)) +
+  theme_minimal()
+
+
+```
+```
+
