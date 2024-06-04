@@ -21,7 +21,7 @@ Script : 00_selection_pop_ope
 
 L'objectif de cette étude est d'évaluer les tendances démographiques des poissons d'eau douce de Bretagne. Ce travail vient en appui à la révision de la liste rouge régionale de 2015. 
 
-Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples de la dynamique de population des poissons d'eau douce de Bretagne de 1990 à 2023.
+Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples représentatifs de la dynamique de population des poissons d'eau douce de Bretagne de 1990 à 2023.
 
 Ce script vise à constituer un premier jeu de données regroupant une sélection de stations bretonnes à étudier, tirées de la base nationale ASPE. Ces données serviront ensuite à construire des séries temporelles représentatives des populations de poissons d'eau douce en Bretagne. Elle permettrons ainsi une première évaluation simple et globale des populations de poissons d'eau douce de Bretagne. 
 
@@ -93,6 +93,12 @@ n_mini_annee <- 9
 
 ## Nombre d'années manquantes maximum consécutives sur les série de pêches 
 n_max_manquant <- 2
+
+## Année de départ de l'étude
+annee_depart <- 1990 # Année de départ de l'étude fixée à 1990
+
+## Année de fin de l'étude
+annee_fin <- 2023 # Année de fin de l'étude fixée à 2023
 
 ```
 
@@ -237,6 +243,15 @@ ope_selection <- ope_pro_libelle %>%
 ```
 
 Ainsi, nous devons maintenant avoir une seule opération de pêche (ope_id) par année et par point de prélèvement.  
+
+Nous souhaitons maintenant nous concentrer sur notre période d'étude. Nous réduisons le jeu de données à notre année de départ et à notre année de fin (ici de 1990 à 2023).
+
+```{r Reduction jeu de données}
+# On réduit le jeu de donnée à notre année de départ  et de fin (paramètre)
+ope_selection <- ope_selection %>% 
+  filter(annee >= annee_depart, # Année de départ (paramètre)
+         annee <= annee_fin)    # Année de fin (paramètre)
+```
 
 
 

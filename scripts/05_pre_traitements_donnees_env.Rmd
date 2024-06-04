@@ -15,9 +15,15 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 05_pre_traitements_donnees_env
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
 
-Il s’agit de réaliser les pré-traitements des données environnementales utilisées pour l’étude. Cette partie permet notamment d’observer les erreurs ou incohérences présentes dans le jeu de données relatif aux variables environnementales. Il s'agit d'un travail de mise en qualité des données. Il s'agit également de s’occuper des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, des données peuvent être non renseignées d’une année à l’autre et la valeur étant, pour certains paramètres, non changeante d’une année à l’autre, ces dernières sont remplacées par les données médianes des mêmes stations des années précédentes. 
+Script : 05_pre_traitements_donnees_env
+
+Il s'agit de réaliser les pré-traitements des données environnementales utilisées pour l'étude. Cette étape permet notamment de détecter et de corriger les erreurs ou incohérences présentes dans le jeu de données relatives aux variables environnementales, contribuant ainsi à la mise en qualité des données.
+
+Un aspect essentiel de ce travail est la gestion des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, certaines données peuvent être absentes d'une année à l'autre. Pour certains paramètres dont la valeur est relativement stable, ces valeurs manquantes seront remplacées par la médiane des données des mêmes stations des années précédentes.
+
+
 
 # Installation 
 
@@ -49,18 +55,18 @@ load(mei_table)
 
 ```
 
+
 # Constitution du jeu de données
 
-## Création d'un dataframe
+## Création du jeu de données *ope_selection_param_env*
 
-Création d'un dataframe contenant les variables environnementales relatives aux opérations contenues dans la passerelle (cf 00_selection_pop_ope).  
+Création d'un dataframe contenant les variables environnementales relatives aux opérations contenues dans la passerelle (cf Script 00_selection_pop_ope).  
 
 ```{r Creation dataframe}
-# Création du dataframe : 
-ope_selection_param_env <- passerelle %>% 
+ope_selection_param_env <- passerelle %>%  # Création du dataframe à partir de la passerelle  
   select(-lop_id,
          -pre_id) %>% 
-  mef_ajouter_ope_env() %>% 
+  mef_ajouter_ope_env() %>%  # Ajout des données environnementales
   mef_ajouter_ope_date() %>% 
   select(-ope_date,
          -sta_id,
@@ -72,37 +78,39 @@ ope_selection_param_env <- passerelle %>%
                names_to = "parametre",
                values_to= "valeur") %>% 
   distinct()
-  
 ```
 
 
 ## Gestion des "NA"
 
-Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des autres données relatives aux points de prélèvements. 
+Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de rassembler et de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des autres données relatives aux stations / points de prélèvements. 
 
 ```{r Gestion des NA}
-# Les NA sont indiquées dans un nouveau jeu de données : 
-N_A <- which(apply(is.na(ope_selection_param_env), 1, any)) 
-print(ope_selection_param_env[N_A, ]) # Observation des NA
-
+# Les NA sont rassemblés dans le dataframe valeur_na
+valeur_na <- ope_selection_param_env %>%
+  filter(if_any(everything(), is.na))
 
 
 ope_selection_param_env <- ope_selection_param_env %>% 
   arrange(parametre, annee)%>%  # Tri des données environnementales globales
-  group_by(parametre,pop_id) %>%
+  group_by(parametre, pop_id) %>% # Grouper par paramètres et points de prélèvement
   mutate(valeur = ifelse(is.na(valeur), # NA remplacées par les médianes
                          zoo::na.aggregate(valeur, median), valeur))
 
 ```
 
+
+
 # Représentation graphique 
 
-Création d'une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données. Une fois identifiées, les erreurs sont à corriger sur la base ASPE. 
+Nous réalisons une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données. Il s'agit de représenter toutes les valeurs des paramètres, par années, et par station. 
+
+Une fois identifiées, les erreurs sont à corriger sur la base ASPE. 
 
 ```{r Representation graphique, fig.height = 55, fig.width = 10, fig.cap="Variabilité inter-annuelle des paramètres environnementaux"}
 # Représentation de mes variables environnements (avec facet_wrap) : 
 ope_selection_param_env %>% 
-  ggplot(aes(x=annee, y=valeur)) +
+  ggplot(aes(x= annee, y= valeur)) +
   geom_bar(stat="identity", fill = "darkcyan") +
   facet_grid2( ~ pop_id ~ parametre ,
              scales="free_y",
@@ -120,8 +128,9 @@ ope_selection_param_env %>%
 
 # Sauvegarde
 
-```{r Sauvegarde}
+Nous sauvegardons dans un fichier .rda le jeu de données *ope_selection_param_env* qui nous servira pour des analyses ultérieures.
 
+```{r Sauvegarde}
 save(ope_selection_param_env,
      file = "../processed_data/pre_traitements_donnees_env.rda")
 ```

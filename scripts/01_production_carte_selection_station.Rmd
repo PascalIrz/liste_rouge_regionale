@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 01_production_carte_selection_station
 
-Après avoir sélectionné les différentes stations / points de prélèvements et opérations de pêches de l'aire géographique ciblée, une carte est réalisée.  
+Après avoir sélectionné les différentes stations / points de prélèvements et opérations de pêches de l'aire géographique ciblée, une carte globale est réalisée.  
 
 
 # Installation 
@@ -35,7 +35,6 @@ library(cowplot)
 library(png)
 library(rnaturalearth)
 ```
-
 
 ```{r Chargement des données}
 ## Chargement des données 
@@ -57,12 +56,12 @@ Il s'agit de créer une petite carte de situation permettant de situer l'aire g�
 # Sélection de la zone géographique d'ensemble (ici l'étude est en France)
 france <- ne_countries(country = "france", returnclass = "sf")
 
-# Création de la carte de la France avec une zone de focus
+# Création de la carte de la France avec une zone de focus (ici la Bretagne)
 carte_france_dept <- ggplot(data = france) + 
   geom_sf(fill = "gray82", color = "black") +
   theme_void() +
   annotate("path",
-           x = -3.34 + 1.5 * cos(seq(0, 2 * pi, length.out = 100)),
+           x = -3.24 + 1.75 * cos(seq(0, 2 * pi, length.out = 100)),
            y = 48.2 + 1.0 * sin(seq(0, 2 * pi, length.out = 100)),
            color = "red", size = 1) +
   xlim(-5, 10) +
@@ -76,9 +75,9 @@ carte_france_dept <- ggplot(data = france) +
 carte_france_dept_grob <- ggplotGrob(carte_france_dept)
 ```
 
-
-
 ## Création de la carte station
+
+Il s'agit de créer la carte principale regroupant les stations étudiées. 
 
 ```{r Création carte station}
 carte_sta <- ggplot(sta_id_ope_selection) +
@@ -97,7 +96,7 @@ carte_sta <- ggplot(sta_id_ope_selection) +
 
 # Carte finale
 
-Il s'agit de combiner les deux cartes créées ultérieurement. 
+Il s'agit de combiner les deux cartes créées précédemment. 
 
 ```{r Construction carte finale}
 

@@ -17,9 +17,17 @@ knitr::opts_chunk$set(echo = TRUE,
 
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
-11_calcul_indicateurs_regionaux
 
-Ce script constitue le tableau d'indicateurs final (à l'échelle de la région). Ainsi, pour les indicateurs calculés au point, on agrège chaque année leur valeur à l'échelle régionale (par une valeur médiane). Le taux d'occurence de chaque espèce est directement calculée annuellement, à l'échelle régionale, comme le pourcentage de sites prospectés où l'espèce a été trouvée. 
+Script : 11_calcul_indicateurs_regionaux
+
+Dans le dernier script (10), nous avons produit un tableau de bord combinant divers indicateurs simples à l'échelle de chaque opération de pêche. Ce tableau est représentatif de la dynamique de population des poissons d'eau douce pour une année n à une station donnée.
+
+La seconde étape consiste à réaliser le même travail, mais à une échelle régionale plutôt qu'à l'échelle d'une seule opération.
+
+Ce script vise donc à créer un tableau d'indicateurs final à l'échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons chaque année leurs valeurs à l'échelle régionale en prenant la médiane des valeurs obtenues sur l'ensemble des stations/points de prélèvement. Le taux d'occurrence de chaque espèce sera ensuite calculé annuellement à l'échelle régionale, en déterminant le pourcentage de sites prospectés où l'espèce a été trouvée.
+
+A l'issue de ce script, une première approche analytique aura été réalisée et une comparaison de résultats sera ainsi possible avec des modèles d'analyses plus poussés (cf - Script 20_modele_bayesien). 
+
 
 
 # Installation 

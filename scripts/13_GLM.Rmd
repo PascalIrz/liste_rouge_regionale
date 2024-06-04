@@ -68,7 +68,7 @@ load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 
 # Modèles Linéaires Généralisés (GLM)
 
-Utilisation des modèles GLM afin de modéliser la distribution des espèces - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
+Utilisation des modèles GLM - ces modèles sont utiles pour modéliser la dynamique des populations en fonction de facteurs environementaux.
 
 On souhaite construire un df avec les valeurs de l'indicateur "densite" et une espèces pour un exemple. on ajoute les réseaux et les protocoles : 
 

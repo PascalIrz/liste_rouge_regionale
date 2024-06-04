@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Calcul des indicateurs par opérations"
+subtitle: "Calcul des indicateurs simples par opérations"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -16,10 +16,13 @@ knitr::opts_chunk$set(echo = TRUE,
 ```
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
-10_calcul_indicateurs_par_ope
+
+Script : 10_calcul_indicateurs_par_ope
 
 
-Ce script permet de constituer les tableaux de données nécessaires à la réalisation des analyses temporelles. Plusieurs indicateurs seront calculés à l'échelle des opérations de pêches, parmi eux : les densités volumiques, de surface, les pourcentages de juvéniles, les longueurs médianes, ... Ces indicateurs sont calculés par espèces, pour les juvéniles et les adultes, mais également de manière combinée (indeterminés). 
+Pour rappel, cette étude se divise en plusieurs parties. Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples, à l'échelle de chaque opération de pêche, représentatifs de la dynamique de population des poissons d'eau douce de Bretagne entre 1990 à 2023.
+
+Les pré-traitements nécessaire à la consitution de ce tableau de bord ont été réalisés dans les scripts précédents. Ce script permet donc de constituer les tableaux de bords comportants plusieurs indicateurs dits "simples". Ces indicateurs (densités volumiques, de surface, pourcentages de juvéniles, longueurs médianes,...) seront calculés à l'échelle des opérations de pêches retenues pour l'étude. Ces indicateurs sont calculés par espèces et par stade (juvéniles / adultes), mais également pour l'ensemble des stades (indeterminés). 
 
 
 # Installation 
@@ -36,6 +39,7 @@ library(dplyr)
 library(readxl)
 ```
 
+Nous avons donc besoin des jeux de données constitués lors des précédents scripts. 
 
 ```{r Chargement des données}
 ## Chargement des données pré-enregistrées ----
@@ -76,10 +80,14 @@ source(file = "../R/calcul_densite_surface.R")
 
 ## Indicateurs généraux par opération de pêche
 
+Plusieurs indicateurs simples témoignants de la dynamique de populations des poissons d'eau douce sont calculés. 
+
+
 ### Effectif total des espèces par opération de pêche
 
-```{r Creation tableau effectif total par ope}
+Les effectifs totaux de chacune des espèces sur chaque opération de pêches (ope_id) sont calculés à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. 
 
+```{r Creation tableau effectif total par ope}
 ope_effectif <- mei_ope_selection %>%
   group_by(ope_id, esp_code_alternatif) %>%
   distinct(mei_id, .keep_all = TRUE) %>%
@@ -90,9 +98,8 @@ ope_effectif <- mei_ope_selection %>%
          indicateur, 
          valeur, 
          stade)
-
 ```
-
+Dans un second temps, l'indicateur est calculé par stade (juvéniles et adultes). 
 
 ```{r Creation tableau effectif total par ope 2}
 ope_effectif_stade <- mei_ope_selection %>% 
@@ -108,16 +115,24 @@ ope_effectif_stade <- mei_ope_selection %>%
          valeur,
          stade
          )
-
-ope_effectif <- rbind (ope_effectif,ope_effectif_stade)
-
 ```
+
+
+L'ensemble des effectifs calculés (sans filtrage de stade / juvéniles et adultes) sont regroupés dans un même jeu de données *ope_effectif*. 
+
+```{r Creation tableau effectif total par ope 2}
+ope_effectif <- rbind (ope_effectif,ope_effectif_stade) # On regroupe ope_effetif et ope_effectif_stade
+```
+
+
 
 
 ### Biomasse des espèces par opération de pêche
 
+Les biomasses de chacune des espèces sur chaque opération de pêches (ope_id) sont calculés à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. 
+
 ```{r Création tableau biomasse totale par ope}
-# Calcul de la biomasse par opération : par espèce et par stade : 
+# Calcul de la biomasse par opération  
 
 ope_biomasse <- mei_ope_selection %>%
   group_by(ope_id,
@@ -328,7 +343,7 @@ ope_indicateur <- ope_indicateur %>%
            annee)
 ```
 
-Visualisation du tableau final de données
+Nous visualisons le dataframe final *ope_indicateur* regroupant donc l'ensemble des indicateurs calculés (par espèces / opérations et stades). Il s'agit de notre tableau de bord final à l'échelle des opérations. 
 
 ```{r Visualisation tableau "ope_indicateur"}
 #Représentation graphique du tableau 
