@@ -13,8 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
-20_modele_bayésien
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne 
+
+Script : 20_modele_bayésien
 
 Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieurement, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
 
@@ -66,10 +67,6 @@ nom_fichier <- paste("../processed_data/resultat_modele",
                      ".rda",
                      sep = "_")
 ```
-
-
-
-
 
 
 

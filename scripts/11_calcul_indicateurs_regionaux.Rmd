@@ -20,14 +20,13 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 11_calcul_indicateurs_regionaux
 
-Dans le dernier script (10), nous avons produit un tableau de bord combinant divers indicateurs simples à l'échelle de chaque opération de pêche. Ce tableau est représentatif de la dynamique de population des poissons d'eau douce pour une année n à une station donnée.
+Dans le dernier script (10), nous avons produit un tableau de bord combinant divers indicateurs simples à l'échelle de chaque opérations de pêches. Ce premier tableau de bord est représentatif de la dynamique de population des poissons d'eau douce pour une année n à un point de prélèvement donné.
 
-La seconde étape consiste à réaliser le même travail, mais à une échelle régionale plutôt qu'à l'échelle d'une seule opération.
+La seconde étape consiste à réaliser le même travail, mais à une échelle régionale.
 
-Ce script vise donc à créer un tableau d'indicateurs final à l'échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons chaque année leurs valeurs à l'échelle régionale en prenant la médiane des valeurs obtenues sur l'ensemble des stations/points de prélèvement. Le taux d'occurrence de chaque espèce sera ensuite calculé annuellement à l'échelle régionale, en déterminant le pourcentage de sites prospectés où l'espèce a été trouvée.
+Ce script vise donc à créer un tableau d'indicateurs simples à l'échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons chaque année leurs valeurs à l'échelle régionale en prenant la médiane des valeurs obtenues sur l'ensemble des stations/points de prélèvement à l'année.
 
-A l'issue de ce script, une première approche analytique aura été réalisée et une comparaison de résultats sera ainsi possible avec des modèles d'analyses plus poussés (cf - Script 20_modele_bayesien). 
-
+A l'issue de ce script, une approche analytique pourra être réalisée. 
 
 
 # Installation 
@@ -77,14 +76,20 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 ```
 
 
-# Constitution du jeu de données
+# Les indicateurs régionaux 
 
-## Calcul des taux d'occurrence
+## Indicateurs généraux à l'échelle de la région
 
-Le taux d'occurrence des espèces par années (nombre de présence l'année n / nombre de stations totales échantillonnées l'année n) est calculé : 
+Deux indicateurs simples peuvent être calculés à l'échelle de la région. Il s'agit du taux d'occurrence de chaque espèce (par années), et du pourcentage de sites prospectés où l'espèce est présente (par périodes et/ou par années).
 
-```{r Calcul taux occurrence}
 
+
+
+### Taux d'occurrence régionaux
+
+Les taux d'occurrence des espèces par années (correspondant aux nombres de présence l'année n divisé par le nombre de stations totales échantillonnées l'année n) sont calculés.   
+
+```{r Preparation calcul taux occurrence}
 # Filtre et compte les occurrences distinctes d'opérations pour chaque année et espèce
 occur <- ope_indicateur %>% 
   filter(stade == "ind",                    # Filtre les lignes où le stade = "ind"
@@ -100,9 +105,13 @@ n_ope_par_an <- ope_indicateur %>%
          indicateur == "effectif_total") %>% # Filtre les lignes où l'indicateur ="effectif_total"
   group_by(annee) %>%                       # Groupe par année
   summarise(n_ope = n_distinct(ope_id))     # Compte le nombre distinct d'ope_id et l'assigne à n_ope
+```
 
+Les résultats sont empilés dans le jeu de données *reg_taux_occ*.
+
+```{r Calcul taux occurrence}
 # Calcule les taux d'occurrences
-taux_occ <- occur %>% 
+reg_taux_occ <- occur %>% 
   left_join(n_ope_par_an) %>%             
   mutate(valeur = n_occur / n_ope,   # Calcule le taux d'occurrence en divisant n_occur par n_ope
          indicateur = "taux_occurrence",  
@@ -111,9 +120,47 @@ taux_occ <- occur %>%
 ```
 
 
+
+### Pourcentage de présence des espèces par stations
+
+Nous souhaitons calculer le pourcentage des sites / stations prospectés où l'espèce a été trouvée (à l'échelle de toute la région). Il s'agit donc d'un seul pourcentage moyen par espèces et par période de temps ou d'années. 
+
+
+```{r Préparation calcul pourcentage présence especes}
+ope_biomasse <- ope_indicateur %>% 
+  filter (indicateur == "biomasse")
+
+ope_biomasse_ind <- ope_indicateur %>% 
+  filter(indicateur == "biomasse",
+         stade == "ind")
+
+combinaisons <- expand.grid(esp_code_alternatif = unique(ope_biomasse_ind$esp_code_alternatif),
+                            ope_id = unique(ope_biomasse$ope_id))
+```
+
+
+```{r Calcul pourcentage présence especes}
+# Fusionner les combinaisons avec le dataframe initial
+reg_pc_site_presence_esp <- combinaisons %>%
+  left_join(ope_biomasse_ind, by = c("esp_code_alternatif", "ope_id")) %>%
+  mutate(present = !is.na(indicateur)) %>%
+  group_by(esp_code_alternatif) %>%
+  mutate(
+    stade = "ind",
+    indicateur = "pourcentage_site_presence_esp",
+    valeur = sum(present) / n_distinct(ope_id) * 100
+  ) %>%
+  select(-present)
+
+# Affichage du résultat
+print(reg_pc_site_presence_esp)
+```
+
+
+
 ## Regroupement des indicateurs à l'échelle régionale
 
-Le dataframe reg_indicateur regroupe l'ensemble des indicateurs calculés à l'échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par année et par stade. Une exception est faite pour l'indicateur "pourcentage_juveniles", qui est agrégé en utilisant la moyenne, étant donné qu'il s'agit d'un pourcentage.
+Le dataframe reg_indicateur regroupe l'ensemble des indicateurs calculés à l'échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par années et par stades. Une exception est faite pour l'indicateur "pourcentage_juveniles", qui est agrégé en utilisant la moyenne et non la médiane, étant donné qu'il s'agit d'un pourcentage.
 
 ```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
 
@@ -134,275 +181,50 @@ reg_indicateur <- ope_indicateur %>%
 ```
 
 
+Nous ajoutons à ce tableau bilan l'indicateur des taux d'occurrence créé précèdemment. 
+
 ```{r Construction tab reg_indicateur part 2}
-taux_occ <- taux_occ %>% # Sélection des colonnes de taux_occ pour correspondre à celles de reg_indicateur
+reg_taux_occ <- reg_taux_occ %>% # Sélection des colonnes de reg_taux_occ pour correspondre à celles de reg_indicateur
   select(names(reg_indicateur))
 
 reg_indicateur <- reg_indicateur %>% 
-  rbind(taux_occ) # Ajout des valeurs de taux occurrence dans le df reg_indicateur
+  rbind(reg_taux_occ) # Ajout des valeurs de taux occurrence dans le df reg_indicateur
 ```
 
 
 
-## Taux d'Evolution
+# Les Taux d'Evolution des indicateurs
 
-On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
+Nous souhaitons calculer les taux d'évolution inter-annuel des valeurs de chaques indicateurs, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la valeur de l'indicateur (et donc une potentielle croissance de la population) ; si il est négatif, cela correspond à un déclin de la valeur de l'indicateur (et donc une potentielle décroissance de la population). 
+
+Nous utilisons la fonction *calcul_taux_evolution* pour obtenir les taux d'évolution. Ces derniers sont enregistrer dans le jeu de données *reg_taux_evol_1990* qui contient les différents taux d'évolution obtenus depuis l'année 1990. 
 
 ```{r Calcul des taux evolution}
 # Calcul des taux d'évolution depuis 1990
-taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
+reg_taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
                              var_y = valeur,
                              debut = 1990,
                              esp_code_alternatif,
                              stade,
                              indicateur)
-print(taux_evol_1990)
+print(reg_taux_evol_1990)
 
 ```
 
+Nous avons donc, à la fin de ce script, un tableau de bord d'indicateurs simples à l'échelle régionale. Nous allons pouvoir analyser les différentes tendances des indicateurs sur la période 1990-2023 dans le prochain script (12_analyse_indicateurs_regionaux). 
 
 
-# Significativité des indicateurs
+# Sauvegarde
 
-Il est maintenant nécessaire d'observer si les valeurs obtenues relatives à l'ensemble de ces indicateurs sont significatif sur l'ensemble des sous-périodes et périodes qui nous intéresse. 
-
-
-La fonction "get_pvalues" a pour but de calculer et d'extraire les p-values des coefficients de régression linéaire des valeurs par rapport aux annees, pour chaque combinaison unique de stade, indicateur, et esp_code_alternatif, sur la période spécifiée par start_year et end_year. Les p-values obtenues pourront ensuite être utilisées pour connaître la significativité statistique des tendances temporelles des indicateurs pour les différentes espèces et stades.
-
-Dans le contexte de la réactualisation de la liste rouge régionale de Bretagne, deux périodes clés nous interesse : la période d'étude actuelle (2010 - 2023) et la période d'étude de la dernière liste rouge réalisée (2000 - 2013). 
-
-
-```{r Fonction get_pvalues}
-
-get_pvalues <- function(data, start_year, end_year) {
-  
-  data_filtered <- data %>% 
-    filter(annee >= start_year & annee <= end_year)
-  
-  results <- data_filtered %>%
-    group_by(stade, indicateur, esp_code_alternatif) %>%
-    do(tidy(lm(valeur ~ annee, data = .)))
-  
-  results %>% 
-    filter(term == "annee") %>% 
-    select(stade, indicateur, esp_code_alternatif, estimate, p.value)
-}
-
-reg_indicateur_pvalues_2010_2023 <- get_pvalues(reg_indicateur,2010,2023) # Test pour la période 2010-2023
-reg_indicateur_pvalues_2000_2013 <- get_pvalues(reg_indicateur,2000,2013) # Test pour la période 2000-2013
-
-```
-
-
-Un seuil de significativité est ajouté aux données calculés par get_pvalues (seuil de significativité = 0.05). 
-
-```{r Ajout significativité }
-# Ajouter la colonne de signification
-reg_indicateur_pvalues_2010_2023 <- reg_indicateur_pvalues_2010_2023 %>%
-  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
-
-colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_2023) == "significance"] <- "significance_2010_2023"
-colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_2023) == "estimate"] <- "estimate_2010_2023"
-colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_2023) == "p.value"] <- "p.values_2010_2023"
-
-reg_indicateur_pvalues_2000_2013 <- reg_indicateur_pvalues_2000_2013 %>%
-  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant"))
-
-colnames(reg_indicateur_pvalues_2000_2013)[colnames(reg_indicateur_pvalues_2000_2013) == "significance"] <- "significance_2000_2013"
-colnames(reg_indicateur_pvalues_2000_2013)[colnames(reg_indicateur_pvalues_2000_2013) == "estimate"] <- "estimate_2000_2013"
-colnames(reg_indicateur_pvalues_2000_2013)[colnames(reg_indicateur_pvalues_2000_2013) == "p.value"] <- "p.values_2000_2013"
-```
-
-
-On agrège ces données au tableau bilan *reg_indicateur* :
-
-```{r Ajout significativité reg_indicateur}
-# Joindre les p-values au tableau d'origine (reg_indicateur)
-reg_indicateur <- reg_indicateur %>%
-  left_join(reg_indicateur_pvalues_2010_2023 %>%
-              select(p.values_2010_2023, 
-                     estimate_2010_2023,
-                     significance_2010_2023), 
-            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
-  mutate(trend_2010_2023 = case_when(estimate_2010_2023 > 0 ~ "\U2197",
-                            estimate_2010_2023 < 0 ~ "\U2198",
-                            TRUE ~ ".")) %>% 
-  left_join(reg_indicateur_pvalues_2000_2013 %>% 
-               select(p.values_2000_2013, 
-                     estimate_2000_2013,
-                     significance_2000_2013),
-            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
-  mutate(trend_2000_2013 = case_when(estimate_2000_2013 > 0 ~ "\U2197",
-                            estimate_2000_2013 < 0 ~ "\U2198",
-                            TRUE ~ "."))
-
-```
-
-
-## Représentation graphique des indicateurs de tendances démographiques 
-
-```{r, fig.height = 26, fig.width = 10}
-# Créer le graphique
-reg_indicateur_graph <- reg_indicateur %>%
-  ggplot(aes(x = annee, y = valeur, group = stade, color = stade)) +
-  geom_point(shape = 1) +
-  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
-  scale_color_manual(values = c("juv" = "#92D080", "ad" = "#A97B30", "ind" = "black"),
-                     name = "Stade", labels = c("Adulte", "Indifférencié", "Juvénile")) +
-  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
-       x = "Années", 
-       y = "Valeurs") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45))
-
-# Ajouter les lignes de régression avec des styles différents selon la signification
-reg_indicateur_graph <- reg_indicateur_graph +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "significant"),
-              aes(x = annee, y = valeur, group = stade, color = stade),
-              method = "lm", se = FALSE, linetype = "solid") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "non_significant"),
-              aes(x = annee, y = valeur, group = stade, color = stade),
-              method = "lm", se = FALSE, linetype = "dashed") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "significant"),
-              aes(x = annee, y = valeur, group = stade, color = stade),
-              method = "lm", se = FALSE, linetype = "solid") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "non_significant"),
-              aes(x = annee, y = valeur, group = stade, color = stade),
-              method = "lm", se = FALSE, linetype = "dashed")
-
-print(reg_indicateur_graph)
-
-```
-
-
-Cette représentation graphique contient tous les indicateurs ainsi que l'ensemble des espèces. Il est très peu lisible et compliqué à interpreter (avec des droites qui influencent beaucoup l'interprétation des résultats). Le fait qu'il y ai plusieurs stades peut également compliquer la comprehension. 
-
-On produit donc un graphique qu'avec les données d'adultes ainsi qu'avec des indicateurs restreints  : 
-
-
-### Tri des espèces
-On ne retient qeue les espcèes pour lesquelles nous avons un fort intérêt (au vu des premières tendances dégagées et dans l'optique de la réactualisation de la LRR). 
-
-```{r Tri espèces}
-reg_indicateur_reduit <- reg_indicateur %>% 
-  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
-                                    "PER", "GAR", "GOU", "LOF", "LPP",
-                                    "SAT", "TRF", "VAI", "VAR"))
-```
-
-
-## Tri dans les indicateurs
-On ne retient que les indicateurs les plus pertinents à l'analyse des tendances.
-
-```{r Tri indicateurs}
-
-reg_indicateur_reduit <- reg_indicateur_reduit %>% 
-filter(!indicateur %in% c("pourcentage_site_presence_esp",
-                          "longueur_mediane",
-                          "densite_volumique",
-                          "effectif_total",
-                          "biomasse")) %>% 
-  filter(!(indicateur == "densite_surface" & esp_code_alternatif == "VAI" & stade == "ad" & valeur > 0.08)) # On enlève une valeur abérante qui fausse le graphique
-
-```
-
-
-```{r, fig.height = 26, fig.width = 10}
-reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
-  filter((indicateur == "densite_surface" & stade == "ad") |
-    (indicateur == "pourcentage_juveniles" & stade == "ind") |
-    (indicateur == "taux_occurrence" & stade == "ind")) %>% 
-  ggplot(aes(x = annee, 
-             y = valeur, 
-             group = stade, 
-             color = indicateur)) +
-  geom_point(shape = 1) +
-  geom_smooth(method = "loess", se = FALSE) +  # Ajout des courbes de tendance loess
-  facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
-  scale_color_manual(values = c("densite_surface" = "#A97B30", "taux_occurrence" = "black", "pourcentage_juveniles" = "#92D080" ),
-                     name = "Stade", labels = c("Adulte")) +
-  #scale_y_continuous(breaks = seq(0, max(reg_indicateur$valeur, na.rm = TRUE), by = 5)) +
-  labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
-       x = "Années", 
-       y = "Valeurs") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45)) +
-  geom_vline(xintercept = 2010, linetype = "dashed", color = "red")
-
-print(reg_indicateur_graph_reduit)
-
-```
-
-
-## Synthèse des premiers résultats
-
-Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons dans ce tableau final. Dans notre étude, les valeurs de densité de surface, le pourcentage de juvéniles et le taux d'occurrence semblent être les 3 données les plus parlantes et représentatives de l'état des populations de poissons d'eau douce de Bretagne. Ces informations sont alors synthétisées dans un tableau, sur deux périodes différentes. Les flèches vers le haut indiquent une croissance et celle vers le bas une décroissance de l'indicateur pour l'espèce concernée. 
-
-
-```{r Mise en place jeu de données tab}
-
-tableau_final <- reg_indicateur_reduit %>%
-  filter(!stade == "juv") %>% # Le stade juvénil est retiré
-  filter(!(indicateur == "densite_surface" & stade == "ind")) %>% 
-  select(esp_code_alternatif,
-         indicateur, 
-         significance_2000_2013,
-         trend_2000_2013,
-         significance_2010_2023,
-         trend_2010_2023) %>% 
-  distinct()
-
-```
-
-
-```{r}
-# Créer le tableau synthétique avec gt
-tableau_final_gt <- tableau_final %>%
-  arrange(esp_code_alternatif, indicateur) %>%   # Ordonner par espèce, indicateur et stade
-  gt() %>%
-  tab_header(
-    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne",
-    subtitle = "Comparaison des périodes 2000-2013 et 2010-2023"
-  ) %>%
-  cols_label(
-    esp_code_alternatif = "Code Espèce",
-    indicateur = "Indicateur",
-    significance_2000_2013 = "Significativité 2000-2013",
-    trend_2000_2013 = "Tendance 2000-2013",
-    significance_2010_2023 = "Significativité 2010-2023",
-    trend_2010_2023 = "Tendance 2010-2023") %>%
-  tab_options(table.font.size = "small", data_row.padding = px(5))
-
-# Afficher le tableau
-tableau_final_gt
-
-```
-
-
-
-On suspect un effet des réseaux et des protocoles dans ces résultats (en effet des changements de protocoles et de réseaux ont lieux au cours du temps). Le prochain script (13_glm) à pour but d'évaluer, grâce à des modèles linéaires mixtes, les éventuels effets de ces changements de réseaux et de protocoles. 
-
-
-
-
-# Sauvegarde 
+Nous sauvegardons dans un fichier .rda les jeux de données qui nous permettrons de réaliser les analyses des indicateurs à l'échelle régionale.
 
 ```{r Sauvegarde}
-
-save(taux_occ,
+save(reg_taux_occ,
+     reg_taux_evol_1990,
      reg_indicateur,
-     reg_indicateur_reduit,
      ope_indicateur,
      file = "../processed_data/calcul_indicateurs_regionaux.rda")
 ```
+
+

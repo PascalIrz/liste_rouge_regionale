@@ -15,7 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
-15_pre_traitement_modele_bayésien
+
+Script : 15_pre_traitement_modele_bayésien
 
 Ce script prépare les jeu de données à une analyse bayésienne (avec le package pop_dynmodel). 
 

@@ -164,12 +164,14 @@ mei_ope_selection <- mei_ope_selection %>%
 
 ## Données Manquantes
 
-On observe dans le jeu de données des potentielles valeurs absentes / manquantes ("NA"). Ceci peut être dû à des problèmes de retranscription dans la base de données ASPE. Parfois on observe une absence de marquage de valeurs de tailles individuelles (*mei_taille*). Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe "valeur_na". 
+On observe dans le jeu de données des potentielles valeurs absentes / manquantes ("NA"). Ceci peut être dû à des problèmes de retranscription dans la base de données ASPE. Parfois il est possible d'observer une absence de marquage de valeurs de tailles individuelles (*mei_taille*). Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe "valeur_na". 
 
 ```{r Regroupement des valeurs NA}
 #Sélection des lignes contenant une valeur de taille NA
-) #Isolement des lignes contenant des NA dans un dataframe
-
+#Isolement des lignes contenant des NA dans un dataframe
+valeur_na <- mei_ope_selection %>%
+  filter(if_any(everything(), is.na))
+  
 mei_ope_selection <- na.omit(mei_ope_selection)
 ```
 
@@ -369,7 +371,6 @@ resultat_verif_effectif <- verif_effectif %>%
 
 Dans ce même jeu de données, il doit normalement n'y avoir qu'un *mei_id* par ligne (et pas de doublons) : ainsi, *nb_unique* doit théoriquement être égal au nombre total de lignes de *mei_ope_selection*. 
 
-
 ```{r Vérification effectif 2}
 # Calcul du nombre unique de mei_id
 nb_unique <- mei_ope_selection %>%
@@ -385,6 +386,8 @@ if (nb_unique$nb_unique == nb_lignes) {
   print("Le nombre de valeurs uniques de mei_id n'est pas égal au nombre de lignes de mei_ope_selection.")
 }
 ```
+
+Dans l'exemple de la Bretagne, on observe que le nombre de valeurs uniques de mei_id n'est pas égal au nombre de lignes de *mei_ope_selection*. En observant les données, on observe que 11 valeurs de mei_id sont en "NA". Après une vérification sur ASPE, ces dernières correspondent à des lots dans lesquels plusieurs individus ont été regroupés et où il n'y a pas eu de mesures individuelles (et donc pas d'identifiants individuels attribués pour les poissons composants ces 9 lots). Ainsi, *nb_unique* = *nb_lignes - nombre de lots sans identifiants individuels. On observe que le résultat est bien cohérent. 
 
 
 

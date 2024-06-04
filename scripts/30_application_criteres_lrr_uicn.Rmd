@@ -60,11 +60,10 @@ reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 # Chargement des fonctions 
 
 ```{r}
-source(file = "../R/lrr_critere_a.R")
+#source(file = "../R/lrr_critere_a.R")
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
-source(file = "../R/calcul_taux_evolution.R")
-source(file = "../R/calcul_glm.R")
+
 ```
 
 

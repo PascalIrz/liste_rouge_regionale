@@ -11,8 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# Objectif : Dynamique de population des poissons d'eau douce de Bretagne - 
-"25_pre_traitement_criteres_lrr_uicn"
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+
+Script : 25_pre_traitement_criteres_lrr_uicn
 
 
 Ce script à pour objectif de réaliser des pré-traitement avant l'appliquation de la méthodologie de la liste rouge régionale - UICN 2012 sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer. 
@@ -63,11 +64,11 @@ reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 # Chargement des fonctions 
 
 ```{r}
-source(file = "../R/lrr_critere_a.R")
-source(file = "../R/mk_st_by_group.R")
-source(file = "../R/mann_kendall_sen.R")
-source(file = "../R/calcul_taux_evolution.R")
-source(file = "../R/calcul_glm.R")
+#source(file = "../R/lrr_critere_a.R")
+#source(file = "../R/mk_st_by_group.R")
+#source(file = "../R/mann_kendall_sen.R")
+#source(file = "../R/calcul_taux_evolution.R")
+#source(file = "../R/calcul_glm.R")
 ```
 
 # Chargement d'une palette de couleur

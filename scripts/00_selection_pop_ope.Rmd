@@ -32,7 +32,7 @@ Dans un second temps (à partir du script 15), une analyse plus fine de ces dyna
 
 ## Chargement des packages, fonctions et des données
 
-```{r Chargement des packages, données et fonctions}
+```{r Chargement des packages}
 # Chargement des packages
 library(aspe)
 library(tidyverse)
@@ -40,16 +40,25 @@ library(mapview)
 library(COGiter)
 library(sf)
 library(wesanderson)
+```
 
+
+```{r Chargement des fonctions}
 # Chargement des fonctions 
 source(file = "../R/borner_series.R")
+```
 
+
+```{r Chargement des données}
 # Chargement des données 
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 load(rdata_tables)
+```
 
+
+```{r Chargement des palettes de couleur}
 # Chargement des palettes de couleur 
 pal <- wes_palette("AsteroidCity1")
 pal2 <- wes_palette("FantasticFox1")
@@ -184,6 +193,7 @@ passerelle <- passerelle %>%
   filter(pop_id %in% pop_depts$pop_id)
 ```
 
+Il est important de noter que les sta_id et les pop_id sont donc liés. Lorsque qu'il est mentionné "calcul au point de prèlevement", cela peut aussi faire référence à la station puisqu'ils désignent le même lieu. 
 
 
 ## Réseaux de pêche
