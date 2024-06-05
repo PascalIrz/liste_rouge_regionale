@@ -20,6 +20,8 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 12_analyse_indicateurs_regionaux
 
+
+
 A l'issue de ce script, une approche analytique aura été réalisée et une comparaison de résultats sera ainsi possible avec des modèles d'analyses plus poussés (cf - Script 20_modele_bayesien). 
 
 
@@ -75,7 +77,7 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 
 # Significativité des indicateurs
 
-Il est maintenant nécessaire d'observer si les valeurs obtenues relatives à l'ensemble de ces indicateurs sont significatif sur l'ensemble des sous-périodes et périodes qui nous intéresse. 
+Il est maintenant nécessaire d'observer si les valeurs obtenues relatives à l'ensemble de ces indicateurs regionaux sont significatifs sur l'ensemble des sous-périodes et périodes qui nous intéresse (en résonnance avec l'étude de révision de la liste rouge régionale). 
 
 
 La fonction "get_pvalues" a pour but de calculer et d'extraire les p-values des coefficients de régression linéaire des valeurs par rapport aux annees, pour chaque combinaison unique de stade, indicateur, et esp_code_alternatif, sur la période spécifiée par start_year et end_year. Les p-values obtenues pourront ensuite être utilisées pour connaître la significativité statistique des tendances temporelles des indicateurs pour les différentes espèces et stades.
