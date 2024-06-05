@@ -1,5 +1,5 @@
 
-glm_application_modeles <- function(data) {
+lm_application_modeles <- function(data) {
   
   combinations <- data %>%
     select(espece, stade, indicateur) %>%
@@ -7,7 +7,7 @@ glm_application_modeles <- function(data) {
   
   results_list <- combinations %>%
     pmap(function(espece, stade, indicateur) {
-      calculate_model_glmm(data, espece, stade, indicateur)
+      lm_calcul_modele(data, espece, stade, indicateur)
     })
   
   results_df <- bind_rows(results_list, .id = "combination_id") %>%

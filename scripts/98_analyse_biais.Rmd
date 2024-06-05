@@ -430,4 +430,117 @@ ggplot(donnees_filtrees, aes(x = as.factor(annee), y = valeur)) +
 
 
 ```
+
+POINT EXPERIMENTATION GLM ET LM : 
+
+```{r}
+library(dplyr)
+library(lme4)
+library(purrr)
+
+
+#Mise en place du dataframe original avec les protocoles et les réseaux
+
+
+
+m_espece <- "GAR"
+m_stade <- "ind"
+m_indicateur <- "densite_surface"
+
+
+# Petit jeu de données
+ope_reduc <- ope_indicateur %>% 
+  rename(espece = esp_code_alternatif) %>%
+  filter(espece%in%c("ANG","GAR"),
+         indicateur %in% c("biomasse","densite_surface")) %>%
+  mef_ajouter_objectif() %>%
+  mef_ajouter_type_protocole() %>% 
+  select(-obj_id)  
+
+
+#Jeu de données complet
+ope_indicateur_glm <- ope_indicateur %>%
+  filter(indicateur%in% c("biomasse","densite_surface","effectif_total","pourcentage_juveniles")) %>% 
+  rename(espece = esp_code_alternatif) %>%
+  mef_ajouter_objectif() %>%
+  mef_ajouter_type_protocole() %>% 
+  filter (!obj_libelle == "DCE – Référence") %>% 
+  select(-obj_id)  
+  
+
+
+# Fonction pour calculer le modèle pour une combinaison donnée d'espèce, stade et indicateur
+calculate_model_glmm <- function(data, 
+                                 mon_espece, 
+                                 mon_stade, 
+                                 mon_indicateur) {
+  filtered_data <- data %>%
+    filter(espece == mon_espece, 
+           stade == mon_stade, 
+           indicateur == mon_indicateur)
+  
+  model <- lmer(valeur ~ (1 | pop_id) + annee + pro_libelle + obj_libelle, data = filtered_data)
+  
+
+  res <- summary(model)$coefficients %>%  # Obtenir les résultats résumés
+    as.data.frame() %>%
+    rename(p_value = `Pr(>|t|)`) %>%
+    mutate(sig = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ ""
+    )) %>% 
+    mutate(esp_code_alternatif = mon_espece,
+           stade = mon_stade,
+           indicateur = mon_indicateur)
+  
+  return(res)
+}
+
+# Appliquer cette fonction pour chaque combinaison d'espèce, stade et indicateur
+application_modeles <- function(data) {
+  
+  combinations <- data %>%
+    select(espece, 
+           stade, 
+           indicateur) %>%
+    distinct()
+  
+  
+  results_list <- combinations %>%
+    pmap(function(espece, stade, indicateur) {
+      calculate_model_glmm(data, 
+                           espece, 
+                           stade, 
+                           indicateur)
+    })
+  
+  results_df <- bind_rows(results_list)
+  
+  return(results_df)
+}
+
+
+
+result_final <- application_modeles(ope_indicateur_glm)
+
+
+# Appliquer cette fonction pour chaque combinaison d'espèce, stade et indicateur
+application_modeles <- function(data) {
+  
+  combinations <- data %>%
+    select(espece, 
+           stade, 
+           indicateur) %>%
+    distinct()
+  
+  
+  results_list <- combinations %>%
+    mutate(result = pmap(.l = combinations,
+                         .f = ~ calculate_model_glmm(data, ..1, ..2, ..3)))
+  return(results_list)
+}
+
 ```
+

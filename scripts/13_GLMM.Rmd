@@ -111,7 +111,7 @@ ope_indicateur_glm <- ope_indicateur_glm %>% # On s'assure que pop_id est bien e
 On applique la double fonction pour calculer les glm et ce, pour toutes nos combinaisons d'espèces / stades et indicateurs : 
 
 ```{r}
-result_final_glm <- application_modeles(ope_indicateur_glm)
+result_final_glm <- glm_application_modeles(ope_indicateur_glm)
 ```
 
 
@@ -129,19 +129,15 @@ On applique la fonction pour calculer le lm et ce, pour toutes nos combinaisons 
 
 
 ```{r}
-res <- lm(valeur ~ annee, data = reg_indicateur_lm)
-
-result_final_lm <- summary(res)$coefficients %>%  # Obtenir les résultats résumés
-    as.data.frame() %>%
-    rename(p_value = `Pr(>|t|)`) %>%
-    mutate(sig = case_when(
-      p_value < 0.001 ~ "***",
-      p_value < 0.01 ~ "**",
-      p_value < 0.05 ~ "*",
-      TRUE ~ ""
-    )) 
-
+result_final_lm <- lm_application_modeles(reg_indicateur_lm)
 ```
+
+
+
+
+
+
+
 
 
 
