@@ -93,6 +93,37 @@ carte_sta <- ggplot(sta_id_ope_selection) +
 ```
 
 
+Je souhaite ajouter de nouvelles couches (de manière expériementale)
+
+```{r}
+nouvelle_couche <- st_read("../QGIS/bv/BVSpeMasseDEauSurface_edl2019.shp")
+```
+
+```{r}
+carte_sta <- ggplot(sta_id_ope_selection) +
+  geom_sf(data = mes_depts) +
+  geom_sf(data = buffer) +
+  geom_sf(data = nouvelle_couche) +  # Ajout de la nouvelle couche
+  geom_sf(aes(color = DEP), size = 2) +
+  scale_color_manual(values = pal) +
+  theme_bw() +
+  labs(color = "Département") +
+  theme(legend.position = "bottom")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Carte finale
 

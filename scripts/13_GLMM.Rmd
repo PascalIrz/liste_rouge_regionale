@@ -43,6 +43,9 @@ library(dplyr)
 library(lme4)
 library(purrr)
 library(broom)
+library(ggstats)
+library(parameters)
+library(ggstatsplot)
 ```
 
 ```{r Chargement des données}
@@ -69,8 +72,10 @@ load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 
 ```{r Chargement des fonctions}
 
-source(file = "../R/calculate_model_glm.R")
-source(file = "../R/application_modeles.R")
+source(file = "../R/glm_calcul_modele.R")
+source(file = "../R/glm_application_modele.R")
+source(file = "../R/lm_application_modele.R")
+source(file = "../R/lm_calcul_modele.R")
 
 ```
 
@@ -87,15 +92,13 @@ Nous utiliserons dans cette étude le package *lme4* pour ajuster des modèles m
 
 ## Pré-traitement 
 
-Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs d'un seul indicateur (ici "densite") et d'une espèce (dans un premier temps). Nous utilisons le jeu de données relatifs aux opérations de pêches (*ope_indicateur*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats régionaux. 
+Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs des indicateurs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux opérations de pêches (*ope_indicateur*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats à l'opération. 
 
 
-On part de notre dataframe : ope_indicateur : nous créeons un nouveau jeu de données qui contient les protocoles et les types de réseaux :
-
-```{r}
-#Jeu de données complet - ope_selection
+```{r Création dataframe ope_indicateur_glm}
+# Création d'un df complet pour l'application des modèles GLM
 ope_indicateur_glm <- ope_indicateur %>%
-  filter(indicateur%in% c("biomasse","densite_surface","effectif_total","pourcentage_juveniles")) %>% 
+  filter(indicateur%in% c("biomasse","densite_surface","effectif_total","pourcentage_juveniles")) %>% # Sélection des indicateurs à étudier
   rename(espece = esp_code_alternatif) %>%
   mef_ajouter_objectif() %>%
   mef_ajouter_type_protocole() %>% 
@@ -103,16 +106,67 @@ ope_indicateur_glm <- ope_indicateur %>%
   select(-obj_id)  
 
 ope_indicateur_glm <- ope_indicateur_glm %>% # On s'assure que pop_id est bien en factor
-  mutate(pop_id = as.factor(pop_id))
+  mutate(pop_id = as.factor(pop_id)) %>%
+  filter(espece %in% c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")) # Sélection des espèces étudiées pour la révision de la LRR
 
 ```
 
 
-On applique la double fonction pour calculer les glm et ce, pour toutes nos combinaisons d'espèces / stades et indicateurs : 
+Avant de lancer le modèle, il est important de définir la liste des périodes d'études souhaités. Dans le cadre de notre étude, nous souhaitons étudier la période d'étude de l'ancienne liste rouge régionale (2000 - 2013) ainsi que la nouvelle période d'étude (2010 - 2023) : 
+
+```{r Etablir les périodes d'études GLM}
+liste_periodes_etude <- list(c(2000, 2013), 
+                             c(2010, 2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
+
+```
+
+
+
+## Application modèles GLM 
+
+### Echelle ope_indicateur
+
+Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
+
+```{r Excecution fonctions GLM}
+glm_resultats <- glm_application_modele(data = ope_indicateur_glm,
+                                        liste_periodes = liste_periodes_etude)
+```
+
+Les résultats de la fonction apparaissent dans le dataframe *glm_resultats*. Les résultats significatifs sont ensuite renvoyés dans un nouveau dataframe *glm_resultats_signif*. 
+
+```{r Résultats fonctions GLM}
+glm_resultats_signif <- glm_resultats %>% # Création d'un dataframe avec l'ensemble des résultats significatifs
+  filter(sig %in% c("***","**","*"))
+```
+
+
+
+Nous réalisons maintenant une représentation graphiques de ces résultats 
 
 ```{r}
-result_final_glm <- glm_application_modeles(ope_indicateur_glm)
+glm_resultats %>% 
+  filter(esp_code_alternatif == "GAR",
+         indicateur == "biomasse",
+         stade == "ind") %>% 
+  ggcoef_model(glm_resultats, exponentiate = TRUE, intercept = TRUE)
+
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Echelle reg_indicateur
 
 
 On souhaite pouvoir avoir aussi des modèles linéaires pour les indicateurs régionaux (qui ne dépendent pas de pop_id : c'est le cas de l'indicateur "taux_occurrence" : 
@@ -121,6 +175,9 @@ On souhaite pouvoir avoir aussi des modèles linéaires pour les indicateurs ré
 #Jeu de données complet - ope_selection
 reg_indicateur_lm <- reg_indicateur %>%
   filter(indicateur == "taux_occurrence") %>% 
+    filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+                                    "PER", "GAR", "GOU", "LOF", "LPP",
+                                    "SAT", "TRF", "VAI", "VAR")) %>% 
   rename(espece = esp_code_alternatif) 
 ```
 
@@ -133,7 +190,19 @@ result_final_lm <- lm_application_modeles(reg_indicateur_lm)
 ```
 
 
+Je souhaite maintenant combiner les deux dataframes :
 
+```{r}
+result_complet <- bind_rows(result_final_glm, result_final_lm)
+```
+
+
+Je souhaite maintenant regrouper les données où j'observe vraiment des résultats très significatifs : 
+
+```{r}
+result_complet_signif <- result_complet %>% 
+  filter(sig == "***")
+```
 
 
 
