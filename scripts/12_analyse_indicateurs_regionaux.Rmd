@@ -30,7 +30,7 @@ A l'issue de ce script, une approche analytique aura été réalisée et une com
 ## Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
+## Chargement des packages
 library(ggthemes)
 library(tidyverse)
 library(aspe)
@@ -50,7 +50,7 @@ library(ggforce)
 
 
 ```{r Chargement des données}
-## Chargement des données ----
+## Chargement des données
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
@@ -60,7 +60,7 @@ load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 
 
 ```{r Chargement des fonctions}
-## Chargement des fonctions ----
+## Chargement des fonctions 
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/calcul_taux_evolution.R")
 source(file = "../R/mann_kendall_sen.R")
@@ -86,7 +86,6 @@ Dans le contexte de la réactualisation de la liste rouge régionale de Bretagne
 
 
 ```{r Fonction get_pvalues}
-
 get_pvalues <- function(data, start_year, end_year) {
   
   data_filtered <- data %>% 
@@ -100,7 +99,10 @@ get_pvalues <- function(data, start_year, end_year) {
     filter(term == "annee") %>% 
     select(stade, indicateur, esp_code_alternatif, estimate, p.value)
 }
+```
 
+
+```{r Fonction get_pvalues application}
 reg_indicateur_pvalues_2010_2023 <- get_pvalues(reg_indicateur,2010,2023) # Test pour la période 2010-2023
 reg_indicateur_pvalues_2000_2013 <- get_pvalues(reg_indicateur,2000,2013) # Test pour la période 2000-2013
 

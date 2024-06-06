@@ -1,0 +1,91 @@
+---
+title: "14_mann_kendall"
+author: "Léa Bouchet"
+date: "2024-06-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+
+Script : 14_Mann_Kendall
+
+Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendances des indicateurs régionaux. Il a également l'objectif de comparer les données issues des test de M-K avec ceux des modèles linéaires généralisés (GLM) afin d'observer les divergences entre ces deux modèles. 
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages}
+## Chargement des packages ----
+library(ggthemes)
+library(tidyverse)
+library(aspe)
+library(ggplot2)
+library (khroma)
+library(dplyr)
+library(wesanderson)
+library(zoo)
+library(gt)
+library(lemon)
+library(trend)
+library(ggh4x)
+library(purrr)
+library(broom)
+library(ggforce)
+```
+
+```{r Chargement des données}
+## Chargement des données 
+load(file = "processed_data/calcul_indicateurs_regionaux.rda")
+```
+
+```{r Chargement des fonctions}
+
+source(file = "R/mk_st_by_group.R") # Fonction développée par Pascal Irz
+source(file = "R/mann_kendall_sen.R") # Fonction développée par Pascal Irz
+```
+
+
+# Test de Mann-Kendall
+
+## Introduction
+
+Le test de tendance de Mann-Kendall est utilisé pour déterminer si une tendance existe ou non dans les données de séries chronologiques. Il s'agit d'un test non paramétrique, ce qui signifie qu'il n'y a pas d'hypothèse sous-jacente concernant la normalité des données.
+
+Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
+  1. Ho (Accepté) : Il n'y a pas de tendance dans les données (valeur p>0,05).
+  2. Ha (Rejeté) : Une tendance est présente dans les données
+
+
+
+## Application 
+
+```{r}
+test <- mk_st_by_group(ope_indicateur,
+                       valeur,
+                       annee,
+                       esp_code_alternatif,
+                       indicateur,
+                       stade)
+
+test <- test %>% 
+  mutate(sig = case_when(
+      mk_pvalue < 0.001 ~ "***",
+      mk_pvalue < 0.01 ~ "**",
+      mk_pvalue < 0.05 ~ "*",
+      TRUE ~ ""))
+```
+
+
+
+
+
+
+
