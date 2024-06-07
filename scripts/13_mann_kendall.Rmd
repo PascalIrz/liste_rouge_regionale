@@ -26,30 +26,23 @@ Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendanc
 ## Chargement des packages ----
 library(ggthemes)
 library(tidyverse)
-library(aspe)
 library(ggplot2)
-library (khroma)
 library(dplyr)
-library(wesanderson)
-library(zoo)
-library(gt)
-library(lemon)
 library(trend)
 library(ggh4x)
-library(purrr)
-library(broom)
-library(ggforce)
+
 ```
 
 ```{r Chargement des données}
 ## Chargement des données 
-load(file = "processed_data/calcul_indicateurs_regionaux.rda")
+load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 ```
 
 ```{r Chargement des fonctions}
 
-source(file = "R/mk_st_by_group.R") # Fonction développée par Pascal Irz
-source(file = "R/mann_kendall_sen.R") # Fonction développée par Pascal Irz
+source(file = "../R/mk_st_by_group.R") # Fonction développée par Pascal Irz
+source(file = "../R/mann_kendall_sen.R") # Fonction développée par Pascal Irz
+source(file = "../R/mk_st_multi_periodes.R") #Fonction qui utilise des "" donc à corriger mais fait par Léa Bouchet
 ```
 
 
@@ -67,25 +60,31 @@ Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
 
 ## Application 
 
-```{r}
-test <- mk_st_by_group(ope_indicateur,
-                       valeur,
-                       annee,
-                       esp_code_alternatif,
-                       indicateur,
-                       stade)
+On souhaite le faire pour plusieurs périodes (création de la fonction *mk_st_multi_periodes*). Nous sélectionnons les périodes à étudier (qui sera une variable de la fonction) : 
 
-test <- test %>% 
-  mutate(sig = case_when(
-      mk_pvalue < 0.001 ~ "***",
-      mk_pvalue < 0.01 ~ "**",
-      mk_pvalue < 0.05 ~ "*",
-      TRUE ~ ""))
+```{r Mise en place des périodes}
+periodes <- list(c(2000, 2013), 
+                 c(2010, 2023))
+```
+
+Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant. 
+
+```{r}
+mk_st_by_group_resultats <- mk_st_multi_periodes(df = ope_indicateur,
+                                                 periods = periodes,
+                                                 valeur = "valeur",
+                                                 annee = "annee",
+                                                 esp_code_alternatif = "esp_code_alternatif",
+                                                 indicateur = "indicateur",
+                                                 stade = "stade")
 ```
 
 
 
+Sauvegarde : 
 
-
-
+```{r}
+save(mk_st_by_group_resultats,
+     file = "../processed_data/mann_kendall_tendances.rda")
+```
 

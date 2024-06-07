@@ -84,7 +84,24 @@ Les modèles linéaires généralisés à effets mixtes combinent les caractéri
 Nous utiliserons dans cette étude le package *lme4* pour ajuster des modèles mixtes. La fonction *lmer* de ce package estime les paramètres d’un modèle linéaire mixte. Les formules utilisées par *lmer* suivent la forme *reponse ~ predicteurs*, avec une syntaxe spécifique pour les effets aléatoires.
 
 
-## Pré-traitement 
+## Modèles linéaires mixtes dans R 
+
+Dans notre étude, *pop_id* est la variable contenant les identifiants des groupes dans le jeu de données *ope_indicateur_glmm_ex*. Le terme (1 + obj_libelle | pop_id ) indique de modéliser un effet aléatoire du groupe *pop_id* pour l’ordonnée à l’origine (codée “1”) et le coefficient de *obj_libelle*. Si seule l’ordonnée à l’origine variait par groupe, donc si la pente de *valeur* vs. *obj_libelle* était fixée à une seule valeur pour tous les groupes, on pourrait écrire (1 | *pop_id*). *pro_libelle* est un prédicteur définis au niveau du groupe, il apparait donc dans la formule comme n'importe quel autre prédicteur.
+
+
+## Modèles linéaires généralisés à effets mixtes
+
+Les modèles linéaires généralisés à effets mixtes (abbréviés GLMM, pour generalized linear mixed models) combinent les caractéristiques de deux types de modèles : les modèles linéaires généralisés et les modèles linéaires mixtes.
+
+
+Le package *lme4* contient une fonction *glmer* pour estimer les paramètres d’un GLMM. Celle-ci est semblable à *lmer*, excepté qu’on spécifie la distribution non-normale de la réponse par le biais du paramètre *family*.
+
+
+
+
+
+
+# Pré-traitement 
 
 Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs des indicateurs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux opérations de pêches (*ope_indicateur*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats à l'opération. 
 
@@ -116,9 +133,9 @@ liste_periodes_etude <- list(c(2000, 2013),
 
 
 
-## Application modèles GLM 
+# Application modèles GLM 
 
-### Echelle ope_indicateur
+## Echelle ope_indicateur
 
 Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
 
@@ -139,28 +156,18 @@ glm_resultats_signif <- glm_resultats %>% # Création d'un dataframe avec l'ense
 Nous réalisons maintenant une représentation graphiques de ces résultats 
 
 ```{r}
-glm_resultats %>% 
-  filter(esp_code_alternatif == "GAR",
-         indicateur == "biomasse",
-         stade == "ind") %>% 
-  ggcoef_model(glm_resultats, exponentiate = TRUE, intercept = TRUE)
+# glm_resultats %>% 
+#   filter(esp_code_alternatif == "GAR",
+#          indicateur == "biomasse",
+#          stade == "ind") %>% 
+#   ggcoef_model(glm_resultats, exponentiate = TRUE, intercept = TRUE)
 
 ```
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-### Echelle reg_indicateur
+## Echelle reg_indicateur
 
 
 On souhaite pouvoir avoir aussi des modèles linéaires pour les indicateurs régionaux (qui ne dépendent pas de pop_id : c'est le cas de l'indicateur "taux_occurrence" : 
@@ -180,104 +187,25 @@ On applique la fonction pour calculer le lm et ce, pour toutes nos combinaisons 
 
 
 ```{r}
-result_final_lm <- lm_application_modeles(reg_indicateur_lm)
+result_final_lm <- lm_application_modeles(reg_indicateur_lm,
+                                          liste_periodes_etude)
 ```
 
 
 Je souhaite maintenant combiner les deux dataframes :
 
 ```{r}
-result_complet <- bind_rows(result_final_glm, result_final_lm)
+glm_lm_resultats <- bind_rows(glm_resultats, result_final_lm)
 ```
 
-
-Je souhaite maintenant regrouper les données où j'observe vraiment des résultats très significatifs : 
-
-```{r}
-result_complet_signif <- result_complet %>% 
-  filter(sig == "***")
-```
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-ope_indicateur_glmm_ex2 <- ope_indicateur_glmm_ex %>% 
-  mutate(pop_id = as.factor(pop_id))
-```
-
-```{r}
-model <- lmer(valeur ~ (1 | pop_id) + annee + pro_libelle + obj_libelle, data = ope_indicateur_glmm_ex2)
-```
-
-
-## Application Modèle GLM / GLMM - Effet réseaux et protocoles de pêches 
 
 Explications - https://pmarchand1.github.io/ECL8202/notes_cours/05-Modeles_generalises_mixtes.html 
 
 
-
-### Modèles linéaires mixtes dans R 
-
-Dans notre étude, *pop_id* est la variable contenant les identifiants des groupes dans le jeu de données *ope_indicateur_glmm_ex*. Le terme (1 + obj_libelle | pop_id ) indique de modéliser un effet aléatoire du groupe *pop_id* pour l’ordonnée à l’origine (codée “1”) et le coefficient de *obj_libelle*. Si seule l’ordonnée à l’origine variait par groupe, donc si la pente de *valeur* vs. *obj_libelle* était fixée à une seule valeur pour tous les groupes, on pourrait écrire (1 | *pop_id*). *pro_libelle* est un prédicteur définis au niveau du groupe, il apparait donc dans la formule comme n'importe quel autre prédicteur.
-
+# Sauvegarde
 
 ```{r}
-lmer(valeur ~ obj_libelle + pro_libelle + (1 + obj_libelle | pop_id), data = ope_indicateur_glmm_ex)
+save(glm_lm_resultats,
+     file = "../processed_data/glm_lm_tendances.rda")
 ```
-
-
-### Modèles linéaires généralisés à effets mixtes
-
-Les modèles linéaires généralisés à effets mixtes (abbréviés GLMM, pour generalized linear mixed models) combinent les caractéristiques de deux types de modèles : les modèles linéaires généralisés et les modèles linéaires mixtes.
-
-
-Le package *lme4* contient une fonction *glmer* pour estimer les paramètres d’un GLMM. Celle-ci est semblable à *lmer*, excepté qu’on spécifie la distribution non-normale de la réponse par le biais du paramètre *family*.
-
-```{r}
-# estimation du modèle
-effet_reseaux_test <- lmerTest::lmer (valeur ~ annee + pro_libelle + (1 + obj_libelle | pop_id), 
-                      data = ope_indicateur_glmm_ex)
-
-# ajustement pour l'estimation des effets fixes
-mod_effet_reseaux_test <- update(effet_reseaux_test, REML=FALSE)
-
-summary(mod_effet_reseaux_test)
-
-
-```
-
-D’après la section Fixed effects du sommaire, l’ordonnée à l’origine moyenne est de -8.07 et l’effet moyen du protocole *pêche par ambiance* est de 0.65. Puisque la régression de Poisson utilise un lien log par défaut, ces coefficients signifient que la richesse moyenne est de e puissance 0.65 = ? espèces si pêche par ambiance = 0 et est multipliée par e−(-8.07) = ? (i.e. diminue de 46%) pour chaque augmentation d’une unité du NAP.
-
-D’après la section Random effects, l’écart-type de l’ordonnée à l’origine entre les pop_id est de 0.13 et l’écart-type du coefficient du protocole *peche par ambiance* est de 0.13. S’il s’agissait d’un modèle linéaire mixte, nous obtiendrions aussi un estimé de l’écart-type résiduel (intra-groupe), mais ce n’est pas le cas ici, car la variance résiduelle est fixée par la moyenne dans la distribution de Poisson.
-
-
-
-```{r}
-ranef(mod_effet_reseaux_test)
-```
-
-
-```{r}
-coef(mod_effet_reseaux_test)
-```
-
-
-
-Comme pour les modèles linéaires généralisés, il est utile de représenter graphiquement la relation non-linéaire entre la réponse et les prédicteurs estimée par le modèle. Le graphique ci-dessous superpose les données observées (points) et les valeurs attendues du modèle (fitted, lignes) pour chaque pop_id.
-
-```{r}
-ggplot(ope_indicateur_glmm_ex, aes(x= annee, y = valeur, color = obj_libelle)) +
-  geom_point() +
-  geom_line(aes(y = fitted (mod_effet_reseaux_test)))
-```
-
 

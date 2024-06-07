@@ -1,5 +1,5 @@
 glm_application_modele <- function(data, 
-                                   liste_periodes) {
+                                   liste_periodes){
   
   results_list <- map(liste_periodes, function(period) {
     mon_annee_depart <- period[1]
