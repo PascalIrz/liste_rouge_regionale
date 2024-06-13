@@ -227,11 +227,12 @@ filter(!indicateur %in% c("pourcentage_site_presence_esp",
 ```
 
 
-```{r, fig.height = 26, fig.width = 10}
+```{r, fig.height = 8, fig.width = 10}
 reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
   filter((indicateur == "densite_surface" & stade == "ad") |
     (indicateur == "pourcentage_juveniles" & stade == "ind") |
     (indicateur == "taux_occurrence" & stade == "ind")) %>% 
+  filter(esp_code_alternatif %in% c("ANG", "TRF", "GAR")) %>% 
   ggplot(aes(x = annee, 
              y = valeur, 
              group = stade, 
@@ -239,8 +240,8 @@ reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
   geom_point(shape = 1) +
   geom_smooth(method = "loess", se = FALSE) +  # Ajout des courbes de tendance loess
   facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
-  scale_color_manual(values = c("densite_surface" = "#A97B30", "taux_occurrence" = "black", "pourcentage_juveniles" = "#92D080" ),
-                     name = "Stade", labels = c("Adulte")) +
+  scale_color_manual(values = c("densite_surface" = "#A97B30", "taux_occurrence" = "black", "pourcentage_juveniles" =  "black" ),
+                     name = "Stade", labels = c("Adulte", "Indeterminé", "Indeterminé")) +
   #scale_y_continuous(breaks = seq(0, max(reg_indicateur$valeur, na.rm = TRUE), by = 5)) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 

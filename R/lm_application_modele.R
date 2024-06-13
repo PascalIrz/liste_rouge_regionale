@@ -1,5 +1,5 @@
 lm_application_modeles <- function(data,
-                                   liste_periodes){
+                                   liste_periodes) {
   
   results_list <- map(liste_periodes, function(period) {
     mon_annee_depart <- period[1]
@@ -29,7 +29,8 @@ lm_application_modeles <- function(data,
                                  mon_indicateur = indicateur)
       if (!is.null(results)) {
         results <- results %>%
-          mutate(periode = period_label)
+          mutate(row_name = rownames(results),
+                 periode = period_label)
       }
       return(results)
     })

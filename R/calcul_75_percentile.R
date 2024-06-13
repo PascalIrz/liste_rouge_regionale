@@ -6,7 +6,7 @@
 #' @param var_esp_code_alternatif Variable d'identification de l'espèce de poisson
 #' @param var_stade Variable d'identification du stade de l'espèce (adulte / juvénile)
 #'
-#' @return 3 Dataframes avec une ligne par operation et par espèce et des colonnes indiquant le type d'indicateur "75_percentile", et la valeur associée
+#' @return 1 dataframe avec une ligne par operation et par espèce et des colonnes indiquant le type d'indicateur "75_percentile", et la valeur associée
 #' @export
 #' 
 #' @importClassesFrom dplyr enquo group_by mutate filter summarize ungroup select bind_rows

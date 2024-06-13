@@ -86,30 +86,31 @@ Utilisons la fonction mod_popgrow pour estimer la croissance de la population de
 
 Enfin, dans un souci de simplification, nous demandons uniquement le taux de croissance annuel moyen à l’échelle du bassin Loire-Bretagne (i.e. sur tous les points d’échantillonnage) en spécifiant les paramètres save = "N mulambda". Comme un modèle bayésien prend généralement beaucoup de temps, nous conservons les valeurs par défaut, c.-à-d. 3 chaînes MCMC avec 10000 itérations réduites à un tirage à chaque 100e itération ayant éliminé une période de rodage de 2500 itérations. Mais cela pourrait ne pas être suffisant pour fournir des estimations suffisamment précises.
 
+```{r}
+data_per <- data_bayesien %>% 
+  filter(esp_code_alternatif == "PER")
+```
 
 Pour le jeu de données data_lrr : 
 
 ```{r}
 # Application fonction mod_popgrow
 
-result_lrr_03_06 <- mod_popgrow(data_bayesien_lrr,
-                      var_id = "pop_id",
-                      var_tmp = "annee",
-                      var_cnt = "catch_size",
-                      var_surf = "ope_surface_calculee",
-                      period = list(c(2000,2013),
-                                    c(2010,2023)),
-                      n_iter = 1005000,
-                      n_thin = 100,
-                      n_burnin = 5000)
+result_lrr_12_06 <- mod_popgrow(data_bayesien_lrr,
+                                var_id = "pop_id",
+                                var_tmp = "annee",
+                                var_cnt = "catch_size",
+                                var_surf = "ope_surface_calculee",
+                                var_tax = "esp_code_alternatif",
+                                period = list(c(2000,2013),
+                                              c(2010,2023)),
+                                n_iter = 1005000,
+                                n_thin = 100,
+                                n_burnin = 5000)
 ```
 
 
-
 # Analyse des résultats 
-
-
-
 
 ```{r}
 library(mcmcplots)
@@ -318,8 +319,6 @@ result_popgrowAlt <- mod_popgrowAlt(data_lrr,
 ```
 
 
-
-
 # Sauvegarde
 
 ```{r}
@@ -327,8 +326,7 @@ result_popgrowAlt <- mod_popgrowAlt(data_lrr,
 #      data_per,
 #      result_per_31_05,
 #      file = "processed_data/modele_bay_result_31_05_per.rda")
+
+save(result_lrr_12_06,
+     file = "../processed_data/modele_bayesien_result_lrr_12_06.rda")
 ```
-
-
-
-

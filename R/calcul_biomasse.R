@@ -1,5 +1,28 @@
-## Création d'une fonction de calcul de biomasse à partir des tailles et des 
-# poids_estimées par opération. 
+#' Calculer les biomasses d'espèces par opération à partir de leurs tailles et de leurs poids_estimés
+#'
+#' @param df Dataframe contenant les données
+#' @param var_id_site Variable d'identification du site
+#' @param var_esp_code_alternatif Variable d'identification de l'espèce
+#' @param var_stade Variable d'identification du stade de l'espèce (adulte / juvénile / indeterminé)
+#' @param var_longueur Variable contenant les données de longueur / taille des individus
+#' @param var_type_longueur Variable contenant les types de longueurs de taille souhaitée (à la fourche / total)
+#' 
+#' @return 1 dataframe avec une ligne par operation / par espèce / par le type d'indicateur, ici "biomasse" / la valeur de l'indicateur
+#' @export
+#' 
+#' @importClassesFrom dplyr enquo group_by mutate filter select arrange slice distinct left_join pull ifelse summarize
+#'
+#' @examples
+#' \dontrun{
+#' prov <- calcul_biomasse (df = ope_selection,
+#' var_id_site = ope_id,
+#' var_esp_code_alternatif = esp_code_alternatif,
+#' var_stade = stade,
+#' var_longueur = mei_taille,
+#' var_type_longueur = ? )
+#' }
+
+
 
 calcul_biomasse <- function(df,
                             var_id_site,
