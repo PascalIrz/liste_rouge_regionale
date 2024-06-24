@@ -312,8 +312,8 @@ reg_espece %>%
   flextable::flextable() %>% 
   flextable::autofit() %>% 
   flextable::colformat_int(j = c(1, 3), big.mark = " ")
-```
 
+```
 
 
 ```{r Liste espèce à traiter}

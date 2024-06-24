@@ -6,7 +6,8 @@ mk_st_multi_periodes <- function(df,
                                  esp_code_alternatif,
                                  indicateur,
                                  stade) 
-{
+
+  {
   resultats <- list()
   
   for (period in periods) {

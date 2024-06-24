@@ -34,12 +34,12 @@ Dans un second temps (à partir du script 15), une analyse plus fine de ces dyna
 
 ```{r Chargement des packages}
 # Chargement des packages
-library(aspe)
 library(tidyverse)
+library(wesanderson) # Palette de couleur
+library(aspe) # Traitement de la base aspe
 library(mapview)
 library(COGiter)
 library(sf)
-library(wesanderson)
 ```
 
 
@@ -170,10 +170,10 @@ Nous souhaitons maintenant observer l'ensemble des stations / points de prélèv
 
 # Visualisation des points de prélèvements présents dans l'aire géographique sélectionnée
 pop_depts <- point_prelevement %>%
-  sf::st_as_sf(coords = c("pop_coordonnees_x", 
-                          "pop_coordonnees_y"),
+  st_as_sf(coords = c("pop_coordonnees_x",
+                      "pop_coordonnees_y"),
                crs = 2154) %>% 
-  aspe::geo_attribuer(buffer) %>% 
+  geo_attribuer(buffer) %>% 
   filter(!is.na(DEP))
 
 mapview(
@@ -184,8 +184,7 @@ mapview(
 
 ```
 
-
-Il est ainsi observé (`r pop_id`) points de prélèvements ainsi que (`r pop_sta_id`) stations au sein de cette aire géographique. Une station peut contenir plusieurs points de prélèvements (l'inverse n'est en revanche pas possible - si c'est le cas, cf dernière partie "Vérification des données"). Après visualisation de l'aire géographique et de ses points de prélèvements associés, une sauvegarde des *pop_id* est réalisée dans la passerelle.
+Il est ainsi observé le nombre de points de prélèvements ainsi que le nombre de stations au sein de cette aire géographique. Une station peut contenir plusieurs points de prélèvements (l'inverse n'est en revanche pas possible - si c'est le cas, cf dernière partie "Vérification des données"). Après visualisation de l'aire géographique et de ses points de prélèvements associés, une sauvegarde des *pop_id* est réalisée dans la passerelle.
 
 ```{r Sauvegarde pop_id}
 # Sauvegarde des points de prélèvements sélectionnés dans la passerelle 
@@ -519,6 +518,8 @@ sta_plusieurs_pop %>%
 
 # Sauvegarde 
 
+Sauvegarde pour l'analyse de la sélection des espèces (script 03_analyse_selection_especes)
+
 ```{r Sauvegarde}
 # SAUVEGARDE ----
 save(pop_serie_tempo,
@@ -528,6 +529,7 @@ save(pop_serie_tempo,
      file = "../processed_data/selection_pop_ope.rda")
 ```
 
+Sauvegarde pour la création de carte (script 01_production_carte_selection_station)
 
 ```{r Sauvegarde 2}
 save(sta_id_ope_selection,

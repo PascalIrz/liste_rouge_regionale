@@ -35,19 +35,19 @@ Après avoir sélectionné les points de prélèvements et opérations de pêche
 
 ```{r Chargement des packages}
 ## Chargement des packages ----
-
 library(tidyverse)
 library(aspe)
-library(ggplot2)
-library(zoo)
-library(lemon)
+#library(lemon)
 ```
 
 
 ```{r Chargement des données}
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
+```
 
+
+```{r Chargement des tables}
 ## Chargement des tables ASPE ----
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
@@ -58,7 +58,6 @@ mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
 load(mei_table)
-
 ```
 
 

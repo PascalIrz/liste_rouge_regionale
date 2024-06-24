@@ -29,8 +29,8 @@ Après avoir sélectionné les différentes stations / points de prélèvements 
 
 ```{r Chargement des packages}
 ## Chargement des packages 
-library(sf)
 library(ggplot2)
+library(sf)
 library(cowplot)
 library(png)
 library(rnaturalearth)
@@ -75,6 +75,7 @@ carte_france_dept <- ggplot(data = france) +
 carte_france_dept_grob <- ggplotGrob(carte_france_dept)
 ```
 
+
 ## Création de la carte station
 
 Il s'agit de créer la carte principale regroupant les stations étudiées. 
@@ -99,6 +100,7 @@ Je souhaite ajouter de nouvelles couches (de manière expériementale)
 nouvelle_couche <- st_read("../QGIS/bv/BVSpeMasseDEauSurface_edl2019.shp")
 ```
 
+
 ```{r}
 carte_sta <- ggplot(sta_id_ope_selection) +
   geom_sf(data = mes_depts) +
@@ -114,18 +116,7 @@ carte_sta <- ggplot(sta_id_ope_selection) +
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-# Carte finale
+# Création carte finale
 
 Il s'agit de combiner les deux cartes créées précédemment. 
 

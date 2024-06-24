@@ -75,6 +75,7 @@ nom_fichier <- paste("../processed_data/resultat_modele",
 
 ```{r Chargement des données}
 load(file = "../processed_data/pre_traitement_modele_bayesien.rda")
+load(file = "../processed_data/modele_bay_result_31_05_per.rda")
 ```
 
 
@@ -89,6 +90,11 @@ Enfin, dans un souci de simplification, nous demandons uniquement le taux de cro
 ```{r}
 data_per <- data_bayesien %>% 
   filter(esp_code_alternatif == "PER")
+
+data_ang <- data %>% 
+  filter(esp_code_alternatif =="ANG")
+
+
 ```
 
 Pour le jeu de données data_lrr : 
@@ -96,18 +102,82 @@ Pour le jeu de données data_lrr :
 ```{r}
 # Application fonction mod_popgrow
 
-result_lrr_12_06 <- mod_popgrow(data_bayesien_lrr,
-                                var_id = "pop_id",
-                                var_tmp = "annee",
-                                var_cnt = "catch_size",
-                                var_surf = "ope_surface_calculee",
-                                var_tax = "esp_code_alternatif",
-                                period = list(c(2000,2013),
-                                              c(2010,2023)),
-                                n_iter = 1005000,
-                                n_thin = 100,
-                                n_burnin = 5000)
+# result_lrr_12_06 <- mod_popgrow(data_bayesien_lrr,
+#                                 var_id = "pop_id",
+#                                 var_tmp = "annee",
+#                                 var_cnt = "catch_size",
+#                                 var_surf = "ope_surface_calculee",
+#                                 var_tax = "esp_code_alternatif",
+#                                 period = list(c(2000,2013),
+#                                               c(2010,2023)),
+#                                 n_iter = 1005000,
+#                                 n_thin = 100,
+#                                 n_burnin = 5000)
 ```
+
+
+
+Pour le jeu de données data_lrr : 
+```{r}
+library(nimble)
+library(popdynmodel)
+library(aspe2)
+library(dplyr)
+
+
+load("processed_data/modele_bay_result_31_05_per.rda")
+
+data <- data %>% 
+  mef_ajouter_absence(var_id = pop_id, var_taxon = esp_code_alternatif, var_abs = catch_size) %>%
+  mef_ajouter_na(var_id = pop_id, var_taxon = esp_code_alternatif, var_obs = annee, vec_obs = 1990:2023) %>%
+  mef_imputevalue(var_id = "pop_id", var_tmp = "annee", var_imp = "ope_surface_calculee")
+```
+
+
+```{r}
+#Pour le cas spécifique de l'anguille
+df <- filter(data, esp_code_alternatif %in% "ANG")  
+mc_ang <- mod_popgrow(df,
+                      var_id = "pop_id",
+                      var_tmp = "annee",
+                      var_cnt = "catch_size",
+                      var_surf = "ope_surface_calculee",
+                      period = list(c(2005,2023),
+                                    c(2008, 2023),
+                                    c(2011, 2023),
+                                    c(2013, 2023)),
+                      n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
+```
+
+
+```{r}
+#Pour l"ensemble des individus
+mc <- mod_popgrow(data,
+                  var_id = "pop_id",
+                  var_tmp = "annee",
+                  var_tax = "esp_code_alternatif",
+                  var_cnt = "catch_size",
+                  var_surf = "ope_surface_calculee",
+                  period = list(c(2005,2023),
+                                c(2008, 2023),
+                                c(2011, 2023),
+                                c(2013, 2023)),
+                  n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
+
+
+save(mc,
+     mc_ang,
+     file = "../processed_data/bay_final_result.rda")
+
+```
+
+
+
+
+
+
+
+
 
 
 # Analyse des résultats 

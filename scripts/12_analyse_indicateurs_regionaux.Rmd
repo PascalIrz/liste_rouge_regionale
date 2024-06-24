@@ -82,7 +82,7 @@ Il est maintenant nécessaire d'observer si les valeurs obtenues relatives à l'
 
 La fonction "get_pvalues" a pour but de calculer et d'extraire les p-values des coefficients de régression linéaire des valeurs par rapport aux annees, pour chaque combinaison unique de stade, indicateur, et esp_code_alternatif, sur la période spécifiée par start_year et end_year. Les p-values obtenues pourront ensuite être utilisées pour connaître la significativité statistique des tendances temporelles des indicateurs pour les différentes espèces et stades.
 
-Dans le contexte de la réactualisation de la liste rouge régionale de Bretagne, deux périodes clés nous interesse : la période d'étude actuelle (2010 - 2023) et la période d'étude de la dernière liste rouge réalisée (2000 - 2013). 
+Dans le contexte de la réactualisation de la liste rouge régionale de Bretagne, 5 périodes  nous interesse : il s'agit des 5 fenêtres temporelles étudiées correspondant aux périodes d'études des espèces étudiées
 
 
 ```{r Fonction get_pvalues}
@@ -102,9 +102,11 @@ get_pvalues <- function(data, start_year, end_year) {
 ```
 
 
+
 ```{r Fonction get_pvalues application}
 reg_indicateur_pvalues_2010_2023 <- get_pvalues(reg_indicateur,2010,2023) # Test pour la période 2010-2023
 reg_indicateur_pvalues_2000_2013 <- get_pvalues(reg_indicateur,2000,2013) # Test pour la période 2000-2013
+reg_indicateur_pvalues_1990_2023 <- get_pvalues(reg_indicateur,1990,2023) # Test pour la période 1990-2023
 
 ```
 
@@ -120,6 +122,16 @@ colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_
 colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_2023) == "estimate"] <- "estimate_2010_2023"
 colnames(reg_indicateur_pvalues_2010_2023)[colnames(reg_indicateur_pvalues_2010_2023) == "p.value"] <- "p.values_2010_2023"
 
+
+reg_indicateur_pvalues_1990_2023 <- reg_indicateur_pvalues_1990_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_pvalues_1990_2023)[colnames(reg_indicateur_pvalues_1990_2023) == "significance"] <- "significance_1990_2023"
+colnames(reg_indicateur_pvalues_1990_2023)[colnames(reg_indicateur_pvalues_1990_2023) == "estimate"] <- "estimate_1990_2023"
+colnames(reg_indicateur_pvalues_1990_2023)[colnames(reg_indicateur_pvalues_1990_2023) == "p.value"] <- "p.values_1990_2023"
+
+
+
 reg_indicateur_pvalues_2000_2013 <- reg_indicateur_pvalues_2000_2013 %>%
   mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant"))
 
@@ -129,11 +141,24 @@ colnames(reg_indicateur_pvalues_2000_2013)[colnames(reg_indicateur_pvalues_2000_
 ```
 
 
-On agrège ces données au tableau bilan *reg_indicateur* :
+On agrège ces données au tableau bilan *reg_indicateur_tendances* :
 
 ```{r Ajout significativité reg_indicateur}
 # Joindre les p-values au tableau d'origine (reg_indicateur)
-reg_indicateur <- reg_indicateur %>%
+reg_indicateur_tendances <- reg_indicateur %>%
+  left_join(reg_indicateur_pvalues_1990_2023 %>%
+              select(p.values_1990_2023, 
+                     estimate_1990_2023,
+                     significance_1990_2023), 
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_1990_2023 = case_when(estimate_1990_2023 > 0 ~ "\U2197",
+                            estimate_1990_2023 < 0 ~ "\U2198",
+                            TRUE ~ "."),
+         sig_1990_2023 = case_when(
+           p.values_1990_2023 < 0.001 ~ "***",
+           p.values_1990_2023 < 0.01 ~ "**",
+           p.values_1990_2023 < 0.05 ~ "*",
+           TRUE ~ "")) %>%
   left_join(reg_indicateur_pvalues_2010_2023 %>%
               select(p.values_2010_2023, 
                      estimate_2010_2023,
@@ -158,7 +183,7 @@ reg_indicateur <- reg_indicateur %>%
 
 ```{r, fig.height = 26, fig.width = 10}
 # Créer le graphique
-reg_indicateur_graph <- reg_indicateur %>%
+reg_indicateur_graph <- reg_indicateur_tendances %>%
   ggplot(aes(x = annee, y = valeur, group = stade, color = stade)) +
   geom_point(shape = 1) +
   facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
@@ -177,16 +202,16 @@ reg_indicateur_graph <- reg_indicateur %>%
 
 # Ajouter les lignes de régression avec des styles différents selon la signification
 reg_indicateur_graph <- reg_indicateur_graph +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "significant"),
+  geom_smooth(data = reg_indicateur_tendances %>% filter(annee %in% 2010:2023, significance_2010_2023 == "significant"),
               aes(x = annee, y = valeur, group = stade, color = stade),
               method = "lm", se = FALSE, linetype = "solid") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2010:2023, significance_2010_2023 == "non_significant"),
+  geom_smooth(data = reg_indicateur_tendances %>% filter(annee %in% 2010:2023, significance_2010_2023 == "non_significant"),
               aes(x = annee, y = valeur, group = stade, color = stade),
               method = "lm", se = FALSE, linetype = "dashed") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "significant"),
+  geom_smooth(data = reg_indicateur_tendances %>% filter(annee %in% 2000:2013, significance_2000_2013 == "significant"),
               aes(x = annee, y = valeur, group = stade, color = stade),
               method = "lm", se = FALSE, linetype = "solid") +
-  geom_smooth(data = reg_indicateur %>% filter(annee %in% 2000:2013, significance_2000_2013 == "non_significant"),
+  geom_smooth(data = reg_indicateur_tendances %>% filter(annee %in% 2000:2013, significance_2000_2013 == "non_significant"),
               aes(x = annee, y = valeur, group = stade, color = stade),
               method = "lm", se = FALSE, linetype = "dashed")
 
@@ -197,7 +222,9 @@ print(reg_indicateur_graph)
 
 Cette représentation graphique contient tous les indicateurs ainsi que l'ensemble des espèces. Il est très peu lisible et compliqué à interpreter (avec des droites qui influencent beaucoup l'interprétation des résultats). Le fait qu'il y ai plusieurs stades peut également compliquer la comprehension. 
 
+
 On produit donc un graphique qu'avec les données d'adultes ainsi qu'avec des indicateurs restreints  : 
+
 
 
 ### Tri des espèces
@@ -215,7 +242,6 @@ reg_indicateur_reduit <- reg_indicateur %>%
 On ne retient que les indicateurs les plus pertinents à l'analyse des tendances.
 
 ```{r Tri indicateurs}
-
 reg_indicateur_reduit <- reg_indicateur_reduit %>% 
 filter(!indicateur %in% c("pourcentage_site_presence_esp",
                           "longueur_mediane",
@@ -227,12 +253,31 @@ filter(!indicateur %in% c("pourcentage_site_presence_esp",
 ```
 
 
+On réalise un pré-traitement dans les données de notre reg_indicateur : sélection que des stades adultes pour toutes les espèces sauf "ind" pour la LPP et le SAT. 
+
+```{r}
+# Filtrer les lignes avec stade == "ad" sauf pour LPP et SAT
+filtered_ad <- reg_indicateur_reduit %>%
+  filter(stade == "ad" & !esp_code_alternatif %in% c("LPP", "SAT","ANG"))
+
+# Filtrer les lignes avec stade == "ind" pour LPP et SAT, ainsi que pour les indicateurs spécifiques
+filtered_ind <- reg_indicateur_reduit %>%
+  filter(stade == "ind" & 
+         (esp_code_alternatif %in% c("LPP", "SAT","ANG") | 
+          indicateur %in% c("taux_occurrence", "pourcentage_juveniles")))
+
+# Combiner les deux dataframes
+reg_indicateur_tri_final_tendances_LRR <- bind_rows(filtered_ad, filtered_ind)
+```
+
+
+
 ```{r, fig.height = 8, fig.width = 10}
-reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
-  filter((indicateur == "densite_surface" & stade == "ad") |
-    (indicateur == "pourcentage_juveniles" & stade == "ind") |
-    (indicateur == "taux_occurrence" & stade == "ind")) %>% 
-  filter(esp_code_alternatif %in% c("ANG", "TRF", "GAR")) %>% 
+reg_indicateur_graph_reduit <- reg_indicateur_tri_final_tendances_LRR %>%
+  filter(indicateur %in% c("densite_surface",
+                            "pourcentage_juveniles",
+                            "taux_occurrence")) %>% 
+  filter(esp_code_alternatif %in% c("ANG","TRF", "GAR")) %>% 
   ggplot(aes(x = annee, 
              y = valeur, 
              group = stade, 
@@ -241,8 +286,8 @@ reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
   geom_smooth(method = "loess", se = FALSE) +  # Ajout des courbes de tendance loess
   facet_grid2(esp_code_alternatif ~ indicateur, scales = "free", independent = "y") +
   scale_color_manual(values = c("densite_surface" = "#A97B30", "taux_occurrence" = "black", "pourcentage_juveniles" =  "black" ),
-                     name = "Stade", labels = c("Adulte", "Indeterminé", "Indeterminé")) +
-  #scale_y_continuous(breaks = seq(0, max(reg_indicateur$valeur, na.rm = TRUE), by = 5)) +
+                     name = "Stade", labels = c("Indeterminé", "Indeterminé")) +
+  scale_y_continuous(breaks = seq(0, max(reg_indicateur$valeur, na.rm = TRUE), by = 5)) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs") +
@@ -252,10 +297,257 @@ reg_indicateur_graph_reduit <- reg_indicateur_reduit %>%
         panel.background = element_rect(fill = "#faf0e0"),
         panel.grid.major = element_line(color = "lightgrey", size = 0.1),
         panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45)) +
-  geom_vline(xintercept = 2010, linetype = "dashed", color = "red")
+        axis.text.x = element_text(angle = 45))
+  #geom_vline(xintercept = 2010, linetype = "dashed", color = "red")
 
 print(reg_indicateur_graph_reduit)
+
+```
+
+
+
+#Calcul de la significativité des tendances avec fenêtres temporelles de l'étude
+
+
+Pour notre premier groupe : 
+
+```{r Fonction get_pvalues application}
+p1 <- reg_indicateur_tri_final_tendances_LRR %>% 
+  filter(esp_code_alternatif == "ANG")
+
+reg_indicateur_LRR_pvalues_1990_2023 <- get_pvalues(p1,1990,2023) # Test pour la période 1990-2023
+```
+
+
+Pour notre second groupe : 
+
+```{r Fonction get_pvalues application}
+p2 <- reg_indicateur_tri_final_tendances_LRR %>% 
+  filter(esp_code_alternatif %in% c("CHE", "LPP"))
+
+reg_indicateur_LRR_pvalues_2005_2023 <- get_pvalues(p2,2005,2023) # Test pour la période 2005-2023
+```
+
+
+
+Pour notre troisième groupe : 
+
+```{r Fonction get_pvalues application}
+p3 <- reg_indicateur_tri_final_tendances_LRR %>% 
+  filter(esp_code_alternatif %in% c("BRO", "LOF"))
+
+reg_indicateur_LRR_pvalues_2008_2023 <- get_pvalues(p3,2008,2023) # Test pour la période 2008-2023
+```
+
+
+
+Pour notre quatrième groupe : 
+
+```{r Fonction get_pvalues application}
+p4 <- reg_indicateur_tri_final_tendances_LRR %>% 
+  filter(esp_code_alternatif %in% c("VAR", "GAR","VAI","PER"))
+
+reg_indicateur_LRR_pvalues_2011_2023 <- get_pvalues(p4,2011,2023) # Test pour la période 2011-2023
+```
+
+
+
+Pour notre cniquième groupe : 
+
+```{r Fonction get_pvalues application}
+p5 <- reg_indicateur_tri_final_tendances_LRR %>% 
+  filter(esp_code_alternatif %in% c("SAT", "GOU","TRF","CHA"))
+
+reg_indicateur_LRR_pvalues_2013_2023 <- get_pvalues(p5,2013,2023) # Test pour la période 2013-2023
+```
+
+
+Un seuil de significativité est ajouté aux données calculés par get_pvalues (seuil de significativité = 0.05). 
+
+
+```{r Ajout significativité P1}
+# Ajouter la colonne de signification pour P1
+reg_indicateur_LRR_pvalues_1990_2023 <- reg_indicateur_LRR_pvalues_1990_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_LRR_pvalues_1990_2023)[colnames(reg_indicateur_LRR_pvalues_1990_2023) == "significance"] <- "significance_1990_2023"
+colnames(reg_indicateur_LRR_pvalues_1990_2023)[colnames(reg_indicateur_LRR_pvalues_1990_2023) == "estimate"] <- "estimate_1990_2023"
+colnames(reg_indicateur_LRR_pvalues_1990_2023)[colnames(reg_indicateur_LRR_pvalues_1990_2023) == "p.value"] <- "p.values_1990_2023"
+```
+
+
+```{r Ajout significativité P2}
+# Ajouter la colonne de signification pour P2
+reg_indicateur_LRR_pvalues_2005_2023 <- reg_indicateur_LRR_pvalues_2005_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_LRR_pvalues_2005_2023)[colnames(reg_indicateur_LRR_pvalues_2005_2023) == "significance"] <- "significance_2005_2023"
+colnames(reg_indicateur_LRR_pvalues_2005_2023)[colnames(reg_indicateur_LRR_pvalues_2005_2023) == "estimate"] <- "estimate_2005_2023"
+colnames(reg_indicateur_LRR_pvalues_2005_2023)[colnames(reg_indicateur_LRR_pvalues_2005_2023) == "p.value"] <- "p.values_2005_2023"
+```
+
+
+
+
+
+```{r Ajout significativité P3}
+# Ajouter la colonne de signification pour P3
+reg_indicateur_LRR_pvalues_2008_2023 <- reg_indicateur_LRR_pvalues_2008_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_LRR_pvalues_2008_2023)[colnames(reg_indicateur_LRR_pvalues_2008_2023) == "significance"] <- "significance_2008_2023"
+colnames(reg_indicateur_LRR_pvalues_2008_2023)[colnames(reg_indicateur_LRR_pvalues_2008_2023) == "estimate"] <- "estimate_2008_2023"
+colnames(reg_indicateur_LRR_pvalues_2008_2023)[colnames(reg_indicateur_LRR_pvalues_2008_2023) == "p.value"] <- "p.values_2008_2023"
+```
+
+
+```{r Ajout significativité P4}
+# Ajouter la colonne de signification pour P4
+reg_indicateur_LRR_pvalues_2011_2023 <- reg_indicateur_LRR_pvalues_2011_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_LRR_pvalues_2011_2023)[colnames(reg_indicateur_LRR_pvalues_2011_2023) == "significance"] <- "significance_2011_2023"
+colnames(reg_indicateur_LRR_pvalues_2011_2023)[colnames(reg_indicateur_LRR_pvalues_2011_2023) == "estimate"] <- "estimate_2011_2023"
+colnames(reg_indicateur_LRR_pvalues_2011_2023)[colnames(reg_indicateur_LRR_pvalues_2011_2023) == "p.value"] <- "p.values_2011_2023"
+```
+
+
+```{r Ajout significativité P5}
+# Ajouter la colonne de signification pour P5
+reg_indicateur_LRR_pvalues_2013_2023 <- reg_indicateur_LRR_pvalues_2013_2023 %>%
+  mutate(significance = ifelse(p.value < 0.05, "significant", "non_significant")) 
+
+colnames(reg_indicateur_LRR_pvalues_2013_2023)[colnames(reg_indicateur_LRR_pvalues_2013_2023) == "significance"] <- "significance_2013_2023"
+colnames(reg_indicateur_LRR_pvalues_2013_2023)[colnames(reg_indicateur_LRR_pvalues_2013_2023) == "estimate"] <- "estimate_2013_2023"
+colnames(reg_indicateur_LRR_pvalues_2013_2023)[colnames(reg_indicateur_LRR_pvalues_2013_2023) == "p.value"] <- "p.values_2013_2023"
+```
+
+
+
+On agrège ces données au tableau bilan *reg_indicateur_tendances_LRR* :
+
+```{r Ajout significativité reg_indicateur}
+# Joindre les p-values au tableau d'origine (reg_indicateur_tri_final_tendances_LRR)
+#reg_indicateur_tendances_LRR <- reg_indicateur_tri_final_tendances_LRR %>%
+
+reg_indicateur_tendances_LRR <- reg_indicateur_tri_final_tendances_LRR %>% 
+  left_join(reg_indicateur_LRR_pvalues_1990_2023 %>%   #P1
+              select(p.values_1990_2023,
+                     estimate_1990_2023,
+                     significance_1990_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_1990_2023 = case_when(estimate_1990_2023 > 0 ~ "\U2197",
+                            estimate_1990_2023 < 0 ~ "\U2198",
+                            TRUE ~ ".")) %>%
+  left_join(reg_indicateur_LRR_pvalues_2005_2023 %>%         #P2
+               select(p.values_2005_2023,
+                     estimate_2005_2023,
+                     significance_2005_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2005_2023 = case_when(estimate_2005_2023 > 0 ~ "\U2197",
+                            estimate_2005_2023 < 0 ~ "\U2198",
+                            TRUE ~ "."))%>%
+  left_join(reg_indicateur_LRR_pvalues_2008_2023 %>%     #P3
+               select(p.values_2008_2023,
+                     estimate_2008_2023,
+                     significance_2008_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2008_2023 = case_when(estimate_2008_2023 > 0 ~ "\U2197",
+                            estimate_2008_2023 < 0 ~ "\U2198",
+                            TRUE ~ "."))%>%
+  left_join(reg_indicateur_LRR_pvalues_2011_2023 %>%      #P4
+               select(p.values_2011_2023,
+                     estimate_2011_2023,
+                     significance_2011_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2011_2023 = case_when(estimate_2011_2023 > 0 ~ "\U2197",
+                            estimate_2011_2023 < 0 ~ "\U2198",
+                            TRUE ~ "."))%>%
+  left_join(reg_indicateur_LRR_pvalues_2013_2023 %>%  #P5
+               select(p.values_2013_2023,
+                     estimate_2013_2023,
+                     significance_2013_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2013_2023 = case_when(estimate_2013_2023 > 0 ~ "\U2197",
+                            estimate_2013_2023 < 0 ~ "\U2198",
+                            TRUE ~ "."))
+
+
+```
+
+```{r}
+library(dplyr)
+
+# Ajout des colonnes trend pour chaque période et des étoiles de significativité pour chaque période
+reg_indicateur_tendances_LRR <- reg_indicateur_tri_final_tendances_LRR %>% 
+  left_join(reg_indicateur_LRR_pvalues_1990_2023 %>%   #P1
+              select(p.values_1990_2023,
+                     estimate_1990_2023,
+                     significance_1990_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_1990_2023 = case_when(estimate_1990_2023 > 0 ~ "\U2197",
+                                     estimate_1990_2023 < 0 ~ "\U2198",
+                                     TRUE ~ "."),
+         sig_1990_2023 = case_when(
+           p.values_1990_2023 < 0.001 ~ "***",
+           p.values_1990_2023 < 0.01 ~ "**",
+           p.values_1990_2023 < 0.05 ~ "*",
+           TRUE ~ "")) %>%
+  left_join(reg_indicateur_LRR_pvalues_2005_2023 %>%   #P2
+              select(p.values_2005_2023,
+                     estimate_2005_2023,
+                     significance_2005_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2005_2023 = case_when(estimate_2005_2023 > 0 ~ "\U2197",
+                                     estimate_2005_2023 < 0 ~ "\U2198",
+                                     TRUE ~ "."),
+         sig_2005_2023 = case_when(
+           p.values_2005_2023 < 0.001 ~ "***",
+           p.values_2005_2023 < 0.01 ~ "**",
+           p.values_2005_2023 < 0.05 ~ "*",
+           TRUE ~ "")) %>%
+  left_join(reg_indicateur_LRR_pvalues_2008_2023 %>%   #P3
+              select(p.values_2008_2023,
+                     estimate_2008_2023,
+                     significance_2008_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2008_2023 = case_when(estimate_2008_2023 > 0 ~ "\U2197",
+                                     estimate_2008_2023 < 0 ~ "\U2198",
+                                     TRUE ~ "."),
+         sig_2008_2023 = case_when(
+           p.values_2008_2023 < 0.001 ~ "***",
+           p.values_2008_2023 < 0.01 ~ "**",
+           p.values_2008_2023 < 0.05 ~ "*",
+           TRUE ~ "")) %>%
+  left_join(reg_indicateur_LRR_pvalues_2011_2023 %>%   #P4
+              select(p.values_2011_2023,
+                     estimate_2011_2023,
+                     significance_2011_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2011_2023 = case_when(estimate_2011_2023 > 0 ~ "\U2197",
+                                     estimate_2011_2023 < 0 ~ "\U2198",
+                                     TRUE ~ "."),
+         sig_2011_2023 = case_when(
+           p.values_2011_2023 < 0.001 ~ "***",
+           p.values_2011_2023 < 0.01 ~ "**",
+           p.values_2011_2023 < 0.05 ~ "*",
+           TRUE ~ "")) %>%
+  left_join(reg_indicateur_LRR_pvalues_2013_2023 %>%   #P5
+              select(p.values_2013_2023,
+                     estimate_2013_2023,
+                     significance_2013_2023),
+            by = c("stade", "indicateur", "esp_code_alternatif")) %>%
+  mutate(trend_2013_2023 = case_when(estimate_2013_2023 > 0 ~ "\U2197",
+                                     estimate_2013_2023 < 0 ~ "\U2198",
+                                     TRUE ~ "."),
+         sig_2013_2023 = case_when(
+           p.values_2013_2023 < 0.001 ~ "***",
+           p.values_2013_2023 < 0.01 ~ "**",
+           p.values_2013_2023 < 0.05 ~ "*",
+           TRUE ~ ""))
+
+# Affichage du nouveau dataframe
+print(reg_indicateur_tendances_LRR)
 
 ```
 
@@ -267,15 +559,19 @@ Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons
 
 ```{r Mise en place jeu de données tab}
 
-tableau_final <- reg_indicateur_reduit %>%
-  filter(!stade == "juv") %>% # Le stade juvénil est retiré
-  filter(!(indicateur == "densite_surface" & stade == "ind")) %>% 
+tableau_final_tendances_LRR <- reg_indicateur_tendances_LRR %>%
   select(esp_code_alternatif,
          indicateur, 
-         significance_2000_2013,
-         trend_2000_2013,
-         significance_2010_2023,
-         trend_2010_2023) %>% 
+         significance_1990_2023,
+         trend_1990_2023,
+         significance_2005_2023,
+         trend_2005_2023,
+         significance_2008_2023,
+         trend_2008_2023,
+         significance_2011_2023,
+         trend_2011_2023,
+         significance_2013_2023,
+         trend_2013_2023) %>% 
   distinct()
 
 ```
@@ -283,30 +579,68 @@ tableau_final <- reg_indicateur_reduit %>%
 
 ```{r}
 # Créer le tableau synthétique avec gt
-tableau_final_gt <- tableau_final %>%
-  arrange(esp_code_alternatif, indicateur) %>%   # Ordonner par espèce, indicateur et stade
-  gt() %>%
-  tab_header(
-    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne",
-    subtitle = "Comparaison des périodes 2000-2013 et 2010-2023"
-  ) %>%
-  cols_label(
-    esp_code_alternatif = "Code Espèce",
-    indicateur = "Indicateur",
-    significance_2000_2013 = "Significativité 2000-2013",
-    trend_2000_2013 = "Tendance 2000-2013",
-    significance_2010_2023 = "Significativité 2010-2023",
-    trend_2010_2023 = "Tendance 2010-2023") %>%
-  tab_options(table.font.size = "small", data_row.padding = px(5))
-
-# Afficher le tableau
-tableau_final_gt
+# tableau_final_gt <- tableau_final_tendances_LRR %>%
+#   arrange(esp_code_alternatif, indicateur) %>%   # Ordonner par espèce, indicateur et stade
+#   gt() %>%
+#   tab_header(
+#     title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne",
+#     subtitle = "Comparaison des périodes 2000-2013 et 2010-2023"
+#   ) %>%
+#   cols_label(
+#     esp_code_alternatif = "Code Espèce",
+#     indicateur = "Indicateur",
+#     significance_2000_2013 = "Significativité 2000-2013",
+#     trend_2000_2013 = "Tendance 2000-2013",
+#     significance_2010_2023 = "Significativité 2010-2023",
+#     trend_2010_2023 = "Tendance 2010-2023") %>%
+#   tab_options(table.font.size = "small", data_row.padding = px(5))
+# 
+# # Afficher le tableau
+# tableau_final_gt
 
 ```
 
 
 
 On suspect un effet des réseaux et des protocoles dans ces résultats (en effet des changements de protocoles et de réseaux ont lieux au cours du temps). Le prochain script (13_glm) à pour but d'évaluer, grâce à des modèles linéaires mixtes, les éventuels effets de ces changements de réseaux et de protocoles. 
+
+
+
+
+
+
+## Taux d'Evolution
+
+On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
+
+```{r Calcul des taux evolution}
+# Calcul des taux d'évolution depuis 1990
+
+
+taux_evolution_LRR <- calcul_taux_evol(df = reg_indicateur,
+                             var_x = annee,
+                             var_y = valeur,
+                             debut = 1990,
+                             esp_code_alternatif,
+                             stade,
+                             indicateur)
+print(taux_evol_1990)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -320,4 +654,9 @@ save(reg_taux_occ,
      reg_indicateur_reduit,
      ope_indicateur,
      file = "../processed_data/analyse_indicateurs_regionaux.rda")
+
+
+save(reg_indicateur_tri_final_tendances_LRR,
+     tableau_final_tendances_LRR,
+     file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
 ```

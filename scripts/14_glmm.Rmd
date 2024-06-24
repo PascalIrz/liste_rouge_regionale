@@ -62,6 +62,8 @@ load(mei_table)
 ## Chargement des données ----
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
+
 ```
 
 ```{r Chargement des fonctions}
@@ -123,11 +125,14 @@ ope_indicateur_glm <- ope_indicateur_glm %>% # On s'assure que pop_id est bien e
 ```
 
 
-Avant de lancer le modèle, il est important de définir la liste des périodes d'études souhaités. Dans le cadre de notre étude, nous souhaitons étudier la période d'étude de l'ancienne liste rouge régionale (2000 - 2013) ainsi que la nouvelle période d'étude (2010 - 2023) : 
+Avant de lancer le modèle, il est important de définir la liste des périodes d'études souhaités. Dans le cadre de notre étude, nous souhaitons étudier les différentes périodes d'études imposés par la méthodologie liste rouge (spécifique à chaque espèces) ; ainsi nous distinguons 5 périodes d'études distinctes : 
 
 ```{r Etablir les périodes d'études GLM}
-liste_periodes_etude <- list(c(2000, 2013), 
-                             c(2010, 2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
+liste_periodes_etude <- list(c(2008, 2023), 
+                             c(2005, 2023),
+                             c(1990, 2023),
+                             c(2011,2023),
+                             c(2013,2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
 
 ```
 
@@ -143,6 +148,8 @@ Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele
 glm_resultats <- glm_application_modele(data = ope_indicateur_glm,
                                         liste_periodes = liste_periodes_etude)
 ```
+
+
 
 Les résultats de la fonction apparaissent dans le dataframe *glm_resultats*. Les résultats significatifs sont ensuite renvoyés dans un nouveau dataframe *glm_resultats_signif*. 
 
@@ -167,45 +174,84 @@ Nous réalisons maintenant une représentation graphiques de ces résultats
 
 
 
-## Echelle reg_indicateur
+#### Je souhaite applqiuer les analyses GLM pour mon choix d'espèces / stades / Indicateurs : 
 
+### Tri des espèces
+On ne retient qeue les espcèes pour lesquelles nous avons un fort intérêt (au vu des premières tendances dégagées et dans l'optique de la réactualisation de la LRR). 
 
-On souhaite pouvoir avoir aussi des modèles linéaires pour les indicateurs régionaux (qui ne dépendent pas de pop_id : c'est le cas de l'indicateur "taux_occurrence" : 
-
-```{r}
-#Jeu de données complet - ope_selection
-reg_indicateur_lm <- reg_indicateur %>%
-  filter(indicateur == "taux_occurrence") %>% 
-    filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+```{r Tri espèces}
+ope_indicateur_reduit <- ope_indicateur %>% 
+  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
                                     "PER", "GAR", "GOU", "LOF", "LPP",
-                                    "SAT", "TRF", "VAI", "VAR")) %>% 
-  rename(espece = esp_code_alternatif) 
+                                    "SAT", "TRF", "VAI", "VAR"))
 ```
 
 
-On applique la fonction pour calculer le lm et ce, pour toutes nos combinaisons d'espèces / stades et de l'indicateur régional : 
+## Tri dans les indicateurs
+On ne retient que les indicateurs les plus pertinents à l'analyse des tendances pour glm.
 
+```{r Tri indicateurs}
+ope_indicateur_reduit <- ope_indicateur_reduit %>% 
+filter(!indicateur %in% c("pourcentage_site_presence_esp",
+                          "longueur_mediane",
+                          "densite_volumique",
+                          "effectif_total",
+                          "biomasse")) %>% 
+  filter(!(indicateur == "densite_surface" & esp_code_alternatif == "VAI" & stade == "ad" & valeur > 0.08)) # On enlève une valeur abérante qui fausse le graphique
 
-```{r}
-result_final_lm <- lm_application_modeles(reg_indicateur_lm,
-                                          liste_periodes_etude)
 ```
 
 
-Je souhaite maintenant combiner les deux dataframes :
+On réalise un pré-traitement dans les données de notre ope_indicateur : sélection que des stades adultes pour toutes les espèces sauf "ind" pour la LPP et le SAT. 
 
 ```{r}
-glm_lm_resultats <- bind_rows(glm_resultats, result_final_lm)
+# Filtrer les lignes avec stade == "ad" sauf pour LPP et SAT
+filtered_ad_ope <- ope_indicateur_reduit %>%
+  filter(stade == "ad" & !esp_code_alternatif %in% c("LPP", "SAT"))
+
+# Filtrer les lignes avec stade == "ind" pour LPP et SAT, ainsi que pour les indicateurs spécifiques
+filtered_ind_ope <- ope_indicateur_reduit %>%
+  filter(stade == "ind" & 
+         (esp_code_alternatif %in% c("LPP", "SAT") | 
+          indicateur %in% c("pourcentage_juveniles")))
+
+# Combiner les deux dataframes
+ope_indicateur_tri_final_tendances_LRR <- bind_rows(filtered_ad_ope, filtered_ind_ope)
+
+
+ope_indicateur_tri_final_tendances_LRR <- ope_indicateur_tri_final_tendances_LRR %>%
+  rename(espece = esp_code_alternatif) %>%
+  mef_ajouter_objectif() %>%
+  mef_ajouter_type_protocole() %>% 
+  filter (!obj_libelle == "DCE – Référence") %>% 
+  select(-obj_id)
+
+```
+
+
+On applique les modèles GLM (sur toutes les périodes pour tout le monde tant pis)
+```{r Excecution fonctions GLM}
+glm_resultats_LRR <- glm_application_modele(data = ope_indicateur_tri_final_tendances_LRR,
+                                        liste_periodes = liste_periodes_etude)
+```
+
+
+
+Les résultats de la fonction apparaissent dans le dataframe *glm_resultats*. Les résultats significatifs sont ensuite renvoyés dans un nouveau dataframe *glm_resultats_signif*. 
+
+```{r Résultats fonctions GLM}
+glm_resultats_LRR_signif <- glm_resultats_LRR %>% # Création d'un dataframe avec l'ensemble des résultats significatifs
+  filter(sig %in% c("***","**","*"))
 ```
 
 
 Explications - https://pmarchand1.github.io/ECL8202/notes_cours/05-Modeles_generalises_mixtes.html 
 
-
 # Sauvegarde
 
 ```{r}
 save(glm_lm_resultats,
+     glm_resultats_LRR,
      file = "../processed_data/glm_lm_tendances.rda")
 ```
 
