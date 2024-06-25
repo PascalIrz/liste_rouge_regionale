@@ -1,4 +1,4 @@
-glm_calcul_modele <- function(data,
+lmm_calcul_modele <- function(data,
                               mon_espece,
                               mon_stade,
                               mon_indicateur) {

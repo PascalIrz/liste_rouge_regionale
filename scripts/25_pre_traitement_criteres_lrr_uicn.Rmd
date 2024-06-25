@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Script : 25_pre_traitement_criteres_lrr_uicn
 
 
-Ce script à pour objectif de réaliser des pré-traitement avant l'appliquation de la méthodologie de la liste rouge régionale - UICN 2012 sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer. 
+Ce script à pour objectif de réaliser des pré-traitement avant l'appliquation de la méthodologie de la liste rouge régionale - UICN 2012 sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer et l'observation des espèces au sein des stations sélectionnées. 
 
 
 # Chargement des packages
@@ -29,14 +29,9 @@ library(readxl)
 library(dplyr)
 library(ggh4x)
 library(kableExtra)
-
 library(ggthemes)
-library(tidyverse)
-library(aspe)
-library(ggplot2)
 library (khroma)
 library(dplyr)
-library(wesanderson)
 library(zoo)
 library(gt)
 library(lemon)
@@ -61,186 +56,12 @@ reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 ```
 
 
-# Chargement des fonctions 
-
-```{r}
-#source(file = "../R/lrr_critere_a.R")
-#source(file = "../R/mk_st_by_group.R")
-#source(file = "../R/mann_kendall_sen.R")
-#source(file = "../R/calcul_taux_evolution.R")
-#source(file = "../R/calcul_glm.R")
-```
-
 # Chargement d'une palette de couleur
 
 ```{r}
 # Définir une palette de couleurs personnalisée
 my_palette <- c("grey", heat.colors(99))
-
 ```
-
-
-
-# Principales étapes d'un projet de Liste Rouge Régionale 
-
-La mise en oeuvre d'un projet d'élaboration d'une Liste Rouge Régionale peut se décomposer en 3 étapes, présentées et réalisées ci-dessous (application à l'échelle de la Bretagne): 
-
-
-
-## Identification des espèces soumises au processus d'évaluation : 
-
-   1) Etablir la liste des espèces présentes dans la région, sur la base d'un référentiel taxonomique et d'un catalogue régional de référence. Les espèces présentes dans la région sont répertoriées au sein d'un excel et mis dans un dataframe (reg_espece).
-
-
-   2) Identifier dans cette liste les espèces ne devant pas être soumis à l'évaluation, à placer en catégorie "Non Applicable" (NA). A une échelle régionale, certaines espèces ne doivent pas être soumises au processus d'évaluation. Il s'agit des espèces introduites et des espèces erratiques pour lesquelles la méthodologie n'est pas applicable. 
-
-
-Espèces introduites et indigènes : Il est nécessaire de définir des principes généraux permettant de déterminer la limte entre espèces introduites et espèces indigènes. De manière générale, il est recommandé de considérer les espèces introduites après 1500 comme non indigènes. Toutefois, pour certains groupes taxonomiques, les experts peuvent s'accorder sur d'autres principes analogues si la situation le justifie. 
-
-Espèces erratiques : une espèce est considérée comme erratique lorsque sa présence dans la région est occasionnelle, c'est à dire en général irrégulière et peu fréquente. Pour distinguer les espèces régulièrement présentes des espèces erratiques, il convient de s'accorder sur des principes reposant en particulier sur la fréquence d'observation de l'espèce dans la région. 
-
-
-
-Pour l'exemple de la Bretagne, ces dernières sont renseignées sous forme de "NA" dans la colonne "statut_lrr". Les statuts renseignés correspondent à ceux utilisé dans la précédente liste rouge régionale :
-
-```{r Création statut_lrr}
-# Ajout colonne "statut_lrr" pour indiquer les espèces soumises et non soumises au processus d'évaluation
-reg_espece$statut_lrr <- ifelse(reg_espece$statut_esp %in% c("introduite", "erratique"),
-                                "NA", 
-                                "Applicable")
-```
-
-
-# Prétraitement des dataframes 
-
-
-## Les Absences et les Présences des espèces 
-
-Les absences de valeurs d'effectifs (valeurs effectif = 0) doivent être intégrés dans les différents dataframes traités lorsque l'espèce a été présente au moins une fois sur une des stations : 
-
-### Dataframe reg_indicateur
-
-```{r Ajout des Présences / Absences reg_indicateur}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
-combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
-                            indicateur = unique(reg_indicateur$indicateur),
-                            stade = unique(reg_indicateur$stade),
-                            esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
-
-# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
-reg_indicateur_complet <- combinaisons_esp_sta %>%
-  left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(esp_code_alternatif,
-         annee,
-         stade,
-         indicateur, 
-         valeur)
-
-```
-
-
-### Dataframe ope_selection  
-
-```{r Ajout des Présences / Absences ope_indicateur}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
-combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
-                            indicateur = unique(ope_indicateur$indicateur),
-                            stade = unique(ope_indicateur$stade),
-                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
-                            pop_id = unique(ope_indicateur$pop_id))
-
-# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
-ope_indicateur_complet <- combinaisons_esp_ope %>%
-  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
-  mutate(valeur = ifelse(is.na(valeur), 0, valeur)) %>% 
-  select(esp_code_alternatif,
-         annee,
-         stade,
-         indicateur, 
-         valeur,
-         pop_id)
-
-```
-
-## Point de vue global sur les données disponibles (effectifs) : 
-
-```{r}
-# Filtrer les données pour l'indicateur 'effectif_total'
-ope_indicateur_effectif <- ope_indicateur_complet %>%
-  filter(indicateur == 'effectif_total', 
-         stade == "ad") %>%
-  group_by(esp_code_alternatif, annee) %>%
-  summarize(effectif_total_cumule = sum(valeur)) %>%
-  pivot_wider(names_from = annee, values_from = effectif_total_cumule, values_fill = 0)
-
-```
-
-
-
-
-## Taux d'occurrence des espèces par station
-
-```{r}
-nombre_total_stations <- n_distinct(ope_indicateur_complet$pop_id)
-nombre_valeurs_esp <- length(unique(ope_indicateur_complet$esp_code_alternatif))
-
-nombre_total_annee <- ope_indicateur_complet %>%
-  group_by(esp_code_alternatif) %>%
-  summarise(nombre_annees = max(annee) - min(annee)) %>% 
-  pull()
-
-```
-
-
-```{r}
-# J'ai ici 43 stations, maintenant je cherche à savoir pour chaque espèces, combien d'occurence de présence au sein des stations elles sont présentes (et lesquelles).
-
-tab_analyse_bay <- ope_indicateur_complet %>% 
-  filter(stade == "ad",
-         indicateur == "effectif_total") %>%
-  group_by(pop_id, annee, esp_code_alternatif)
-
-
-tab_analyse_bay <- tab_analyse_bay %>%
-  group_by(esp_code_alternatif, pop_id) %>%
-  summarize(somme_obs_esp_sta = sum(valeur > 0)) %>% 
-  ungroup()
-
-
-# Filtrer les espèces présentes sur plus de 20% au sein de chacune des stations
-tab_analyse_bay <- tab_analyse_bay %>%
-  group_by(esp_code_alternatif) %>%
-  filter(somme_obs_esp_sta >= 0.20 * nombre_total_annee) %>% 
-  mutate(nombre_total_stations_20 = n_distinct(pop_id)) %>% 
-  filter(nombre_total_stations_20 > 10)
-
-# J'ai donc produit un tableau où j'ai mes espèces et mes stations qui sont intéressantes à regarder pour les analyses bayésiennes! 
-
-pop_id <- tab_analyse_bay %>% 
-  pull(pop_id)
-
-```
-
-
-
-
-
-```{r Sauvegarde}
-# SAUVEGARDE ----
-save(tab_analyse_bay,
-     ope_indicateur_complet,
-     file = "../processed_data/pre_traitement_criteres_lrr_uicn.rda")
-```
-
-
-
-
-
-
-
-
-
 
 
 Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données insufisantes : 
@@ -267,9 +88,11 @@ Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du d
 
 ```{r Mise en place DD}
 
-esp_DD <- c("ALF","BRB", "BRE", "CCO","EPI", "EPT", "FLE","MUP", "LPR", "LPM","TAN", "VAR","ALA")
-
-reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_DD & reg_espece$statut_lrr == "Applicable", "DD", reg_espece$statut_lrr)
+esp_DD <- c("ALF", "BRB", "BRE", "CCO", "EPI", "EPT", "FLE","MUP", "LPR", "LPM","TAN", "ALA", "GRE","ABL", "ROT")
+reg_espece$statut_lrr <- NA # Création d'une colonne statut_lrr
+reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_DD, "DD", NA)
+reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_DD | reg_espece$statut_esp %in% c("introduite","erratique"), "DD", NA)
+reg_espece$statut_lrr <- ifelse(is.na(reg_espece$statut_lrr), "Applicable", reg_espece$statut_lrr)
 
 ```
 
@@ -298,46 +121,107 @@ On établi ainsi une colone "periode_etude_lrr" pour chaque espèce évaluée à
  
 ```{r Tableau liste espece a traiter}
 reg_espece <- reg_espece %>% 
-  filter(statut_lrr == "Applicable") %>% 
-  select(esp_nom_commun,
-         esp_code_alternatif,
-         temps_generation)
+  filter(statut_lrr == "Applicable")
+```
 
+
+```{r Tableau liste espece a traiter}
 reg_espece <- reg_espece %>%
-  mutate(periode_etude_lrr = ifelse(3 * temps_generation >= 10, 3 * temps_generation, 10))
+  mutate(periode_etude_lrr = ifelse(3 * temps_generation >= 10, 3 * temps_generation, 10)) %>% 
+  mutate(annee_debut = 2023 - periode_etude_lrr) %>%
+  mutate(periode_etude = paste(annee_debut, "2023", sep = "-"))
+```
 
-colnames(reg_espece) <- c("Nom commun", "Nom de code", "Temps de génération","Période d'étude LRR")
 
-reg_espece %>% 
+```{r Tableau liste espece a traiter}
+tab_reg_espece <- dplyr::select(reg_espece, 
+                                esp_nom_commun, 
+                                esp_code_alternatif, 
+                                temps_generation, 
+                                periode_etude_lrr, 
+                                periode_etude)
+```
+
+
+```{r Tableau liste espece a traiter}
+colnames(tab_reg_espece) <- c("Nom commun", "Nom de code", "Temps de génération","Durée d'étude LRR","Période d'étude LRR")
+
+tab_reg_espece %>% 
   flextable::flextable() %>% 
   flextable::autofit() %>% 
   flextable::colformat_int(j = c(1, 3), big.mark = " ")
 
 ```
 
+### Dataframe reg_indicateur
+
+```{r Ajout des Présences / Absences reg_indicateur}
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
+                            indicateur = unique(reg_indicateur$indicateur),
+                            stade = unique(reg_indicateur$stade),
+                            esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
+```
+
+
+```{r Ajout des Présences / Absences reg_indicateur}
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+reg_indicateur_complet <- combinaisons_esp_sta %>%
+  left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur))
+
+```
+
+
+### Dataframe ope_selection  
+
+```{r Ajout des Présences / Absences ope_indicateur}
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
+                            indicateur = unique(ope_indicateur$indicateur),
+                            stade = unique(ope_indicateur$stade),
+                            esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
+                            pop_id = unique(ope_indicateur$pop_id))
+```
+
+
+```{r Ajout des Présences / Absences ope_indicateur}
+# Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
+ope_indicateur_complet <- combinaisons_esp_ope %>%
+  left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur))
+
+```
+
 
 ```{r Liste espèce à traiter}
 # Construction d'un df avec espèce applicable et leurs temps de génération
-reg_periode_etude_lrr <- reg_espece %>% 
-  rename(esp_code_alternatif = "Nom de code",
-         periode_etude_lrr = "Période d'étude LRR") %>% 
-  select(esp_code_alternatif,
-         periode_etude_lrr) %>% 
-  na.omit()
+reg_periode_etude_lrr <- reg_espece %>%
+  dplyr :: select(esp_code_alternatif,
+                  periode_etude_lrr)
 
-
-# Maintenant, reg_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans reg_indicateur
-reg_indicateur_complet <- reg_indicateur_complet %>%
-  left_join(reg_periode_etude_lrr, by = "esp_code_alternatif") %>% 
-  filter(esp_code_alternatif %in% mes_especes)
+ope_periode_etude_lrr <- reg_espece %>%
+    dplyr :: select(esp_code_alternatif,
+                  periode_etude_lrr)
 
 
 # Maintenant, ope_indicateur_complet contient toutes les combinaisons possibles avec des valeurs de 0 pour celles qui étaient manquantes dans ope_indicateur
 ope_indicateur_complet <- ope_indicateur_complet %>%
+  left_join(ope_periode_etude_lrr, by = "esp_code_alternatif") %>% 
+  filter(esp_code_alternatif %in% mes_especes)
+
+ope_indicateur_complet_effectif <- ope_indicateur_complet %>%
+  filter(indicateur == "effectif_total",
+         stade == "ind")
+
+
+reg_indicateur_complet <- reg_indicateur_complet %>%
   left_join(reg_periode_etude_lrr, by = "esp_code_alternatif") %>% 
-  filter(esp_code_alternatif %in% mes_especes, 
-         indicateur == "effectif_total",
-         stade == "ad")
+  filter(esp_code_alternatif %in% mes_especes)
+
+reg_indicateur_complet_effectif <- reg_indicateur_complet %>%
+  filter(indicateur == "effectif_total",
+         stade == "ind")
 
 ```
 
@@ -346,12 +230,10 @@ ope_indicateur_complet <- ope_indicateur_complet %>%
 
 On observe plus en détail l'allure de l'occurrence des espèces par station (les espèces au stade adulte) : 
 
-
 ```{r Calcul taux occurrence, fig.height = 25, fig.width = 25}
 
-occur_sta_esp <- ope_indicateur_complet %>% 
-  filter(stade == "ad",
-         indicateur == "effectif_total", 
+occur_sta_esp <- ope_indicateur_complet_effectif %>% 
+  filter(stade == "ind",
          esp_code_alternatif == "ANG") %>%
   group_by(pop_id, annee, esp_code_alternatif)
 
@@ -375,4 +257,14 @@ ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur))
 
 ```
 
+
+# Sauvegarde
+
+```{r}
+save(ope_indicateur,
+     reg_espece,
+     ope_indicateur_complet,
+     reg_indicateur_complet,
+     file = "../processed_data/pre_traitement_criteres_lrr_uicn.rda")
+```
 

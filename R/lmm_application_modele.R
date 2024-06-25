@@ -1,4 +1,4 @@
-glm_application_modele <- function(data, 
+lmm_application_modele <- function(data, 
                                    liste_periodes) {
   
   results_list <- map(liste_periodes, function(period) {
@@ -13,11 +13,11 @@ glm_application_modele <- function(data,
       select(espece, stade, indicateur) %>%
       distinct()
     
-    period_label <- paste0(mon_annee_depart, "_", mon_annee_fin)
+    period_label <- paste0(mon_annee_depart, "-", mon_annee_fin)
     
     combinations %>%
       pmap(function(espece, stade, indicateur) {
-        results <- glm_calcul_modele(data = period_data,
+        results <- lmm_calcul_modele(data = period_data,
                                      mon_espece = espece,
                                      mon_stade = stade,
                                      mon_indicateur = indicateur)

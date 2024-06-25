@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Modèles Linéaires Généralisés à effet mixte"
+subtitle: "Modèles Linéaires Mixtes"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -17,9 +17,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
 
-Script : 13_GLMM
+Script : 13_LMM
 
-Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur les tendances des indicateurs régionaux. Il a également l'objectif de regarder l'impact des changements de protocoles sur les stations au cours des années d'études grâce aux modèles linéaires généralisés à effets mixtes. 
+Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur les tendances des indicateurs régionaux. Il a également l'objectif de regarder l'impact des changements de protocoles sur les stations au cours des années d'études grâce aux modèles linéaires mixtes. 
 
 
 # Installation 
@@ -31,8 +31,6 @@ Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur
 library(ggthemes)
 library(tidyverse)
 library(aspe)
-library(ggplot2)
-library(dplyr)
 library(lme4)
 library(lmerTest)
 library(car)
@@ -55,33 +53,26 @@ mei_table <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^mei")
 load(mei_table)
-
 ```
 
 ```{r Chargement des données}
 ## Chargement des données ----
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 load(file = "../processed_data/selection_pop_ope.rda")
-load(file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
-
+load(file = "../processed_data/lm_mann_kendall_tendances.rda")
 ```
 
 ```{r Chargement des fonctions}
-
-source(file = "../R/glm_calcul_modele.R")
-source(file = "../R/glm_application_modele.R")
+source(file = "../R/lmm_calcul_modele.R")
+source(file = "../R/lmm_application_modele.R")
 source(file = "../R/lm_application_modele.R")
 source(file = "../R/lm_calcul_modele.R")
-
 ```
 
 
-# Modèles Linéaires Généralisés à effets mixtes (GLMM)
+# Modèles Linéaires Mixtes (MLM)
 
 ## Introduction
-
-Les modèles linéaires généralisés à effets mixtes combinent les caractéristiques des modèles linéaires généralisés (modéliser des variables non-normalement distribuées, spécialement des données binaires et de comptage) et des modèles à effets mixtes (modéliser des données groupées).
-
 
 Nous utiliserons dans cette étude le package *lme4* pour ajuster des modèles mixtes. La fonction *lmer* de ce package estime les paramètres d’un modèle linéaire mixte. Les formules utilisées par *lmer* suivent la forme *reponse ~ predicteurs*, avec une syntaxe spécifique pour les effets aléatoires.
 
@@ -91,26 +82,14 @@ Nous utiliserons dans cette étude le package *lme4* pour ajuster des modèles m
 Dans notre étude, *pop_id* est la variable contenant les identifiants des groupes dans le jeu de données *ope_indicateur_glmm_ex*. Le terme (1 + obj_libelle | pop_id ) indique de modéliser un effet aléatoire du groupe *pop_id* pour l’ordonnée à l’origine (codée “1”) et le coefficient de *obj_libelle*. Si seule l’ordonnée à l’origine variait par groupe, donc si la pente de *valeur* vs. *obj_libelle* était fixée à une seule valeur pour tous les groupes, on pourrait écrire (1 | *pop_id*). *pro_libelle* est un prédicteur définis au niveau du groupe, il apparait donc dans la formule comme n'importe quel autre prédicteur.
 
 
-## Modèles linéaires généralisés à effets mixtes
-
-Les modèles linéaires généralisés à effets mixtes (abbréviés GLMM, pour generalized linear mixed models) combinent les caractéristiques de deux types de modèles : les modèles linéaires généralisés et les modèles linéaires mixtes.
-
-
-Le package *lme4* contient une fonction *glmer* pour estimer les paramètres d’un GLMM. Celle-ci est semblable à *lmer*, excepté qu’on spécifie la distribution non-normale de la réponse par le biais du paramètre *family*.
-
-
-
-
-
-
 # Pré-traitement 
 
-Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs des indicateurs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux opérations de pêches (*ope_indicateur*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats à l'opération. 
+Afin d'appliquer les modèles MLM, il est nécessaire de construire un jeu de données contenant les valeurs des indicateurs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux opérations de pêches (*ope_indicateur*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats à l'opération. 
 
 
 ```{r Création dataframe ope_indicateur_glm}
 # Création d'un df complet pour l'application des modèles GLM
-ope_indicateur_glm <- ope_indicateur %>%
+ope_indicateur_lmm <- ope_indicateur %>%
   filter(indicateur%in% c("biomasse","densite_surface","effectif_total","pourcentage_juveniles")) %>% # Sélection des indicateurs à étudier
   rename(espece = esp_code_alternatif) %>%
   mef_ajouter_objectif() %>%
@@ -118,7 +97,7 @@ ope_indicateur_glm <- ope_indicateur %>%
   filter (!obj_libelle == "DCE – Référence") %>% 
   select(-obj_id)  
 
-ope_indicateur_glm <- ope_indicateur_glm %>% # On s'assure que pop_id est bien en factor
+ope_indicateur_lmm <- ope_indicateur_lmm %>% # On s'assure que pop_id est bien en factor
   mutate(pop_id = as.factor(pop_id)) %>%
   filter(espece %in% c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")) # Sélection des espèces étudiées pour la révision de la LRR
 
@@ -145,36 +124,14 @@ liste_periodes_etude <- list(c(2008, 2023),
 Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
 
 ```{r Excecution fonctions GLM}
-glm_resultats <- glm_application_modele(data = ope_indicateur_glm,
+lmm_resultats <- lmm_application_modele(data = ope_indicateur_lmm,
                                         liste_periodes = liste_periodes_etude)
 ```
 
 
 
-Les résultats de la fonction apparaissent dans le dataframe *glm_resultats*. Les résultats significatifs sont ensuite renvoyés dans un nouveau dataframe *glm_resultats_signif*. 
 
-```{r Résultats fonctions GLM}
-glm_resultats_signif <- glm_resultats %>% # Création d'un dataframe avec l'ensemble des résultats significatifs
-  filter(sig %in% c("***","**","*"))
-```
-
-
-
-Nous réalisons maintenant une représentation graphiques de ces résultats 
-
-```{r}
-# glm_resultats %>% 
-#   filter(esp_code_alternatif == "GAR",
-#          indicateur == "biomasse",
-#          stade == "ind") %>% 
-#   ggcoef_model(glm_resultats, exponentiate = TRUE, intercept = TRUE)
-
-```
-
-
-
-
-#### Je souhaite applqiuer les analyses GLM pour mon choix d'espèces / stades / Indicateurs : 
+#### Je souhaite applqiuer les analyses LMM pour mon choix d'espèces / stades / Indicateurs : 
 
 ### Tri des espèces
 On ne retient qeue les espcèes pour lesquelles nous avons un fort intérêt (au vu des premières tendances dégagées et dans l'optique de la réactualisation de la LRR). 
@@ -192,66 +149,146 @@ On ne retient que les indicateurs les plus pertinents à l'analyse des tendances
 
 ```{r Tri indicateurs}
 ope_indicateur_reduit <- ope_indicateur_reduit %>% 
-filter(!indicateur %in% c("pourcentage_site_presence_esp",
+  filter(!indicateur %in% c("pourcentage_site_presence_esp",
                           "longueur_mediane",
                           "densite_volumique",
                           "effectif_total",
-                          "biomasse")) %>% 
-  filter(!(indicateur == "densite_surface" & esp_code_alternatif == "VAI" & stade == "ad" & valeur > 0.08)) # On enlève une valeur abérante qui fausse le graphique
-
+                          "biomasse"),
+         stade == "ind")
 ```
 
 
-On réalise un pré-traitement dans les données de notre ope_indicateur : sélection que des stades adultes pour toutes les espèces sauf "ind" pour la LPP et le SAT. 
-
-```{r}
-# Filtrer les lignes avec stade == "ad" sauf pour LPP et SAT
-filtered_ad_ope <- ope_indicateur_reduit %>%
-  filter(stade == "ad" & !esp_code_alternatif %in% c("LPP", "SAT"))
-
-# Filtrer les lignes avec stade == "ind" pour LPP et SAT, ainsi que pour les indicateurs spécifiques
-filtered_ind_ope <- ope_indicateur_reduit %>%
-  filter(stade == "ind" & 
-         (esp_code_alternatif %in% c("LPP", "SAT") | 
-          indicateur %in% c("pourcentage_juveniles")))
-
-# Combiner les deux dataframes
-ope_indicateur_tri_final_tendances_LRR <- bind_rows(filtered_ad_ope, filtered_ind_ope)
-
-
-ope_indicateur_tri_final_tendances_LRR <- ope_indicateur_tri_final_tendances_LRR %>%
-  rename(espece = esp_code_alternatif) %>%
-  mef_ajouter_objectif() %>%
+```{r Tri indicateurs}
+ope_indicateur_reduit <- ope_indicateur_reduit %>%
   mef_ajouter_type_protocole() %>% 
-  filter (!obj_libelle == "DCE – Référence") %>% 
+  mef_ajouter_objectif() %>% 
+  filter (!obj_libelle %in% c("DCE – Référence", 
+                              "Étude")) %>% 
+  unique()%>% 
   select(-obj_id)
+  
 
+ope_indicateur_reduit <- ope_indicateur_reduit %>% 
+  rename(espece = esp_code_alternatif)
 ```
 
 
-On applique les modèles GLM (sur toutes les périodes pour tout le monde tant pis)
 ```{r Excecution fonctions GLM}
-glm_resultats_LRR <- glm_application_modele(data = ope_indicateur_tri_final_tendances_LRR,
-                                        liste_periodes = liste_periodes_etude)
+reg_indicateur_tendances_lmm <- lmm_application_modele(data = ope_indicateur_reduit,
+                                                           liste_periodes = liste_periodes_etude)
 ```
 
 
-
-Les résultats de la fonction apparaissent dans le dataframe *glm_resultats*. Les résultats significatifs sont ensuite renvoyés dans un nouveau dataframe *glm_resultats_signif*. 
-
-```{r Résultats fonctions GLM}
-glm_resultats_LRR_signif <- glm_resultats_LRR %>% # Création d'un dataframe avec l'ensemble des résultats significatifs
-  filter(sig %in% c("***","**","*"))
+```{r Excecution fonctions GLM}
+reg_indicateur_lrr_tendances_lmm <- reg_indicateur_tendances_lmm %>% 
+  filter(row_name == "annee") %>% 
+  select(periode,
+         esp_code_alternatif,
+         stade,
+         indicateur,
+         p_value,
+         Estimate,
+         sig) %>% 
+  mutate(trend = case_when(
+      Estimate > 0 ~ "\U2197",
+      Estimate < 0 ~ "\U2198",
+      TRUE ~ "."))
 ```
 
 
-Explications - https://pmarchand1.github.io/ECL8202/notes_cours/05-Modeles_generalises_mixtes.html 
+```{r Excecution fonctions GLM}
+# Filtrer les données selon les critères spécifiés
+reg_indicateur_lrr_tendances_lmm <- reg_indicateur_lrr_tendances_lmm %>%
+  filter(
+    (esp_code_alternatif == "ANG" & periode == "1990-2023") |
+    (esp_code_alternatif %in% c("CHE", "LPP") & periode == "2005-2023") |
+    (esp_code_alternatif %in% c("BRO", "LOF") & periode == "2008-2023") |
+    (esp_code_alternatif %in% c("VAR", "GAR", "VAI", "PER") & periode == "2011-2023") |
+    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & periode == "2013-2023")
+  )
+
+
+```
+
+Explications - https://pmarchand1.github.io/ECL8202/notes_cours/05-Modeles_generalises_mixtes.html
+
+
+# On réalise un tableau : 
+```{r}
+tab_reg_indicateur_lrr_tendances_lmm <- reg_indicateur_lrr_tendances_lmm %>%
+  select(esp_code_alternatif,
+         periode,
+         indicateur,
+         trend,
+         sig) %>% 
+  arrange(esp_code_alternatif, 
+          indicateur) %>%   # Ordonner par espèce, indicateur et stade
+  gt() %>%
+  tab_header(
+    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
+  ) %>%
+  cols_label(
+    esp_code_alternatif = "Code Espèce",
+    indicateur = "Indicateur",
+    trend = "Tendance Regression linéaire",
+    sig = "Significativité") %>%
+  tab_options(table.font.size = "small", data_row.padding = px(5))
+
+# Afficher le tableau
+tab_reg_indicateur_lrr_tendances_lmm
+```
+
 
 # Sauvegarde
 
 ```{r}
-save(glm_lm_resultats,
-     glm_resultats_LRR,
-     file = "../processed_data/glm_lm_tendances.rda")
+save(reg_indicateur_lrr_tendances_lmm,
+     reg_indicateur_lrr_tendances_lm,
+     reg_indicateur_lrr_tendances_mk_st,
+     tab_reg_indicateur_lrr_tendances_lmm,
+     tab_reg_indicateur_lrr_tendances_lm,
+     tab_reg_indicateur_lrr_tendances_mk_st,
+     file = "../processed_data/mk_lmm_lm_tendances.rda")
 ```
+
+
+
+A VOIR APRES
+
+
+## Les histoires de step_aic
+
+```{r}
+ope_lmm <- ope_indicateur_tri_final_tendances_LRR %>% 
+  filter(espece == "ANG")
+
+
+lmmm <- lmer(valeur ~ (1 | pop_id) + annee + pro_libelle + obj_libelle, data = ope_lmm)
+
+model_aic <- MASS::stepAIC(lmmm)
+
+```
+
+
+
+## Taux d'Evolution
+
+On souhaite calculer le taux d'évolution inter-annuel, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la population ; si il est négatif, cela correspond à un déclin. 
+
+```{r Calcul des taux evolution}
+# Calcul des taux d'évolution depuis 1990
+
+
+taux_evolution_LRR <- calcul_taux_evol(df = reg_indicateur,
+                             var_x = annee,
+                             var_y = valeur,
+                             debut = 1990,
+                             esp_code_alternatif,
+                             stade,
+                             indicateur)
+print(taux_evol_1990)
+
+```
+
+
 

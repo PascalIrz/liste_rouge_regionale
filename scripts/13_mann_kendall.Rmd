@@ -1,5 +1,5 @@
 ---
-title: "14_mann_kendall"
+title: "13_mann_kendall_sen_theil"
 author: "Léa Bouchet"
 date: "2024-06-06"
 output: html_document
@@ -13,9 +13,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
 
-Script : 14_Mann_Kendall
+Script : 13_mann_kendall_sen_theil
 
-Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendances des indicateurs régionaux. Il a également l'objectif de comparer les données issues des test de M-K avec ceux des modèles linéaires généralisés (GLM) afin d'observer les divergences entre ces deux modèles. 
+Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendances des indicateurs régionaux. Il a également l'objectif de comparer les données issues des test de M-K avec ceux des modèles linéaires mistes / des régressions linéiares et des analyses bayésiennes afin d'observer les divergences entre l'ensemble de ces modèles. 
 
 
 # Installation 
@@ -26,11 +26,8 @@ Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendanc
 ## Chargement des packages ----
 library(ggthemes)
 library(tidyverse)
-library(ggplot2)
-library(dplyr)
 library(trend)
 library(ggh4x)
-
 ```
 
 ```{r Chargement des données}
@@ -64,34 +61,94 @@ Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
 On souhaite le faire pour plusieurs périodes (création de la fonction *mk_st_multi_periodes*). Nous sélectionnons les périodes à étudier (qui sera une variable de la fonction) : 
 
 
-
 ```{r Mise en place des périodes}
+reg_indicateur_reduit <- reg_indicateur_reduit %>% 
+  filter(indicateur %in% c("densite_surface",
+                           "taux_occurrence",
+                           "pourcentage_juveniles"),
+         stade == "ind")
+
 periodes <- list(c(1990,2023),
                  c(2005, 2023), 
                  c(2008, 2023),
                  c(2011, 2023),
                  c(2013, 2023))
+
+#Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant. 
+
+reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>% 
+  rename(stade = stade.x)
 ```
 
 
+```{r Mise en place des périodes}
 
-Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant. 
+# Appeler la fonction pour calculer les résultats pour chaque période
+reg_indicateur_lrr_tendances_mk_st <- mk_st_multi_periodes(df = reg_indicateur_reduit,
+                                                              periods = periodes,
+                                                              valeur = "valeur",
+                                                              annee = "annee",
+                                                              esp_code_alternatif = "esp_code_alternatif",
+                                                              indicateur = "indicateur",
+                                                              stade = "stade")
+
+# Concaténer tous les résultats en un seul dataframe final
+reg_indicateur_lrr_tendances_mk_st <- bind_rows(reg_indicateur_lrr_tendances_mk_st, 
+                                                .id = "periode")
+
+# Filtrer les données selon les critères spécifiés
+reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
+  filter(
+    (esp_code_alternatif == "ANG" & periode == "1990-2023") |
+    (esp_code_alternatif %in% c("CHE", "LPP") & periode == "2005-2023") |
+    (esp_code_alternatif %in% c("BRO", "LOF") & periode == "2008-2023") |
+    (esp_code_alternatif %in% c("VAR", "GAR", "VAI", "PER") & periode == "2011-2023") |
+    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & periode == "2013-2023")
+  )
+
+```
+
+
+## Synthèse des premiers résultats
+
+Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons dans ce tableau final. Dans notre étude, les valeurs de densité de surface, le pourcentage de juvéniles et le taux d'occurrence semblent être les 3 données les plus parlantes et représentatives de l'état des populations de poissons d'eau douce de Bretagne. Ces informations sont alors synthétisées dans un tableau, sur deux périodes différentes. Les flèches vers le haut indiquent une croissance et celle vers le bas une décroissance de l'indicateur pour l'espèce concernée. 
+
 
 ```{r}
-mk_st_by_group_resultats_reg_LRR <- mk_st_multi_periodes(df = reg_indicateur_tri_final_tendances_LRR,
-                                                     periods = periodes,
-                                                     valeur = "valeur",
-                                                     annee = "annee",
-                                                     esp_code_alternatif = "esp_code_alternatif",
-                                                     indicateur = "indicateur",
-                                                     stade = "stade")
+# Créer le tableau synthétique avec gt
+tab_reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
+  select(esp_code_alternatif,
+         periode,
+         indicateur,
+         trend,
+         sig) %>% 
+  arrange(esp_code_alternatif, 
+          indicateur) %>%   # Ordonner par espèce, indicateur et stade
+  gt() %>%
+  tab_header(
+    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
+  ) %>%
+  cols_label(
+    esp_code_alternatif = "Code Espèce",
+    indicateur = "Indicateur",
+    trend = "Tendance Mann-Kendall / Sen Theil",
+    sig = "Significativité") %>%
+  tab_options(table.font.size = "small", data_row.padding = px(5))
+
+# Afficher le tableau
+tab_reg_indicateur_lrr_tendances_mk_st
+
 ```
+
 
 
 Sauvegarde : 
 
 ```{r}
-save(mk_st_by_group_resultats,
-     file = "../processed_data/mann_kendall_tendances.rda")
+save(reg_indicateur_lrr_tendances_mk_st,
+     reg_indicateur_lrr_tendances_lm,
+     tab_reg_indicateur_lrr_tendances_mk_st,
+     tab_reg_indicateur_lrr_tendances_lm,
+     file = "../processed_data/lm_mann_kendall_tendances.rda")
 ```
 
