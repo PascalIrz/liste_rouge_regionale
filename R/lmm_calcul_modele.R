@@ -16,7 +16,9 @@ lmm_calcul_modele <- function(data,
     return(NULL)
   }
   
-  model <- try(lmer(valeur ~ (1 | pop_id) + annee + pro_libelle + obj_libelle, data = filtered_data), silent = TRUE)
+ # model <- try(lmer(valeur ~ (1 | pop_id) + annee + pro_libelle + obj_libelle, data = filtered_data), silent = TRUE)
+  model <- try(lmer(valeur ~ (1 | pop_id) + annee + pro_libelle, data = filtered_data), silent = TRUE)
+  
   
   if (inherits(model, "try-error")) {
     return(NULL)

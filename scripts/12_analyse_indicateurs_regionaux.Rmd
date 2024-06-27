@@ -356,7 +356,8 @@ calculate_pvalues <- function(data,
 ```{r}
 # Définir une fonction pour joindre les p-values au dataframe d'origine
 join_pvalues <- function(original_data, pvalues_data) {
-  join_cols <- c("esp_code_alternatif", "indicateur")
+  join_cols <- c("esp_code_alternatif", 
+                 "indicateur")
   
   pvalues_data <- original_data %>%
     select(all_of(join_cols)) %>%

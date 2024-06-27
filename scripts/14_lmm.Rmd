@@ -110,8 +110,8 @@ Avant de lancer le modèle, il est important de définir la liste des périodes 
 liste_periodes_etude <- list(c(2008, 2023), 
                              c(2005, 2023),
                              c(1990, 2023),
-                             c(2011,2023),
-                             c(2013,2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
+                             c(2011, 2023),
+                             c(2013, 2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
 
 ```
 
@@ -129,16 +129,14 @@ lmm_resultats <- lmm_application_modele(data = ope_indicateur_lmm,
 ```
 
 
-
-
 #### Je souhaite applqiuer les analyses LMM pour mon choix d'espèces / stades / Indicateurs : 
 
 ### Tri des espèces
 On ne retient qeue les espcèes pour lesquelles nous avons un fort intérêt (au vu des premières tendances dégagées et dans l'optique de la réactualisation de la LRR). 
 
 ```{r Tri espèces}
-ope_indicateur_reduit <- ope_indicateur %>% 
-  filter(esp_code_alternatif %in% c("ANG","BRO", "CHA", "CHE",
+ope_indicateur_reduit <- ope_indicateur_lmm %>% 
+  filter(espece %in% c("ANG","BRO", "CHA", "CHE",
                                     "PER", "GAR", "GOU", "LOF", "LPP",
                                     "SAT", "TRF", "VAI", "VAR"))
 ```
@@ -167,9 +165,6 @@ ope_indicateur_reduit <- ope_indicateur_reduit %>%
   unique()%>% 
   select(-obj_id)
   
-
-ope_indicateur_reduit <- ope_indicateur_reduit %>% 
-  rename(espece = esp_code_alternatif)
 ```
 
 

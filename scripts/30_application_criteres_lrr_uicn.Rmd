@@ -228,6 +228,58 @@ print(ope_indicateur_critere_A2a_graph)
 
 
 
+```{r}
+# Définir les couleurs pour chaque zone
+color_CR <- "#DB0101"  # C5/M100/J100/N5
+color_EN <- "#FF8C00"  # C0/M28/J100/N0
+color_VU <- "#FFFC00"  # C0/M0/J98/N0
+color_Minor <- "#faf0e0"  # Préoccupation mineure, blanc
+
+
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
+  mutate(label = paste0(esp_code_alternatif))
+
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>% 
+  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI"))
+
+
+# Modifier le code pour encadrer les barres avec un trait noir, formater l'axe des ordonnées en pourcentage, et ajouter des parenthèses après les noms
+ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
+  ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), y = pourcentage_evo, fill = factor(sign(pourcentage_evo)))) +
+  geom_rect(aes(ymin = -Inf, ymax = -80, xmin = -Inf, xmax = Inf), fill = color_CR, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone CR et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -80, label = "CR"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour CR et mettre en italique
+  geom_rect(aes(ymin = -80, ymax = -50, xmin = -Inf, xmax = Inf), fill = color_EN, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone EN et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -60, label = "EN"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour EN et mettre en italique
+  geom_rect(aes(ymin = -50, ymax = -30, xmin = -Inf, xmax = Inf), fill = color_VU, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone VU et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -35, label = "VU"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour VU et mettre en italique
+  geom_rect(aes(ymin = -30, ymax = Inf, xmin = -Inf, xmax = Inf), fill = color_Minor, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone Minor et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -12, label = "LC"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour LC et mettre en italique
+  geom_text(aes(label = label), fontface = "bold", vjust = -0.3) +  # Utiliser la nouvelle colonne pour les étiquettes des barres et remonter légèrement les étiquettes
+  labs(x = NULL, y = "Taux d'évolution de la densité surfacique") +
+  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
+  theme_bw() +
+  theme(
+    strip.background = element_rect(color = "black", fill = "#faffff"),
+    legend.position = "bottom",
+    panel.background = element_blank(),  # Enlever le fond
+    panel.grid.major = element_blank(),  # Enlever le quadrillage majeur
+    panel.grid.minor = element_blank(),  # Enlever le quadrillage mineur
+    axis.text.x = element_blank(),  # Supprimer les étiquettes de l'axe x
+    axis.title.x = element_blank(),  # Supprimer le titre de l'axe x
+    axis.ticks.x = element_blank()  # Enlever les ticks de l'axe x
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1), expand = expansion(mult = c(0.05, 0.05)), breaks = c(-90, -80, -50, -30, 0, 50, 100)) +  # Formater l'axe des ordonnées en pourcentage et ajouter un tic à -90
+  scale_fill_manual(values = c("#ed0000", "#92D050"),
+                    labels = c("Diminution", "Augmentation"), 
+                    name = "Tendance temporelle")
+
+# Afficher le graphique
+print(ope_indicateur_critere_A2a_graph)
+```
 
 
 
@@ -237,8 +289,8 @@ print(ope_indicateur_critere_A2a_graph)
 ```{r}
 # Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
 reg_indicateur_critere_A2b <- reg_indicateur_complet %>%
-  filter(stade == "ind") %>% 
-  filter(indicateur == "densite_surface") %>% 
+  filter(stade == "ind",
+         indicateur == "densite_surface") %>% 
   arrange(esp_code_alternatif,
           annee) %>% 
   group_by(esp_code_alternatif) %>%
