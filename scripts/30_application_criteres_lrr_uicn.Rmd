@@ -123,7 +123,6 @@ ope_indicateur_complet <- ope_indicateur_complet %>%
          -valeur) %>% 
   unique()
 
-
 ```
 
 
@@ -226,8 +225,6 @@ print(ope_indicateur_critere_A2a_graph)
 
 ```
 
-
-
 ```{r}
 # Définir les couleurs pour chaque zone
 color_CR <- "#DB0101"  # C5/M100/J100/N5
@@ -284,66 +281,90 @@ print(ope_indicateur_critere_A2a_graph)
 
 
 
+
+
+
+
+
+
+
+
 ## Critère A2b : indice d'abondance adapté au taxon : densité_surface : 
 
 ```{r}
-# Calcul de l'année la plus récente moins le temps de génération pour chaque espèce
-reg_indicateur_critere_A2b <- reg_indicateur_complet %>%
-  filter(stade == "ind",
-         indicateur == "densite_surface") %>% 
-  arrange(esp_code_alternatif,
-          annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
-  ungroup() %>% 
-  filter(annee == "2023")
-
-
-# Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
-reg_indicateur_max_annee_moins_generation <- reg_indicateur_complet %>%
-  filter(stade == "ind") %>% 
-   filter(indicateur == "densite_surface") %>%
-  arrange(esp_code_alternatif, indicateur, annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
-  filter(annee == max(annee) - periode_etude_lrr) %>%
-  ungroup()
-
-# Combiner les deux dataframes en un seul
-reg_indicateur_critere_A2b <- bind_rows(reg_indicateur_critere_A2b, reg_indicateur_max_annee_moins_generation)
-```
-
-```{r}
-# Calcul des pourcentages d'évolution des valeurs d'indicateurs
-reg_indicateur_critere_A2b <- reg_indicateur_critere_A2b %>%
-  group_by(esp_code_alternatif, indicateur) %>% 
-  mutate(pourcentage_evo = ((first(valeur) - last(valeur))/ last(valeur))*100) %>% 
-  ungroup()
-
+# Fonction pour effectuer la régression linéaire et extraire les coefficients
+regression_resultats <- function(data) {
+  modele <- lm(valeur ~ annee, data = data)
+  coef <- coef(modele)
+  data.frame(
+    intercept = coef[1],
+    slope = coef[2]
+  )
+}
 ```
 
 
 ```{r}
-reg_indicateur_critere_A2b_tab <- reg_indicateur_critere_A2b %>% 
+# Tableau période d'étude
+periode_table <- data.frame(
+  esp_code_alternatif = c("ANG", "CHE", "LPP", "BRO", "LOF", "VAR", "GAR", "VAI", "PER", "SAT", "GOU", "TRF", "CHA"),
+  annee_depart = c(1990, 2005, 2005, 2008, 2008, 2011, 2011, 2011, 2011, 2013, 2013, 2013, 2013),
+  annee_fin = c(2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023)
+)
+```
+
+
+```{r}
+# Filtrage et application de la régression linéaire
+regression_coeffs <- reg_indicateur_complet %>%
+  filter(stade == "ind", 
+         indicateur == "densite_surface") %>%
+  group_by(esp_code_alternatif, 
+           indicateur) %>%
+  do(regression_resultats(.)) %>%
+  ungroup() %>%
+  # Ajout des colonnes annee_depart et annee_fin en fonction de esp_code_alternatif
+  left_join(periode_table, by = "esp_code_alternatif")
+```
+
+
+```{r}
+regression_coeffs <- regression_coeffs %>%
+  mutate(valeur_predite_debut = (slope * annee_depart) + intercept,
+         valeur_predite_fin = (slope * annee_fin) + intercept)
+```
+
+
+```{r}
+# Calculer les pourcentages d'évolution des valeurs prédites
+regression_coeffs <- regression_coeffs %>%
+  mutate(pourcentage_evo = ((valeur_predite_fin - valeur_predite_debut) / valeur_predite_debut) * 100)
+```
+
+
+```{r}
+# Déterminer le statut des espèces
+regression_coeffs <- regression_coeffs %>%
   mutate(statut_espece_lrr_2023 = case_when(
     is.nan(pourcentage_evo) ~ "NaN",
     pourcentage_evo <= -80 ~ "CR",
     (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "EN",
     (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "VU",
+    (pourcentage_evo <= -20 & pourcentage_evo > -30) ~ "NT",
     TRUE ~ "LC"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
-  )) %>% 
-  unique() %>% 
-  select(esp_code_alternatif,
-         pourcentage_evo,
-         statut_espece_lrr_2023) %>% 
+  ))
+```
+
+```{r}
+# Sélectionner les colonnes d'intérêt
+reg_indicateur_critere_A2b_tab <- regression_coeffs %>%
+  select(esp_code_alternatif, 
+         pourcentage_evo, 
+         statut_espece_lrr_2023) %>%
   unique()
+```
 
-reg_indicateur_critere_A2b_tab <- reg_indicateur_critere_A2b_tab %>% 
-  left_join(tab_especes %>% 
-              select(esp_code_alternatif, 
-                     statut_espece_lrr_2015), 
-            by = "esp_code_alternatif")
-
+```{r}
 #Représentation graphique du tableau 
 reg_indicateur_critere_A2b_tab %>%
   DT::datatable(rownames = FALSE)
@@ -355,7 +376,7 @@ Pour mon rapport, je ne sélectionne que les résultats qui sont significatifs a
 
 ```{r}
 reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab %>% 
-  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI"))
+  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI","CHE"))
 ```
 
 
@@ -420,10 +441,3 @@ reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b_tab_sig %>%
 print(reg_indicateur_critere_A2b_graph)
 
 ```
-
-
-Application du critère A2B, reposant sur un indice d'abondance adapté au taxon (densité de surface) : 
-- Critère A2 = Réduction de la population constatée, estimée, déduite ou supposée, dans le passé, lorsque les causes de la réduction n'ont peut être pas cessé OU ne sont peut-être pas comprise ou ne sont peut être pas réversible. 
-
-(b) : indice d'abondance adapté au taxon => densité de surface. 
-
