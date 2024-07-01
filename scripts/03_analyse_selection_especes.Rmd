@@ -103,7 +103,7 @@ Dans le cas de la Bretagne, des spécificités sur certaines espèces sont prise
 esp_ope_selection <- esp_ope_selection %>% 
   mutate(esp_code_alternatif = 
            case_when(
-             esp_code_alternatif == "VAN" ~ "VAR", # Tranformation des VAN en VAR
+             esp_code_alternatif %in% c("VAN", "VAX") ~ "VAR", # Tranformation des VAN en VAR
              esp_code_alternatif %in% c("CCX", "CMI", "CCU") ~ "CCO", # Transformation des CCX, CMI et CCU en CCO
              TRUE ~ esp_code_alternatif)) %>% 
   filter(!(esp_code_alternatif %in% params$especes_a_retirer)) # Filtre des espèces à retirer
