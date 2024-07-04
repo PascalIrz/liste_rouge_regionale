@@ -359,5 +359,6 @@ Nous sauvegardons dans un fichier .rda le jeu de données *ope_indicateur* qui n
 # SAUVEGARDE ----
 save(ope_indicateur,
      mei_ope_selection,
+     ope_effectif,
      file = "../processed_data/assemblage_tab_par_ope.rda")
 ```
