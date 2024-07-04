@@ -1,0 +1,424 @@
+---
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Modèles Linéaires Généralisés à effets Mixtes"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne
+
+Script : 14_GLMM
+
+Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur les tendances des indicateurs régionaux. Il a également l'objectif de regarder l'impact des changements de protocoles sur les stations au cours des années d'études grâce aux modèles linéaires généralisés à effets mixtes. 
+
+
+# Installation 
+
+## Chargement des packages, fonctions et des données 
+
+```{r Chargement des packages}
+library(lme4)
+library(popdynmodel)
+library(aspe2)
+library(tidyverse)
+library(aspe)
+library(sjstats)
+library(gt)
+
+```
+
+
+```{r Chargement des données}
+## Chargement des données ----
+load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/lm_mann_kendall_tendances.rda")
+```
+
+```{r Chargement des fonctions}
+source(file = "../R/lm_application_modele.R")
+source(file = "../R/lm_calcul_modele.R")
+```
+
+```{r Chargement des fonctions}
+source(file = "../R/glmm_calcul_modele.R")
+source(file = "../R/glmm_application_modele.R")
+```
+
+
+```{r Chargement des données}
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+```
+
+
+```{r Chargement des tables de données}
+## Chargement des tables ASPE ----
+rdata_tables <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^tables")
+load(rdata_tables)
+
+mei_table <- misc_nom_dernier_fichier(
+  repertoire = "../../../../projets/ASPE/raw_data/rdata",
+  pattern = "^mei")
+load(mei_table)
+```
+
+
+
+# Modèles Linéaires Généralisés à effets Mixtes (GLMM)
+
+## Introduction
+
+
+Les modèles linéaires généralisés à effets mixtes combinent les caractéristiques des modèles linéaires généralisés (modéliser des variables non-normalement distribuées, spécialement des données binaires et de comptage) et des modèles à effets mixtes (modéliser des données groupées). 
+
+Nous utiliserons dans cette étude le package *lme4* pour ajuster des modèles mixtes. La fonction *glm* de ce package estime les paramètres d’un modèle linéaire généralisé à effets mixtes. Les formules utilisées par *lmer* suivent la forme *reponse ~ predicteurs*, avec une syntaxe spécifique pour les effets aléatoires.
+
+La distribution de Poisson peut être ici utilisée (valeurs entières supérieures ou égales à 0. 
+glm(y ~ x1 + x2 + ..., data = ..., family = poisson)
+
+
+
+
+## Modèles Linéaires Généralisés à effets Mixtes dans R 
+# Pré-traitement 
+
+Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs des effectifs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux, les surfaces d'opérations et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux effectifs des opérations de pêches (*ope_effectifs*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats des opérations. 
+
+
+```{r Etablir les périodes d'études GLM}
+liste_periodes_etude <- list(c(2008, 2023), 
+                             c(2005, 2023),
+                             c(1990, 2023),
+                             c(2011, 2023),
+                             c(2013, 2023)) # Liste des périodes (chaque période est un vecteur avec l'année de début et l'année de fin)
+```
+
+
+
+Nous sélectionnons les espèces (et le stade) que nous souhaitons étudier : 
+
+```{r Choix des especes}
+mes_especes <- c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")
+
+ope_effectif_esp <- ope_effectif %>% 
+  filter(esp_code_alternatif %in% mes_especes,
+         stade == "ind")
+```
+
+
+Nous construisons un jeu de données complet :
+
+```{r Construction jeu de donnees 1}
+# Ajout du protocole, de la surface d'opération et de la date
+ope_effectif_glm <- ope_effectif_esp %>%
+  mef_ajouter_type_protocole() %>% 
+  mef_ajouter_surf_calc() %>% 
+  mef_ajouter_ope_date() %>% 
+  select(ope_id,
+         stade,
+         ope_surface_calculee,
+         esp_code_alternatif,
+         indicateur,
+         valeur, 
+         pro_libelle,
+         annee)
+```
+
+
+```{r Construction jeu de donnees 2}
+#Ajout des pop_id dans le dataframe
+ope_effectif_glm <- ope_effectif_glm %>% 
+  left_join(y=operation %>% 
+              select(ope_id,
+                     pop_id= ope_pop_id))
+```
+
+
+```{r Construction jeu de donnees 3}
+ope_proto <- ope_effectif_glm %>% 
+  select(-esp_code_alternatif, -valeur) %>% 
+  distinct()
+
+# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
+combinaisons_ope_glm <- expand.grid(esp_code_alternatif = unique(ope_effectif_glm$esp_code_alternatif),
+                                    ope_id = unique(ope_effectif_glm$ope_id))
+
+ope_glm_complet <- ope_proto %>% 
+  left_join(y = combinaisons_ope_glm) %>% 
+  left_join(y = ope_effectif_glm) %>% 
+  mutate(valeur = ifelse(is.na(valeur), 0, valeur))
+```
+
+Je fait un jeu de données pour une seule espèce (avant de créer une fonction qui le fera pour tout le monde)
+
+```{r Construction jeu de donnees 2}
+ope_glm_complet <- ope_glm_complet %>%
+  filter(
+    (esp_code_alternatif == "ANG" & annee >= 1990) |
+    (esp_code_alternatif %in% c("CHE", "LPP") & annee >= 2005) |
+    (esp_code_alternatif %in% c("BRO", "LOF") & annee >= 2008) |
+    (esp_code_alternatif %in% c("VAR", "GAR", "VAI", "PER") & annee >= 2011) |
+    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & annee >= 2013)
+  )
+```
+
+
+```{r Construction jeu de donnees 2}
+ope_glm_esp <- ope_glm_complet %>%
+  filter(esp_code_alternatif == "VAI") %>% 
+  mutate(pop_id = as.factor(pop_id)) %>% 
+  rename(espece = esp_code_alternatif)
+
+ope_glm_esp$X <- 1:nrow(ope_glm_esp)
+```
+
+
+# Application modèles GLM 
+
+## Echelle ope_indicateur
+
+Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
+
+
+```{r}
+mod2 <- glmer(valeur ~ annee + scale(ope_surface_calculee) + (1| pop_id) +
+              #(1|X) +
+               pro_libelle, 
+             family = poisson(link = "log"), 
+             data = ope_glm_esp)
+             #control = glmerControl(optimizer = "bobyqa"))
+
+summary(mod2)
+```
+
+
+
+```{r}
+ope_glm_esp$predicted_valeur <- predict(mod2, 
+                                     newdata = ope_glm_esp, 
+                                     type = "response", 
+                                     re.form = NA)
+```
+
+
+```{r}
+# Calculer la médiane des valeurs prédites pour 1990 et 2023
+valeurs_1990 <- ope_glm_esp %>% 
+  filter(annee == 1990) %>% 
+  pull(predicted_valeur)
+
+valeurs_2023 <- ope_glm_esp %>% filter(annee == 2023) %>% pull(predicted_valeur)
+
+mediane_1990 <- median(valeurs_1990, na.rm = TRUE)
+mediane_2023 <- median(valeurs_2023, na.rm = TRUE)
+
+taux_evolution <- ((valeur_2023 - valeur_1990) / valeur_1990) * 100
+taux_evolution
+```
+
+
+
+
+
+
+
+On vérifie la surdispersion en utilisant la fonction overdisp_fun() (Bolker et al. 2011) qui divise la déviance des résidus (de Pearson) par leurs degrés de liberté.
+
+La fonction évalue si le rapport est plus grand que 1. 
+```{r}
+
+overdisp_fun <- function(model) {
+  ## number of variance parameters in 
+  ##   an n-by-n variance-covariance matrix
+  vpars <- function(m) {
+    nrow(m)*(nrow(m)+1)/2
+  }
+  model.df <- sum(sapply(VarCorr(model),vpars))+length(fixef(model))
+  (rdf <- nrow(model@frame)-model.df)
+  rp <- residuals(model)
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE,log.p=TRUE)
+  c(chisq=Pearson.chisq,ratio=prat,p=exp(pval))
+}
+```
+
+
+```{r}
+overdisp_fun(mod2)
+```
+```{r}
+if (!require("coefplot2"))
+  remotes::install_github("palday/coefplot2", 
+                          subdir = "pkg", 
+                          upgrade = "always", 
+                          quiet = TRUE)
+library(coefplot2)
+```
+
+```{r}
+# Effets aléatoires
+coefplot2(mod2, 
+          ptype = "vcov", 
+          intercept = TRUE, 
+          main = "Variance des effets aléatoires")
+```
+```{r}
+# Effets fixes
+coefplot2(mod2, 
+          intercept = TRUE, 
+          main = "Coefficients des effets fixes")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Application modèles GLM 
+
+## Echelle ope_indicateur
+
+Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
+
+```{r Excecution fonctions GLM}
+ope_glm_complet1 <- ope_glm_complet %>% 
+  rename(espece = esp_code_alternatif) %>% 
+  ungroup() %>% 
+  select(-ope_id,
+         -indicateur,
+         -stade)
+```
+
+
+```{r Excecution fonctions GLM}
+glmm_resultats <- glmm_application_modele(data = ope_glm_complet1,
+                                        liste_periodes = liste_periodes_etude)
+```
+
+
+
+```{r Excecution fonctions GLM}
+glmm_resultats <- glmm_resultats %>% 
+  filter(row_name == "scale(annee)") %>% 
+  select(periode,
+         esp_code_alternatif,
+         p_value,
+         Estimate,
+         sig) %>% 
+  mutate(trend = case_when(
+      Estimate > 0 ~ "\U2197",
+      Estimate < 0 ~ "\U2198",
+      TRUE ~ "."))
+```
+
+
+```{r Excecution fonctions GLM}
+# Filtrer les données selon les critères spécifiés
+glmm_resultats <- glmm_resultats %>%
+  filter(
+    (esp_code_alternatif == "ANG" & periode == "1990-2023") |
+    (esp_code_alternatif %in% c("CHE", "LPP") & periode == "2005-2023") |
+    (esp_code_alternatif %in% c("BRO", "LOF") & periode == "2008-2023") |
+    (esp_code_alternatif %in% c("VAR", "GAR", "VAI", "PER") & periode == "2011-2023") |
+    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & periode == "2013-2023")
+  ) %>% 
+  mutate(indicateur = "densite_surface")
+```
+
+
+# On réalise un tableau : 
+```{r}
+tab_glmm_resultats <- glmm_resultats %>%
+  select(esp_code_alternatif,
+         periode,
+         indicateur,
+         trend,
+         sig) %>% 
+  arrange(esp_code_alternatif, 
+          indicateur) %>%   # Ordonner par espèce, indicateur et stade
+  gt() %>%
+  tab_header(
+    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
+  ) %>%
+  cols_label(
+    esp_code_alternatif = "Code Espèce",
+    indicateur = "Indicateur",
+    trend = "Tendance Regression linéaire",
+    sig = "Significativité") %>%
+  tab_options(table.font.size = "small", data_row.padding = px(5))
+
+# Afficher le tableau
+tab_glmm_resultats
+```
+
+
+```{r}
+rownames(glmm_resultats) <- seq_len(nrow(glmm_resultats))
+```
+
+
+
+# Sauvegarde
+
+```{r}
+save(glmm_resultats,
+     reg_indicateur_lrr_tendances_lm,
+     reg_indicateur_lrr_tendances_mk_st,
+     tab_glmm_resultats,
+     tab_reg_indicateur_lrr_tendances_lm,
+     tab_reg_indicateur_lrr_tendances_mk_st,
+     file = "../processed_data/mk_glmm_lm_tendances.rda")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+resid_sim_mod_1 <- simulateResiduals(mod_1)
+resid_sim_mod_2 <- simulateResiduals(mod_2)
+resid_sim_mod_3 <- simulateResiduals(mod_3)
+resid_sim_mod_4 <- simulateResiduals(mod_4)
+
+plot(resid_sim_mod_1)
+
+plot(resid_sim_mod_2)
+plot(resid_sim_mod_3)
+plot(resid_sim_mod_4)
+plot(resid_sim_mod_5)
+```
+

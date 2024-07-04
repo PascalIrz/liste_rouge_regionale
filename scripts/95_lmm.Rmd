@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
 
-Script : 14_LMM
+Script : 95_LMM
 
 Ce script a pour objectif d'evaluer l'impact qu'ont les différents réseaux sur les tendances des indicateurs régionaux. Il a également l'objectif de regarder l'impact des changements de protocoles sur les stations au cours des années d'études grâce aux modèles linéaires mixtes. 
 
