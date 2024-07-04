@@ -197,11 +197,11 @@ ope_indicateur_complet <- combinaisons_esp_ope %>%
 ```{r Liste espèce à traiter}
 # Construction d'un df avec espèce applicable et leurs temps de génération
 reg_periode_etude_lrr <- reg_espece %>%
-  dplyr :: select(esp_code_alternatif,
+  select(esp_code_alternatif,
                   periode_etude_lrr)
 
 ope_periode_etude_lrr <- reg_espece %>%
-    dplyr :: select(esp_code_alternatif,
+    select(esp_code_alternatif,
                   periode_etude_lrr)
 
 

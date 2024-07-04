@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-06-27" />
+<meta name="date" content="2024-07-02" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -1693,7 +1693,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Liste Rouge Régionale des poissons d’eau douce de Bretagne</h1>
 <h3 class="subtitle">Tableau Tendances Temporelles</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-06-27</h4>
+<h4 class="date">2024-07-02</h4>
 
 </div>
 
@@ -1707,19 +1707,21 @@ library(ggthemes)
 library(tidyverse)
 library(kableExtra)
 library(readxl)</code></pre>
-<pre class="r"><code>load(file = &quot;../processed_data/mk_lmm_lm_tendances.rda&quot;)
+<pre class="r"><code>load(file = &quot;../processed_data/mk_glmm_lm_tendances.rda&quot;)
 mod_bay &lt;- read_excel(&quot;../raw_data/mod_bay.xlsx&quot;)</code></pre>
+<pre class="r"><code>rownames(glmm_resultats) &lt;- seq_len(nrow(glmm_resultats))</code></pre>
 <pre class="r"><code># Joindre les DataFrames sur les colonnes communes
 df_combined &lt;- reg_indicateur_lrr_tendances_lm %&gt;%
   filter(indicateur == &quot;densite_surface&quot;) %&gt;% 
   rename(trend_lm = trend, 
          sig_lm = sig) %&gt;%
-  left_join(reg_indicateur_lrr_tendances_lmm %&gt;% 
+  left_join(glmm_resultats %&gt;% 
               select(esp_code_alternatif,
                      indicateur,
                      trend,
                      sig) %&gt;% 
-              rename(trend_lmm = trend, sig_lmm = sig), 
+              rename(trend_glmm = trend, 
+                     sig_glmm = sig), 
             by = c(&quot;esp_code_alternatif&quot;, &quot;indicateur&quot;)) %&gt;%
   left_join(reg_indicateur_lrr_tendances_mk_st %&gt;% 
               select(esp_code_alternatif,
@@ -1737,21 +1739,21 @@ df_final &lt;- df_combined %&gt;%
          sig_lm,
          trend_mk_st,
          sig_mk_st,
-         trend_lmm,
-         sig_lmm
+         trend_glmm,
+         sig_glmm
          ) %&gt;% 
   arrange(periode,
           esp_code_alternatif)</code></pre>
 <pre class="r"><code>df_final1 &lt;- df_final %&gt;% 
   left_join(mod_bay) %&gt;% 
   mutate_all(~ replace_na(., &quot; &quot;))</code></pre>
-<pre class="r"><code>colnames(df_final1)[1:11] &lt;- c(&quot;Code espèce&quot;, &quot;Période&quot;, &quot;Indicateur&quot;, &quot;Tendance&quot;, &quot;Sig.&quot;, &quot;Tendance&quot;, &quot;Sig.&quot;, &quot;Tendance&quot;, &quot;Sig.&quot;, &quot;Tendance&quot;, &quot;Sig.&quot;)
+<pre class="r"><code>colnames(df_final1)[1:11] &lt;- c(&quot;Code espèce&quot;, &quot;Période&quot;, &quot;Indicateur&quot;, &quot;Linéaire&quot;, &quot; &quot;, &quot;MK / ST&quot;, &quot; &quot;, &quot;GLMM&quot;, &quot; &quot;, &quot;Bayésien&quot;, &quot;&quot;)
 
 d &lt;- kable(df_final1,
       booktabs = TRUE,
       escape = FALSE,
       align = c(&quot;l&quot;, &quot;l&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;)) %&gt;%
-  add_header_above(c(&quot; &quot; = 3, &quot;Modèle lm&quot; = 2,  &quot;Modèle mk_st&quot; = 2, &quot;Modèle lmm&quot; = 2, &quot;Modèle bayésien&quot;= 2)) %&gt;%
+  add_header_above(c(&quot; &quot; = 3, &quot;Tendances temporelles&quot; = 8)) %&gt;%
   column_spec(3, italic = TRUE) %&gt;% 
   kable_styling(full_width = FALSE, position = &quot;left&quot;) %&gt;% 
   collapse_rows(columns = 1:2:3)
@@ -1762,24 +1764,9 @@ d</code></pre>
 <tr>
 <th style="empty-cells: hide;border-bottom:hidden;" colspan="3">
 </th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="2">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="8">
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-Modèle lm
-</div>
-</th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="2">
-<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-Modèle mk_st
-</div>
-</th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="2">
-<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-Modèle lmm
-</div>
-</th>
-<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="2">
-<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
-Modèle bayésien
+Tendances temporelles
 </div>
 </th>
 </tr>
@@ -1794,28 +1781,24 @@ Période
 Indicateur
 </th>
 <th style="text-align:center;">
-Tendance
+Linéaire
 </th>
 <th style="text-align:left;">
-Sig.
 </th>
 <th style="text-align:center;">
-Tendance
+MK / ST
 </th>
 <th style="text-align:left;">
-Sig.
 </th>
 <th style="text-align:center;">
-Tendance
+GLMM
 </th>
 <th style="text-align:left;">
-Sig.
 </th>
 <th style="text-align:center;">
-Tendance
+Bayésien
 </th>
 <th style="text-align:left;">
-Sig.
 </th>
 </tr>
 </thead>
@@ -1846,6 +1829,7 @@ densite_surface
 ↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -1875,8 +1859,8 @@ CHE
 ↗
 </td>
 <td style="text-align:left;">
-<ul>
-<li></td>
+***
+</td>
 <td style="text-align:center;">
 ↘
 </td>
@@ -1886,8 +1870,7 @@ CHE
 <tr>
 <td style="text-align:left;">
 LPP
-</td></li>
-</ul>
+</td>
 <td style="text-align:center;">
 ↗
 </td>
@@ -1931,6 +1914,7 @@ BRO
 ↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -1953,7 +1937,7 @@ LOF
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↗
+↘
 </td>
 <td style="text-align:left;">
 </td>
@@ -1986,6 +1970,7 @@ GAR
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -2013,6 +1998,7 @@ PER
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2036,9 +2022,10 @@ VAI
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↗
+↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2065,6 +2052,7 @@ VAR
 ↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2122,6 +2110,7 @@ GOU
 ↗
 </td>
 <td style="text-align:left;">
+**
 </td>
 <td style="text-align:center;">
 ↗
