@@ -33,9 +33,6 @@ Un aspect essentiel de ce travail est la gestion des valeurs manquantes (appelé
 ## Chargement des packages ----
 library(tidyverse)
 library(aspe)
-library(ggplot2)
-library(zoo)
-library(lemon)
 library(ggh4x)
 ```
 

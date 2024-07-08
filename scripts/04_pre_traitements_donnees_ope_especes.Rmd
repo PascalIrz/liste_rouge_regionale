@@ -42,7 +42,6 @@ Des paramètres peuvent être fixés au début du scripts. Ces paramètres sont 
 library(aspe)
 library(aspeQual)
 library(tidyverse)
-library(ggplot2)
 library(readxl)
 ```
 
@@ -67,7 +66,6 @@ load(mei_table)
 ```{r chargement des données importées}
 ## Lire le fichier Excel contenant les tailles à maturité des espèces
 traits_biologiques <- read_excel("../raw_data/traits_biologiques.xlsx")
-
 ```
 
 

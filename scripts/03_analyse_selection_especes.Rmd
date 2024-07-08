@@ -37,7 +37,6 @@ Après avoir sélectionné les points de prélèvements et opérations de pêche
 ## Chargement des packages ----
 library(tidyverse)
 library(aspe)
-#library(lemon)
 ```
 
 
