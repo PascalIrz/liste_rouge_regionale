@@ -81,7 +81,7 @@ reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>%
 ```
 
 
-```{r Mise en place des périodes}
+```{r Mise en place des périodes 2}
 
 # Appeler la fonction pour calculer les résultats pour chaque période
 reg_indicateur_lrr_tendances_mk_st <- mk_st_multi_periodes(df = reg_indicateur_reduit,
@@ -142,9 +142,9 @@ tab_reg_indicateur_lrr_tendances_mk_st
 
 
 
-Sauvegarde : 
+# Sauvegarde 
 
-```{r}
+```{r Sauvegarde}
 save(reg_indicateur_lrr_tendances_mk_st,
      reg_indicateur_lrr_tendances_lm,
      tab_reg_indicateur_lrr_tendances_mk_st,

@@ -33,10 +33,6 @@ Les pré-traitements nécessaires à la consitution de ce tableau de bord ont é
 ## Chargement des packages ----
 library(tidyverse)
 library(aspe)
-library(ggplot2)
-library(ggthemes)
-library(dplyr)
-library(readxl)
 ```
 
 Nous avons donc besoin des jeux de données constitués lors des précédents scripts. 
@@ -121,7 +117,7 @@ ope_effectif_stade <- mei_ope_selection %>%
 
 L'ensemble des effectifs calculés (avec et sans sitinction des stades) sont regroupés dans un même jeu de données global : *ope_effectif*. 
 
-```{r Creation tableau effectif total par ope 2}
+```{r Creation tableau effectif total par ope 3}
 ope_effectif <- rbind (ope_effectif,
                        ope_effectif_stade) # On regroupe ope_effetif et ope_effectif_stade
 ```
@@ -149,7 +145,7 @@ ope_biomasse <- mei_ope_selection %>%
 
 Dans un second temps, l'indicateur de la biomasse est calculé par stade (juvéniles et adultes) et regroupé dans un tableau global : *ope_biomasse*. 
 
-```{r Création tableau biomasse totale par ope}
+```{r Création tableau biomasse totale par ope 2}
 ope_biomasse <- ope_biomasse %>%
   bind_rows(ope_biomasse %>%
       filter(stade %in% c("ad", "juv")) %>%

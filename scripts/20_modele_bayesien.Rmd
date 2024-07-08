@@ -36,17 +36,12 @@ Installation du package :
 
 ```{r Chargement des packages}
 ## Chargement des packages ----
-
-library(tidyr)
 library(aspe)
 library(aspe2)
-library(ggplot2)
-library(stringr)
-library(dplyr)
 library(nimble)
 library(popdynmodel)
+library(dplyr)
 library(mcmcplots)
-
 ```
 
 
@@ -119,12 +114,6 @@ Pour le jeu de données data_lrr :
 
 Pour le jeu de données data_lrr : 
 ```{r}
-library(nimble)
-library(popdynmodel)
-library(aspe2)
-library(dplyr)
-
-
 load("processed_data/modele_bay_result_31_05_per.rda")
 
 data <- data %>% 
@@ -183,22 +172,16 @@ save(mc,
 # Analyse des résultats 
 
 ```{r}
-library(mcmcplots)
-
 result$mcmc_summary
 
 denplot(mcmc.out$mcmc_chain)
 
-
 plot(mcmc.out$mcmc_chain$chain2)
-
 
 test <- mcmc.out$mcmc_summary
 plot(mcmc.out$mcmc_summary)
 plot(mcmc.out$mcmc_chain$chain1)
 plot(mcmc.out$mcmc_summary)
-
-View(test)
 
 ```
 
@@ -324,9 +307,6 @@ denplot(result$mcmc_chain, parms = c("N_mulambda[3, 1, 3]"))
 Plot des résultats : 
 
 ```{r, fig.height = 1, fig.width = 5}
-
-library(mcmcplots)
-
 traplot(result$mcmc_chain)
 denplot(r[r$parameter %in% "N_lambda",])
 

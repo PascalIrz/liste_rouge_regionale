@@ -35,21 +35,8 @@ A l'issue de ce script, une approche analytique pourra être réalisée.
 
 ```{r Chargement des packages}
 ## Chargement des packages ----
-library(ggthemes)
 library(tidyverse)
 library(aspe)
-library(ggplot2)
-library (khroma)
-library(dplyr)
-library(wesanderson)
-library(zoo)
-library(gt)
-library(lemon)
-library(trend)
-library(ggh4x)
-library(purrr)
-library(broom)
-library(ggforce)
 ```
 
 

@@ -21,15 +21,10 @@ Script : 13b_mk_st_par_pop_id
 
 # Chargement des packages :
 
-```{r}
-library(dplyr)
-library(ggplot2)
-library(sf)
-library(mapview)
-library(ggthemes)
+```{r Chargement des packages}
 library(tidyverse)
 library(trend)
-library(ggh4x)
+library(sf)
 library(COGiter)
 ```
 

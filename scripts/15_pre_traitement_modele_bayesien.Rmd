@@ -29,18 +29,9 @@ Ce script prépare les jeu de données pour une analyse bayésienne (avec le pac
 ## Chargement des packages ----
 library(ggthemes)
 library(tidyverse)
-library(aspe)
-library(ggplot2)
-library(dplyr)
-library(lme4)
-library(lmerTest)
-library(car)
-library(flextable)
-library(aspe2)
-library(stringr)
-library(nimble)
 library(popdynmodel)
-library(mcmcplots)
+library(aspe)
+library(aspe2)
 ```
 
 
@@ -187,7 +178,7 @@ Dans un premier temps, nous sélectionnons toutes les données pour le bassin Lo
 Certaines opérations de pêche impliques une pêche à plusieurs passages. Pour notre étude, seul le premier passage nous interesse, nous écartons ainsi les données correspondant aux passages 2/3/4. 
 
 
-```{r Création dataframe bayésien}
+```{r Création dataframe bayésien 2}
 data_bayesien <- mef_creer_passerelle() %>% # On génère une passerelle
   mef_ajouter_ope_date_complete() %>% # Ajout de la date, de l'année, du mois et du jour
   mef_ajouter_surf_calc() %>% # Ajout de la surface de pêche
