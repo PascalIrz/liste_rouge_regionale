@@ -33,6 +33,9 @@ load(file = "../processed_data/mk_glmm_lm_tendances.rda")
 mod_bay <- read_excel("../raw_data/mod_bay.xlsx")
 ```
 
+
+## Pour les données indifférenciées
+
 ```{r}
 rownames(glmm_resultats) <- seq_len(nrow(glmm_resultats))
 ```
@@ -108,7 +111,7 @@ d
 
 
 
-
+## Pour les données qui ne concernent que les adultes : 
 
 
 

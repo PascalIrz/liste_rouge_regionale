@@ -272,18 +272,18 @@ reg_indicateur_graph_reduit <- reg_indicateur_lrr_tendances_lm %>%
   filter(indicateur %in% c("densite_surface",
                            "pourcentage_juveniles",
                            "taux_occurrence")) %>% 
-  filter(esp_code_alternatif %in% c("ANG", "TRF", "GAR")) %>% 
+  filter(esp_code_alternatif %in% c("ANG", "TRF", "GAR", "VAI")) %>% 
   ggplot(aes(x = annee, 
              y = valeur, 
              group = stade, 
-             color = "Indeterminé")) +  # Fix color to a single legend item
+             color = "Indifférencié")) +  # Fix color to a single legend item
   geom_point(shape = 1) +
   geom_smooth(method = "loess", se = FALSE) +  # Add loess trend lines
   facet_grid2(esp_code_alternatif ~ indicateur, 
               scales = "free", 
               independent = "y", 
               labeller = labeller(indicateur = indicateur_labels)) +  # Use custom labels
-  scale_color_manual(values = c("Indeterminé" = "black"),
+  scale_color_manual(values = c("Indifférencié" = "black"),
                      name = "Stade", labels = c("Indeterminé")) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 

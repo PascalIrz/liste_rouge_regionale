@@ -1,20 +1,4 @@
 
-############################
-# PRE TRAITEMENT 
-mes_especes <- c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")
-
-ope_effectif_esp <- ope_effectif %>% 
-  filter(esp_code_alternatif %in% mes_especes,
-         stade == "ind")  
-
-
-
-mon_espece <- "VAI"
-ma_premiere_annee <- 2011
-
-data_ang <- ope_effectif_esp %>% 
-  filter(esp_code_alternatif == mon_espece)
-
 data_ang <- data_ang %>%
   mef_ajouter_type_protocole() %>% 
   mef_ajouter_surf_calc() %>% 
@@ -29,18 +13,28 @@ data_ang <- data_ang %>%
          ope_date,
          valeur)
 
+
+
+
+
+
 data_ang <- data_ang %>% 
   left_join(y=operation %>% 
               select(ope_id,
                      pop_id= ope_pop_id)) %>% 
   mutate(pop_id = as.factor(pop_id))
 
+
+
+
+
+
+
 data_ang_filter <- data_ang %>% 
   filter(annee  >= ma_premiere_annee) %>% 
   mutate(julian = lubridate::yday(ope_date)) %>%
   ungroup() 
-# %>% 
-#   filter(pop_id != "41893")
+
 
 data_ang_filter$X <- 1:nrow(data_ang_filter)
 
@@ -48,10 +42,10 @@ data_ang_filter$X <- 1:nrow(data_ang_filter)
 ## APPLICATION MODELE
 
 
-mod <- glmer(valeur ~ scale(annee) + scale(ope_surface_calculee) + (1| pop_id),
-               family = poisson,
-               data = data_ang_filter)
-
+# mod <- glmer(valeur ~ scale(annee) + scale(ope_surface_calculee) + (1| pop_id),
+#                family = poisson,
+#                data = data_ang_filter)
+# 
 
 
 
@@ -393,5 +387,121 @@ graph <- ggplot(data = data_ang_filter,
 
 plotly:: ggplotly(graph)
 
+
+
+```{r}
+mod2 <- glmer(valeur ~ scale(annee) +
+                pro_libelle +
+                scale(ope_surface_calculee) +
+                (scale(annee) | pop_id) +
+                scale(julian) +
+                scale(I(julian^2)),
+              family = poisson, 
+              data = ope_glm_esp_vai_complet)
+summary(mod2)
+```
+
+
+
+```{r}
+ope_glm_esp_vai_complet$predicted_valeur <- predict(mod2, 
+                                                    newdata = ope_glm_esp_vai_complet, 
+                                                    type = "response", 
+                                                    re.form = NA)
+```
+
+
+
+
+
+
+
+```{r}
+# Calculer la médiane des valeurs prédites pour 1990 et 2023
+valeurs_1990 <- ope_glm_esp %>% 
+  filter(annee == 1990) %>% 
+  pull(predicted_valeur)
+
+valeurs_2023 <- ope_glm_esp %>% filter(annee == 2023) %>% pull(predicted_valeur)
+
+mediane_1990 <- median(valeurs_1990, na.rm = TRUE)
+mediane_2023 <- median(valeurs_2023, na.rm = TRUE)
+
+taux_evolution <- ((valeur_2023 - valeur_1990) / valeur_1990) * 100
+taux_evolution
+```
+
+
+
+
+
+
+
+On vérifie la surdispersion en utilisant la fonction overdisp_fun() (Bolker et al. 2011) qui divise la déviance des résidus (de Pearson) par leurs degrés de liberté.
+
+La fonction évalue si le rapport est plus grand que 1. 
+```{r}
+
+overdisp_fun <- function(model) {
+  ## number of variance parameters in 
+  ##   an n-by-n variance-covariance matrix
+  vpars <- function(m) {
+    nrow(m)*(nrow(m)+1)/2
+  }
+  model.df <- sum(sapply(VarCorr(model),vpars))+length(fixef(model))
+  (rdf <- nrow(model@frame)-model.df)
+  rp <- residuals(model)
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE,log.p=TRUE)
+  c(chisq=Pearson.chisq,ratio=prat,p=exp(pval))
+}
+```
+
+
+```{r}
+overdisp_fun(mod2)
+```
+```{r}
+if (!require("coefplot2"))
+  remotes::install_github("palday/coefplot2", 
+                          subdir = "pkg", 
+                          upgrade = "always", 
+                          quiet = TRUE)
+library(coefplot2)
+```
+
+```{r}
+# Effets aléatoires
+coefplot2(mod2, 
+          ptype = "vcov", 
+          intercept = TRUE, 
+          main = "Variance des effets aléatoires")
+```
+```{r}
+# Effets fixes
+coefplot2(mod2, 
+          intercept = TRUE, 
+          main = "Coefficients des effets fixes")
+
+```
+
+
+
+
+
+```{r}
+resid_sim_mod_1 <- simulateResiduals(mod_1)
+resid_sim_mod_2 <- simulateResiduals(mod_2)
+resid_sim_mod_3 <- simulateResiduals(mod_3)
+resid_sim_mod_4 <- simulateResiduals(mod_4)
+
+plot(resid_sim_mod_1)
+
+plot(resid_sim_mod_2)
+plot(resid_sim_mod_3)
+plot(resid_sim_mod_4)
+plot(resid_sim_mod_5)
+```
 
 

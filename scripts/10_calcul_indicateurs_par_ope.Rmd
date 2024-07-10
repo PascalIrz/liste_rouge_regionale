@@ -115,7 +115,7 @@ ope_effectif_stade <- mei_ope_selection %>%
 ```
 
 
-L'ensemble des effectifs calculés (avec et sans sitinction des stades) sont regroupés dans un même jeu de données global : *ope_effectif*. 
+L'ensemble des effectifs calculés (avec et sans distinction des stades) sont regroupés dans un même jeu de données global : *ope_effectif*. 
 
 ```{r Creation tableau effectif total par ope 3}
 ope_effectif <- rbind (ope_effectif,
