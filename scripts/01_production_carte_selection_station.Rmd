@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Production d'une carte des opérations sélectionnées"
+subtitle: "Production d'une carte des opérations de pêche sélectionnées"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -28,22 +28,19 @@ Après avoir sélectionné les différentes stations / points de prélèvements 
 ## Chargement des packages et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages 
 library(ggplot2)
 library(sf)
 library(cowplot)
 library(png)
 library(rnaturalearth)
+library(png)
 ```
 
 ```{r Chargement des données}
-## Chargement des données 
-load(file = "../processed_data/selection_pop_ope_carte.rda")
+load(file = "../processed_data/selection_pop_ope_carte.rda") # Chargement des données 
 
-## Chargement de la palette de couleur 
-pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
+pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")## Chargement de la palette de couleur 
 ```
-
 
 
 # Création de la carte 
@@ -53,11 +50,9 @@ pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D
 Il s'agit de créer une petite carte de situation permettant de situer l'aire géographique étudiée à l'échelle de la France. 
 
 ```{r Carte situation}
-# Sélection de la zone géographique d'ensemble (ici l'étude est en France)
-france <- ne_countries(country = "france", returnclass = "sf")
+france <- ne_countries(country = "france", returnclass = "sf") # Sélection du pays de l'étude (ici la France)
 
-# Création de la carte de la France avec une zone de focus (ici la Bretagne)
-carte_france_dept <- ggplot(data = france) + 
+carte_france_dept <- ggplot(data = france) + # Création de la zone précise de l'étude (ici la Bretagne)
   geom_sf(fill = "gray82", color = "black") +
   theme_void() +
   annotate("path",
@@ -67,12 +62,10 @@ carte_france_dept <- ggplot(data = france) +
   xlim(-5, 10) +
   ylim(40, 52) +
   theme(panel.background = element_rect(fill = "white", color = "black"))
-
 ```
 
-```{r Carte convertie Grob}
-# Convertir la carte de France en un objet grob 
-carte_france_dept_grob <- ggplotGrob(carte_france_dept)
+```{r Convertion carte Grob}
+carte_france_dept_grob <- ggplotGrob(carte_france_dept)# Convertir la carte de France en un objet grob 
 ```
 
 
@@ -87,56 +80,40 @@ carte_sta <- ggplot(sta_id_ope_selection) +
   geom_sf(aes(color = DEP), size = 2) +
   scale_color_manual(values = pal) +
   theme_bw() +
-  # Ajouter une légende pour la variable DEP
-  labs(color = "Département") +
+  labs(color = "Département") + # Ajouter une légende pour la variable DEP
   theme(legend.position = "bottom")
-
 ```
-
-
-Je souhaite ajouter de nouvelles couches (de manière expériementale)
-
-```{r}
-nouvelle_couche <- st_read("../QGIS/bv/BVSpeMasseDEauSurface_edl2019.shp")
-```
-
-
-```{r}
-carte_sta <- ggplot(sta_id_ope_selection) +
-  geom_sf(data = mes_depts) +
-  geom_sf(data = buffer) +
-  geom_sf(data = nouvelle_couche) +  # Ajout de la nouvelle couche
-  geom_sf(aes(color = DEP), size = 2) +
-  scale_color_manual(values = pal) +
-  theme_bw() +
-  labs(color = "Département") +
-  theme(legend.position = "bottom")
-
-```
-
 
 
 # Création carte finale
 
-Il s'agit de combiner les deux cartes créées précédemment. 
+Nous combinons les deux cartes créées précédemment. 
 
-```{r Construction carte finale}
-
-# Assemblage des cartes pré-créée
-carte_combinee <- ggdraw() +
+```{r Construction carte finale, fig.height = 5, fig.width = 7}
+carte_combinee <- ggdraw() + # Assemblage des cartes pré-créée
   draw_plot(carte_sta) +
-  draw_plot(carte_france_dept, x = 0, y = 0, width = 0.4, height = 0.25, hjust = 0.05, vjust = -0.75)
+  draw_plot(carte_france_dept, x = 0.015, y = 0.03, width = 0.4, height = 0.25, hjust = 0.05, vjust = -0.75)
 
-# Charger l'image du logo
-logo <- readPNG( "../assets/ofb_logo.png")
+logo <- readPNG("../assets/ofb_logo.png")
 
-# Créer la carte combinée avec le logo
-carte_combinee <- carte_combinee + 
+carte_combinee <- carte_combinee + # Créer la carte combinée avec le logo
   annotation_raster(logo, xmin = 0.8, xmax = 0.98, ymin = 0.015, ymax = 0.13)
 
-carte_combinee
+titre <- ggdraw() + # Ajouter un titre
+  draw_label("Stations bretonnes sélectionnées pour 
+             l'actualisation de la Liste Rouge Régionale des poissons d'eau douce", fontface = 'bold', x = 0.5, y = 0.70, size = 10) + 
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+carte_finale <- plot_grid(titre, carte_combinee, ncol = 1, rel_heights = c(0.1, 1)) # Combiner le titre et la carte
+carte_finale
 ```
 
 
+# Sauvegarde 
 
+Nous enregistrons la carte finale sous format .png.
 
+```{r Enregistrement carte finale}
+ggsave(filename = "../assets/carte_selection_stations.png", 
+       plot = carte_finale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
+```
