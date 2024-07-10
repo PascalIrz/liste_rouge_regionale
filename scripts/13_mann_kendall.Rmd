@@ -67,17 +67,23 @@ reg_indicateur_reduit <- reg_indicateur_reduit %>%
                            "taux_occurrence",
                            "pourcentage_juveniles"),
          stade == "ind")
+```
 
+
+```{r Mise en place des périodes}
 periodes <- list(c(1990,2023),
                  c(2005, 2023), 
                  c(2008, 2023),
                  c(2011, 2023),
                  c(2013, 2023))
 
-#Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant. 
+#Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant.
+```
 
-reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>% 
-  rename(stade = stade.x)
+
+```{r Mise en place des périodes}
+# reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>% 
+#   rename(stade = stade.x)
 ```
 
 
@@ -275,19 +281,49 @@ ope_densite_tendances_mk_st_globale <- mk_st_by_group(ope_densite_complet,
 
 
 
-On renomme les variables en français
+On renomme les variables en français / 
+
+
 ```{r}
 # Remplacer les valeurs
-ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
-  rename(Tendance = trend)
-
-ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
-  rename(Tendance = trend)
+# ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
+#   mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
+#   rename(Tendance = trend)
+# 
+# ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
+#   mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
+#   rename(Tendance = trend)
 ```
 
 
+```{r}
+# Pour ope_densite_tendances_mk_st_globale
+ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
+  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
+         trend = if_else(is.nan(mk_pvalue), "Abs", trend)) %>%
+  rename(Tendance = trend) %>% 
+  mutate(sig = case_when(
+      mk_pvalue < 0.001 ~ "***",
+      mk_pvalue < 0.01 ~ "**",
+      mk_pvalue < 0.05 ~ "*",
+      TRUE ~ ""
+    ))
+```
+
+
+```{r}
+# Pour ope_densite_tendances_mk_st_lrr
+ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
+  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
+         trend = if_else(is.nan(mk_pvalue), "Abs", trend)) %>%
+  rename(Tendance = trend) %>% 
+  mutate(sig = case_when(
+      mk_pvalue < 0.001 ~ "***",
+      mk_pvalue < 0.01 ~ "**",
+      mk_pvalue < 0.05 ~ "*",
+      TRUE ~ ""
+    ))
+```
 
 
 ## Représentation graphique
@@ -321,24 +357,17 @@ ope_densite_code_complet_periode_lrr <- ope_densite_periode_lrr_sans_abs %>%
   left_join(ope_densite_tendances_mk_st_lrr)
 ```
 
+
 ```{r Calcul mk_st, fig.height = 10, fig.width = 11}
+
+mes_esp_rapport <- c("ANG", "GAR", "SAT")
+
+
 # Combine data and plot with facet_wrap
 carte_tendance_lrr <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet_periode_lrr, 
                                       by = "pop_id") %>% 
-                            filter(esp_code_alternatif %in% c("ANG", 
-                                                              "CHE", 
-                                                              "LPP", 
-                                                              "BRO", 
-                                                              "LOF", 
-                                                              "GAR", 
-                                                              "VAI", 
-                                                              "VAR",
-                                                              "PER", 
-                                                              "SAT", 
-                                                              "GOU", 
-                                                              "TRF", 
-                                                              "CHA")) %>%
+                            filter(esp_code_alternatif %in% mes_esp_rapport)%>%
                             filter(!is.na(Tendance))) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
@@ -347,7 +376,8 @@ carte_tendance_lrr <- ggplot(sta_id_ope_selection %>%
   scale_color_manual(name = "Tendance",
                      values = c("Diminution" = "red",
                                 "Augmentation" = "darkgreen",
-                                "Non significative" = "gray")) +
+                                "Non significative" = "gray",
+                                "Stable" = "#A97B30")) +
   scale_size_manual(values = c(0.8, 2),
                     guide = 'none') +
   facet_wrap(~ esp_code_alternatif) +
@@ -355,15 +385,14 @@ carte_tendance_lrr <- ggplot(sta_id_ope_selection %>%
         legend.position = "bottom",
         legend.key = element_rect(fill = NA),
         axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5), # Ajustements ici
-        plot.margin = unit(c(1, 1, 1, 1), "cm"))  +
-   ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
+        plot.margin = unit(c(1, 1, 1, 1), "cm")) +    
+  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
+
+carte_tendance_lrr
 
 carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
 
 ```
-
-
-
 
 
 
@@ -387,7 +416,7 @@ Représentation de la carte globale
 # Combine data and plot with facet_wrap
 carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet, by = "pop_id") %>% 
-                            filter(esp_code_alternatif %in% c("ANG", "CHE", "LPP", "BRO", "LOF", "GAR", "VAI", "VAR", "PER", "SAT", "GOU", "TRF", "CHA"))) +
+                            filter(esp_code_alternatif %in% mes_esp_rapport)) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
   geom_sf(aes(col = Tendance, 
@@ -395,8 +424,8 @@ carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>%
   scale_color_manual(name = "Tendance",
                      values = c("Diminution" = "red",
                                 "Augmentation" = "darkgreen",
-                                "Non significative" = "gray"
-                     )) +
+                                "Non significative" = "gray",
+                                "Stable" = "#A97B30")) +
   scale_size_manual(values = c(0.8, 2),
                     guide = 'none') +
   facet_wrap(~ esp_code_alternatif) +
@@ -404,15 +433,12 @@ carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>%
         legend.position = "bottom",
         legend.key = element_rect(fill = NA),
         axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5), # Ajustements ici
-        plot.margin = unit(c(1, 1, 1, 1), "cm"))  +
-  ggtitle("Tendances temporelles des densités par espèce à l'échelle des points de prélèvement - période globale (30 ans)")
+        plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+   ggtitle("Tendances temporelles des densités par espèce à l'échelle des points de prélèvement - période globale (30 ans)")
 
 carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
-# Ne pas oublier de rajouter la légrende : seuls les points échantillonés au moins une fois sur la période de temps étudiée apparaissent 
+
 ```
-
-
-
 
 
 

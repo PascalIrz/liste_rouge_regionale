@@ -37,7 +37,7 @@ mod_bay <- read_excel("../raw_data/mod_bay.xlsx")
 ## Pour les données indifférenciées
 
 ```{r}
-rownames(glmm_resultats) <- seq_len(nrow(glmm_resultats))
+rownames(glmm_resultats_format) <- seq_len(nrow(glmm_resultats_format))
 ```
 
 
@@ -47,7 +47,7 @@ df_combined <- reg_indicateur_lrr_tendances_lm %>%
   filter(indicateur == "densite_surface") %>% 
   rename(trend_lm = trend, 
          sig_lm = sig) %>%
-  left_join(glmm_resultats %>% 
+  left_join(glmm_resultats_format %>% 
               select(esp_code_alternatif,
                      indicateur,
                      trend,

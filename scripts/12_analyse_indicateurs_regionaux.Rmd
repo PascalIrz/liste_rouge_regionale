@@ -272,7 +272,7 @@ reg_indicateur_graph_reduit <- reg_indicateur_lrr_tendances_lm %>%
   filter(indicateur %in% c("densite_surface",
                            "pourcentage_juveniles",
                            "taux_occurrence")) %>% 
-  filter(esp_code_alternatif %in% c("ANG", "TRF", "GAR", "VAI")) %>% 
+  filter(esp_code_alternatif %in% c("ANG", "SAT", "GAR")) %>% 
   ggplot(aes(x = annee, 
              y = valeur, 
              group = stade, 
@@ -284,7 +284,7 @@ reg_indicateur_graph_reduit <- reg_indicateur_lrr_tendances_lm %>%
               independent = "y", 
               labeller = labeller(indicateur = indicateur_labels)) +  # Use custom labels
   scale_color_manual(values = c("Indifférencié" = "black"),
-                     name = "Stade", labels = c("Indeterminé")) +
+                     name = "Stade", labels = c("Indifférencié")) +
   labs(title = "Indicateurs de tendances à l'échelle régionale des espèces de poissons d'eau douce",
        x = "Années", 
        y = "Valeurs") +

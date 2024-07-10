@@ -53,6 +53,7 @@ mk_st_by_group <- function(df,
            trend = case_when(
              sign(sens_slope) == 1 & sig ~ "Increase",
              sign(sens_slope) == -1 & sig ~ "Decrease",
+             sign(sens_slope) == 0 & sig ~ "Stable",
              TRUE ~ "No trend"))
   
   return(output)

@@ -24,8 +24,8 @@ mk_st_multi_periodes <- function(df,
                                    annee,
                                    esp_code_alternatif,
                                    indicateur,
-                                   stade,
-                                   pop_id) # La je le rajoute pour la manip glm mais à enlever sinon
+                                   stade)
+                                   #pop_id) # La je le rajoute pour la manip glm mais à enlever sinon
     
     # Ajouter la période comme colonne
     mk_resultats <- mk_resultats %>% 
