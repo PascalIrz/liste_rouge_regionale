@@ -4,9 +4,9 @@
 #' @param df Dataframe contenant les données
 #' @param var_temp Variable temporelle
 #' @param var_id_site Variable d'identification du site
-#' @param max_nb_obs_manquantes Nombre maxi de données manquantes successives acceptées dans une série
+#' @param max_nb_obs_manquantes Nombre maximum de données manquantes successives acceptées dans une série
 #'
-#' @return Dataframe avec une ligne par série et des colonnes indiquant les débuts, fin et nombre d'observations
+#' @return Dataframe avec une ligne par série et des colonnes indiquant les débuts, fins et nombre d'observations
 #' @export
 #' 
 #' @importClassesFrom dplyr enquo group_by arrange mutate filter summarize ungroup select n
@@ -20,7 +20,7 @@
 borner_series <- function(df,
                           var_temp,
                           var_id_site,
-                          max_nb_obs_manquantes = 2)
+                          max_nb_obs_manquantes)
   
 {
   var_temp <- enquo(var_temp)
