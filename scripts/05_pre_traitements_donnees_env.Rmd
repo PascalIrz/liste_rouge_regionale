@@ -23,35 +23,25 @@ Il s'agit de réaliser les pré-traitements des données environnementales utili
 
 Un aspect essentiel de ce travail est la gestion des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, certaines données peuvent être absentes d'une année à l'autre. Pour certains paramètres dont la valeur est relativement stable, ces valeurs manquantes seront remplacées par la médiane des données des mêmes stations des années précédentes.
 
-
-
 # Installation 
 
 ## Chargement des packages, fonctions et des données
 
 ```{r Chargement des packages}
-## Chargement des packages ----
 library(tidyverse)
 library(aspe)
 library(ggh4x)
+library(zoo)
+library(ggforce)  # Pour facet_grid2
 ```
 
-
 ```{r Chargement des données}
-## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 load(rdata_tables)
-
-mei_table <- misc_nom_dernier_fichier(
-  repertoire = "../../../../projets/ASPE/raw_data/rdata",
-  pattern = "^mei")
-load(mei_table)
-
 ```
-
 
 # Constitution du jeu de données
 
@@ -80,47 +70,95 @@ ope_selection_param_env <- passerelle %>%  # Création du dataframe à partir de
 
 ## Gestion des "NA"
 
-Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de rassembler et de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des autres données relatives aux stations / points de prélèvements. 
+Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de rassembler et de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des données n-1 et n+1 entourant la valeur manquante (relatives aux stations / points de prélèvements). 
 
 ```{r Gestion des NA}
-# Les NA sont rassemblés dans le dataframe valeur_na
-valeur_na <- ope_selection_param_env %>%
+valeur_na <- ope_selection_param_env %>% # Les NA sont rassemblés dans le dataframe valeur_na
   filter(if_any(everything(), is.na))
 
-
 ope_selection_param_env <- ope_selection_param_env %>% 
-  arrange(parametre, annee)%>%  # Tri des données environnementales globales
-  group_by(parametre, pop_id) %>% # Grouper par paramètres et points de prélèvement
-  mutate(valeur = ifelse(is.na(valeur), # NA remplacées par les médianes
-                         zoo::na.aggregate(valeur, median), valeur))
-
+  arrange(parametre, annee) %>%  
+  group_by(parametre, pop_id) %>%  
+  mutate(valeur = ifelse(is.na(valeur),
+                         na.aggregate(valeur, function(x) {# Appliquer la médiane sur une fenêtre définie
+                           zoo::rollapply(x, width = 3, FUN = median, fill = NA, align = "center", na.rm = TRUE)}),
+                         valeur)) %>% 
+  ungroup()
 ```
 
 
+## Gestion des valeurs aberrantes
 
-# Représentation graphique 
+Etape 1 : Identification des valeurs aberrantes et très aberrantes :
 
-Nous réalisons une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données. Il s'agit de représenter toutes les valeurs des paramètres, par années, et par station. 
+```{r Identifications valeurs aberrantes}
+ope_selection_param_env <- ope_selection_param_env %>%
+  group_by(parametre, 
+           pop_id) %>%
+  mutate(Q1 = quantile(valeur, 0.25, na.rm = TRUE),
+         Q3 = quantile(valeur, 0.75, na.rm = TRUE),
+         IQR = Q3 - Q1,
+         lower_bound = Q1 - 1.5 * IQR,
+         upper_bound = Q3 + 1.5 * IQR,
+         very_aberrant = valeur < Q1 - 2.5 * IQR | valeur > Q3 + 2.5 * IQR,
+         aberrant = valeur < lower_bound | valeur > upper_bound,
+         median_val = median(valeur, na.rm = TRUE)) %>%
+  ungroup()
+```
 
-Une fois identifiées, les erreurs sont à corriger sur la base ASPE. 
+### Représentation graphique 
 
-```{r Representation graphique, fig.height = 55, fig.width = 10, fig.cap="Variabilité inter-annuelle des paramètres environnementaux"}
-# Représentation de mes variables environnements (avec facet_wrap) : 
-ope_selection_param_env %>% 
-  ggplot(aes(x= annee, y= valeur)) +
-  geom_bar(stat="identity", fill = "darkcyan") +
-  facet_grid2( ~ pop_id ~ parametre ,
-             scales="free_y",
-             independent = "y") +
+Nous réalisons une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données (elles apparaissent en rouge à titre indicatif). Il s'agit de représenter toutes les valeurs des paramètres, par années, et par station. Une fois identifiées, les erreurs sont à corriger sur la base ASPE. 
+
+Étape 2 : Visualisation avec les valeurs aberrantes en orange et les valeurs très aberrantes en rouge :
+
+```{r représentation grahique, fig.height = 55, fig.width = 10}
+ope_selection_param_env <- ope_selection_param_env %>%
+  mutate(aberrant_color = case_when(
+    very_aberrant ~ "Très aberrant",
+    aberrant ~ "Aberrant",
+    TRUE ~ "Normal"
+  ))
+
+donnees_env_aberrantes <- ggplot(ope_selection_param_env, aes(x = annee, y = valeur, fill = aberrant_color)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Normal" = "#2C7BB6", "Aberrant" = "orange", "Très aberrant" = "red")) +
+  facet_grid2(~ pop_id ~ parametre, 
+              scales = "free_y", 
+              independent = "y") +
   labs(title = "Variabilité inter-annuelle des paramètres environnementaux", 
        x = "Année", 
-       y = "Valeur") +
-  theme_bw() +
-  theme(strip.text = element_text(size = 8),
-        axis.text.x = element_text(angle = 45))
+       y = "Valeur",
+       fill = "Données") +
+  theme_minimal(base_size = 12) +  
+  theme(panel.background = element_rect(fill = "#faf0e0", color = NA), 
+        strip.background = element_rect(fill = "grey90"),  
+        strip.text = element_text(size = 10, color = "black"),  
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  
+        axis.text.y = element_text(size = 8),  
+        axis.title = element_text(size = 10, face = "bold"),  
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),  
+        legend.position = "bottom", 
+        legend.title = element_text(size = 10, face = "bold"))
 
+# Afficher le graphique
+print(donnees_env_aberrantes)
 ```
+Les erreurs ainsi identifiées doivent être corrigées au sein de la base ASPE. De manière temporaire, on remplace les valeurs très aberrantes susceptibles d'influencer les futures analyses, par des valeurs médianes. 
+Étape 3 : Remplacer les valeurs très aberrantes par la médiane des années N-1 et N+1 du paramètre.
 
+```{r Remplacement des valeurs très aberrantes}
+ope_selection_param_env <- ope_selection_param_env %>%
+  arrange(parametre, pop_id, annee) %>%
+  group_by(parametre, pop_id) %>%
+mutate(valeur = ifelse(very_aberrant,
+                         ifelse(is.na(lag(valeur)) & !is.na(lead(valeur)), lead(valeur),
+                                ifelse(is.na(lead(valeur)) & !is.na(lag(valeur)), lag(valeur),
+                                       zoo::rollapply(valeur, width = 3, FUN = function(x) median(x, na.rm = TRUE), fill = NA, align = "center"))),
+                         valeur)) %>%
+  ungroup() %>%
+  select(-Q1, -Q3, -IQR, -lower_bound, -upper_bound, -median_val)
+```
 
 
 # Sauvegarde
