@@ -41,7 +41,6 @@ library(scales)
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 load(file = "../processed_data/pre_traitement_criteres_lrr_uicn.rda")
-
 ```
 
 # Chargement excel "selection_taxon_lrr"
@@ -55,10 +54,10 @@ tab_especes <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 # Chargement des fonctions 
 
 ```{r}
-#source(file = "../R/lrr_critere_a.R")
+#source(file = "../R/lrr_critere_a.R") A ENLEVER SI PAS NECESSAIRE
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/mann_kendall_sen.R")
-
+source(file ="../R/regression_resultats.R")
 ```
 
 
@@ -71,8 +70,6 @@ Le classement des espèces dans les catégories d'espèces menacées s'opère su
 
 
 
-
-
 ### Etape 1 : évaluation initiale
 
 La première étape consiste à appliquer les critères d'évaluation aux populations situées dans les limites de la région considérée. Cette évaluation initiale aboutit à un classement préliminaire de l'espèce. Comme l'évaluation initiale ne porte que sur la population régionale, le classement déterminé lors de cette première étape peut surestimer (ou parfois sous-estimer) le risque réel de disparition de la région. Un ajustement à la baisse ou à la hausse de la catégorie préliminaire peut donc être nécessaire. 
@@ -80,14 +77,9 @@ La première étape consiste à appliquer les critères d'évaluation aux popula
 
 Pour l'exemple de la Bretagne : Cette phase de pré-évaluation se réalise sur les 43 stations étudiées et pré-sélectionnées dans le cadre de ce travail (cf scripts précédents). En effet, les stations sélectionnées sont des stations issues de réseaux (RCS, RHP et RRP) qui se veulent représentatifs (de la biodiversité pour RCS et RRP) de la situation des poissons d'eau douce en Bretagne. Le seul point de vigiliance est à porter sur les espèces de grands cours d'eau qui ne sont ici représentés que par 2 stations (reliées à La Vilaine). Il s'agira d'un point de vigilance à prendre en compte dans l'analyse des résultats. 
 
-
-
-##### Utilisation des critères A à E de l'UICN
-
 ---
 
 Temps de génération : La durée d'une génération correspond à l'âge moyen des parents de la cohorte actuelle (c'est à dire des nouveau-nés dans la population). En conséquence, la durée d'une génération reflète le taux de renouvellement des reproducteurs dans une population. La durée d'une génération est plus grande que l'âge à la première reproduction et plus petite que l'âge du reproducteur le plus agé, sauf pour les taxons qui ne se reproduisent qu'une seule fois. Lorsque la durée de la génération varie en raison de mencaes, c'est la durée la plus naturelle, c'est à dire avant perturbation, qu'il convient de retenir (UICN, 2012).
-
 
 Les temps de génération à prendre en compte pour les différentes espèces sont renseignées dans le tableau de données tab_especes - dans la colonne temps_generation (3 générations ou 10 ans : la plus longue de ces deux données).
 
@@ -100,209 +92,12 @@ Afin de classer ou non une espèce en "DD", on observe l'occurrence de l'espèce
 
 
 
-On réalise maintenant pour chacune des espèces évaluables l'application des différents critères : 
+##### Utilisation des critères A à E de l'UICN
 
-
-## Critère A : Réduction de la population
-
-Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
-
-
-
-## Critère A2a : Observation directe : 
-
-On réalise alors un tableau des effectifs cumulés pour toutes les stations par années : 
-
-```{r}
-# Filtrer les données pour l'indicateur 'effectif_total'
-ope_indicateur_complet_c <- ope_indicateur_complet %>%
-  group_by(esp_code_alternatif, annee) %>%
-  mutate(effectif_total_cumule = sum(valeur)) %>% 
-  dplyr::select(-indicateur,
-         -stade,
-         -valeur) %>% 
-  unique()
-
-```
-
-
-```{r}
-ope_indicateur_complet_c <- ope_indicateur_complet_c %>%
-  arrange(esp_code_alternatif,
-          annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
-  ungroup()
-```
-
-
-```{r}
-ope_indicateur_max_annee <- ope_indicateur_complet_c %>%
-  filter(annee == max(annee)) %>%
-  arrange(esp_code_alternatif, annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
-  ungroup()
-```
-
-
-```{r}
-# Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
-ope_indicateur_min_annee <- ope_indicateur_complet_c %>%
-  arrange(esp_code_alternatif, annee) %>% 
-  group_by(esp_code_alternatif) %>%
-  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
-  filter(annee == max(annee) - periode_etude_lrr) %>%
-  ungroup()
-```
-
-
-```{r}
-# Combiner les deux dataframes en un seul
-ope_indicateur_critere_A2a <- bind_rows(ope_indicateur_max_annee, ope_indicateur_min_annee)
-```
-
-
-On calcul maintenant le pourcentage d'évolution entre l'annnée max et l'année-temps de génération de l'espèce :
-```{r}
-# Calcul des pourcentages d'évolution des valeurs d'indicateurs
-ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
-  group_by(esp_code_alternatif) %>% 
-  mutate(pourcentage_evo = ((first(effectif_total_cumule) - last(effectif_total_cumule))/ last(effectif_total_cumule))*100) %>%
-  ungroup() %>% 
-  select (-periode_etude_lrr,
-          -annee_moins_generation,
-          -annee,
-          -effectif_total_cumule,
-          -pop_id,
-          -ope_id) %>% 
-  unique()
-```
-
-
-```{r}
-ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
-  mutate(statut_espece = case_when(
-    is.nan(pourcentage_evo) ~ "NaN",
-    pourcentage_evo <= -80 ~ "en danger critique",
-    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
-    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
-    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
-  )) %>% 
-  unique()
-
-#Représentation graphique du tableau 
-ope_indicateur_critere_A2a%>%
-  DT::datatable(rownames = FALSE)
-
-result_lrr <- ope_indicateur_critere_A2a %>% 
-  mutate(critere = "A2a")
-```
-
-
-```{r,fig.height = 8, fig.width = 10}
-ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
-  filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% # Apparaissent en Nan
-  ggplot(aes(x = pourcentage_evo, 
-             y = esp_code_alternatif, 
-             fill = factor(sign(pourcentage_evo)))) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = esp_code_alternatif),
-            fontface = "bold") +
-  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey"),
-        panel.grid.minor = element_line(color = "lightgrey")) + 
-  scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000", "#92D050"), 
-                     labels = c("Diminution","Augmentation"), 
-                     name = "Taux de croissance")
-
-print(ope_indicateur_critere_A2a_graph)
-
-```
-
-```{r}
-# Définir les couleurs pour chaque zone
-color_CR <- "#DB0101"  # C5/M100/J100/N5
-color_EN <- "#FF8C00"  # C0/M28/J100/N0
-color_VU <- "#FFFC00"  # C0/M0/J98/N0
-color_Minor <- "#faf0e0"  # Préoccupation mineure, blanc
-
-
-ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
-  mutate(label = paste0(esp_code_alternatif))
-
-ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>% 
-  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI"))
-
-
-# Modifier le code pour encadrer les barres avec un trait noir, formater l'axe des ordonnées en pourcentage, et ajouter des parenthèses après les noms
-ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
-  ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), y = pourcentage_evo, fill = factor(sign(pourcentage_evo)))) +
-  geom_rect(aes(ymin = -Inf, ymax = -80, xmin = -Inf, xmax = Inf), fill = color_CR, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone CR et ajouter la transparence
-  geom_text(data = NULL, aes(x = 6.5, y = -80, label = "CR"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour CR et mettre en italique
-  geom_rect(aes(ymin = -80, ymax = -50, xmin = -Inf, xmax = Inf), fill = color_EN, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone EN et ajouter la transparence
-  geom_text(data = NULL, aes(x = 6.5, y = -60, label = "EN"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour EN et mettre en italique
-  geom_rect(aes(ymin = -50, ymax = -30, xmin = -Inf, xmax = Inf), fill = color_VU, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone VU et ajouter la transparence
-  geom_text(data = NULL, aes(x = 6.5, y = -35, label = "VU"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour VU et mettre en italique
-  geom_rect(aes(ymin = -30, ymax = Inf, xmin = -Inf, xmax = Inf), fill = color_Minor, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone Minor et ajouter la transparence
-  geom_text(data = NULL, aes(x = 6.5, y = -12, label = "LC"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour LC et mettre en italique
-  geom_text(aes(label = label), fontface = "bold", vjust = -0.3) +  # Utiliser la nouvelle colonne pour les étiquettes des barres et remonter légèrement les étiquettes
-  labs(x = NULL, y = "Taux d'évolution de la densité surfacique") +
-  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
-  theme_bw() +
-  theme(
-    strip.background = element_rect(color = "black", fill = "#faffff"),
-    legend.position = "bottom",
-    panel.background = element_blank(),  # Enlever le fond
-    panel.grid.major = element_blank(),  # Enlever le quadrillage majeur
-    panel.grid.minor = element_blank(),  # Enlever le quadrillage mineur
-    axis.text.x = element_blank(),  # Supprimer les étiquettes de l'axe x
-    axis.title.x = element_blank(),  # Supprimer le titre de l'axe x
-    axis.ticks.x = element_blank()  # Enlever les ticks de l'axe x
-  ) +
-  scale_y_continuous(labels = scales::percent_format(scale = 1), expand = expansion(mult = c(0.05, 0.05)), breaks = c(-90, -80, -50, -30, 0, 50, 100)) +  # Formater l'axe des ordonnées en pourcentage et ajouter un tic à -90
-  scale_fill_manual(values = c("#ed0000", "#92D050"),
-                    labels = c("Diminution", "Augmentation"), 
-                    name = "Tendance temporelle")
-
-# Afficher le graphique
-print(ope_indicateur_critere_A2a_graph)
-```
-
-
-
-
-
-
-
-
-
-
-
+On réalise maintenant pour chacune des espèces évaluables l'application dU critère A2B, le plus pertinants avec nos données : 
 
 ## Critère A2b : indice d'abondance adapté au taxon : densité_surface : 
 ## pour la période LRR
-
-```{r}
-# Fonction pour effectuer la régression linéaire et extraire les coefficients
-regression_resultats <- function(data) {
-  modele <- lm(valeur ~ annee, data = data)
-  coef <- coef(modele)
-  data.frame(
-    intercept = coef[1],
-    slope = coef[2]
-  )
-}
-```
 
 
 ```{r}
@@ -317,7 +112,10 @@ periode_table <- data.frame(
 
 ```{r}
 mes_especes <- c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")
+```
 
+
+```{r}
 reg_indicateur %>% 
   ungroup ()
 
@@ -346,20 +144,17 @@ regression_coeffs <- reg_indicateur_esp_ok %>%
   left_join(periode_table, by = "esp_code_alternatif")
 ```
 
-
 ```{r}
 regression_coeffs <- regression_coeffs %>%
   mutate(valeur_predite_debut = (slope * annee_depart) + intercept,
          valeur_predite_fin = (slope * annee_fin) + intercept)
 ```
 
-
 ```{r}
 # Calculer les pourcentages d'évolution des valeurs prédites
 regression_coeffs <- regression_coeffs %>%
   mutate(pourcentage_evo = ((valeur_predite_fin - valeur_predite_debut) / valeur_predite_debut) * 100)
 ```
-
 
 ```{r}
 # Déterminer le statut des espèces
@@ -388,8 +183,6 @@ reg_indicateur_critere_A2b_tab <- regression_coeffs %>%
 reg_indicateur_critere_A2b_tab %>%
   DT::datatable(rownames = FALSE)
 
-
-
 ```
 
 
@@ -397,16 +190,7 @@ Pour mon rapport, je ne sélectionne que les résultats qui sont significatifs a
 
 ```{r}
 reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab %>% 
-  filter(esp_code_alternatif %in% c("ANG",
-                                    "BRO",
-                                    "SAT",
-                                    "GAR",
-                                    "VAI",
-                                    "VAR",
-                                    "CHA",
-                                    "GOU",
-                                    "SAT",
-                                    "TRF"))
+  filter(esp_code_alternatif %in% mes_especes)
 ```
 
 
@@ -418,15 +202,15 @@ color_VU <- "#FFFC00"  # C0/M0/J98/N0
 color_NT <- "#edebc0"
 color_Minor <- "#faf0e0"  # Préoccupation mineure, blanc
 
-reg_indicateur_critere_A2b_tab <- reg_indicateur_critere_A2b_tab %>% 
+reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>% 
    left_join(tab_especes %>% 
                select(esp_code_alternatif, 
                       statut_espece_lrr_2015), 
              by = "esp_code_alternatif")
  
- # Ajouter une colonne pour les étiquettes combinées
- reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>% 
-   left_join(reg_espece %>% 
+#Ajouter une colonne pour les étiquettes combinées
+reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>%
+   left_join(reg_espece %>%
                select(esp_code_alternatif,
                       periode_etude_lrr))
 
@@ -451,25 +235,24 @@ reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>%
 
 
 ```{r}
-
 # Créer le graphique avec les barres coupées et les segments pointillés
 reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b_tab_sig %>%
   ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), y = pourcentage_evo_cut, fill = factor(sign(pourcentage_evo)))) +
   geom_rect(aes(ymin = -Inf, ymax = -80, xmin = -Inf, xmax = Inf), fill = color_CR, alpha = 0.2) +
   geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 9, y = -80, label = "CR"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_text(data = NULL, aes(x = 13, y = -85, label = "CR"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -80, ymax = -50, xmin = -Inf, xmax = Inf), fill = color_EN, alpha = 0.2) +
   geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 9, y = -60, label = "EN"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_text(data = NULL, aes(x =13, y = -60, label = "EN"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -50, ymax = -30, xmin = -Inf, xmax = Inf), fill = color_VU, alpha = 0.2) +
   geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 9, y = -35, label = "VU"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_text(data = NULL, aes(x = 13, y = -35, label = "VU"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -30, ymax = -20, xmin = -Inf, xmax = Inf), fill = color_NT, alpha = 0.2) +
   geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 9, y = -20, label = "NT"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_text(data = NULL, aes(x = 13, y = -20, label = "NT"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -20, ymax = Inf, xmin = -Inf, xmax = Inf), fill = color_Minor, alpha = 0.2) +
   geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 9, y = -5, label = "LC"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_text(data = NULL, aes(x = 13, y = -5, label = "LC"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_text(aes(label = label),
             fontface = "bold",
             vjust = -0.5,
@@ -493,7 +276,8 @@ reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b_tab_sig %>%
                     name = "Tendance temporelle") +
   coord_cartesian(ylim = c(-92, 30)) +
   # Ajouter des segments pointillés
-  geom_segment(data = reg_indicateur_critere_A2b_tab_sig %>% filter(is_cut),
+  geom_segment(data = reg_indicateur_critere_A2b_tab_sig %>% 
+                 filter(is_cut),
                aes(x = reorder(esp_code_alternatif, pourcentage_evo), xend = reorder(esp_code_alternatif, pourcentage_evo),
                    y = pourcentage_evo_cut, yend = pourcentage_evo_cut + 10),
                linetype = "dotted", color = "black", size = 1.5)
@@ -702,4 +486,182 @@ reg_indicateur_critere_A2b_graph_global <- reg_indicateur_critere_A2b_tab_global
 print(reg_indicateur_critere_A2b_graph_global)
 
 ```
+
+## Critère A : Réduction de la population
+
+Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
+
+
+
+## Critère A2a : Observation directe : 
+
+On réalise alors un tableau des effectifs cumulés pour toutes les stations par années : 
+
+```{r}
+# Filtrer les données pour l'indicateur 'effectif_total'
+ope_indicateur_complet_c <- ope_indicateur_complet %>%
+  group_by(esp_code_alternatif, annee) %>%
+  mutate(effectif_total_cumule = sum(valeur)) %>% 
+  dplyr::select(-indicateur,
+                -stade,
+                -valeur) %>% 
+  unique()
+
+```
+
+
+```{r}
+ope_indicateur_complet_c <- ope_indicateur_complet_c %>%
+  arrange(esp_code_alternatif,
+          annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
+  ungroup()
+```
+
+
+```{r}
+ope_indicateur_max_annee <- ope_indicateur_complet_c %>%
+  filter(annee == max(annee)) %>%
+  arrange(esp_code_alternatif, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
+  ungroup()
+```
+
+
+```{r}
+# Sélectionner les lignes correspondant à l'année maximale moins le temps de génération
+ope_indicateur_min_annee <- ope_indicateur_complet_c %>%
+  arrange(esp_code_alternatif, annee) %>% 
+  group_by(esp_code_alternatif) %>%
+  mutate(annee_moins_generation = max(annee) - periode_etude_lrr) %>%
+  filter(annee == max(annee) - periode_etude_lrr) %>%
+  ungroup()
+```
+
+
+```{r}
+# Combiner les deux dataframes en un seul
+ope_indicateur_critere_A2a <- bind_rows(ope_indicateur_max_annee, ope_indicateur_min_annee)
+```
+
+
+On calcul maintenant le pourcentage d'évolution entre l'annnée max et l'année-temps de génération de l'espèce :
+  ```{r}
+# Calcul des pourcentages d'évolution des valeurs d'indicateurs
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
+  group_by(esp_code_alternatif) %>% 
+  mutate(pourcentage_evo = ((first(effectif_total_cumule) - last(effectif_total_cumule))/ last(effectif_total_cumule))*100) %>%
+  ungroup() %>% 
+  select (-periode_etude_lrr,
+          -annee_moins_generation,
+          -annee,
+          -effectif_total_cumule,
+          -pop_id,
+          -ope_id) %>% 
+  unique()
+```
+
+
+```{r}
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
+  mutate(statut_espece = case_when(
+    is.nan(pourcentage_evo) ~ "NaN",
+    pourcentage_evo <= -80 ~ "en danger critique",
+    (pourcentage_evo <= -50 & pourcentage_evo > -80) ~ "en danger",
+    (pourcentage_evo <= -30 & pourcentage_evo > -50) ~ "vulnérable",
+    TRUE ~ "préoccupation mineure"  # Si aucune condition n'est satisfaite, le statut est "préoccupation mineure"
+  )) %>% 
+  unique()
+
+#Représentation graphique du tableau 
+ope_indicateur_critere_A2a%>%
+  DT::datatable(rownames = FALSE)
+
+result_lrr <- ope_indicateur_critere_A2a %>% 
+  mutate(critere = "A2a")
+```
+
+
+```{r,fig.height = 8, fig.width = 10}
+ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
+  filter(!esp_code_alternatif %in% c("LPM", "BRO")) %>% # Apparaissent en Nan
+  ggplot(aes(x = pourcentage_evo, 
+             y = esp_code_alternatif, 
+             fill = factor(sign(pourcentage_evo)))) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = esp_code_alternatif),
+            fontface = "bold") +
+  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
+  theme_bw() +
+  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "#faf0e0"),
+        panel.grid.major = element_line(color = "lightgrey"),
+        panel.grid.minor = element_line(color = "lightgrey")) + 
+  scale_y_discrete(labels = NULL, breaks = NULL) +
+  scale_fill_manual(values = c("#ed0000", "#92D050"), 
+                    labels = c("Diminution","Augmentation"), 
+                    name = "Taux de croissance")
+
+print(ope_indicateur_critere_A2a_graph)
+
+```
+
+```{r}
+# Définir les couleurs pour chaque zone
+color_CR <- "#DB0101"  # C5/M100/J100/N5
+color_EN <- "#FF8C00"  # C0/M28/J100/N0
+color_VU <- "#FFFC00"  # C0/M0/J98/N0
+color_Minor <- "#faf0e0"  # Préoccupation mineure, blanc
+
+
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
+  mutate(label = paste0(esp_code_alternatif))
+
+ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>% 
+  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI"))
+
+
+# Modifier le code pour encadrer les barres avec un trait noir, formater l'axe des ordonnées en pourcentage, et ajouter des parenthèses après les noms
+ope_indicateur_critere_A2a_graph <- ope_indicateur_critere_A2a %>%
+  ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), y = pourcentage_evo, fill = factor(sign(pourcentage_evo)))) +
+  geom_rect(aes(ymin = -Inf, ymax = -80, xmin = -Inf, xmax = Inf), fill = color_CR, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone CR et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -80, label = "CR"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour CR et mettre en italique
+  geom_rect(aes(ymin = -80, ymax = -50, xmin = -Inf, xmax = Inf), fill = color_EN, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone EN et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -60, label = "EN"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour EN et mettre en italique
+  geom_rect(aes(ymin = -50, ymax = -30, xmin = -Inf, xmax = Inf), fill = color_VU, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone VU et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -35, label = "VU"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour VU et mettre en italique
+  geom_rect(aes(ymin = -30, ymax = Inf, xmin = -Inf, xmax = Inf), fill = color_Minor, alpha = 0.2) +
+  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +  # Diminuer l'épaisseur des barres pour la zone Minor et ajouter la transparence
+  geom_text(data = NULL, aes(x = 6.5, y = -12, label = "LC"), vjust = 1.5, hjust = -7, size = 4, color = "black", fontface = "italic") +  # Grossir les étiquettes pour LC et mettre en italique
+  geom_text(aes(label = label), fontface = "bold", vjust = -0.3) +  # Utiliser la nouvelle colonne pour les étiquettes des barres et remonter légèrement les étiquettes
+  labs(x = NULL, y = "Taux d'évolution de la densité surfacique") +
+  labs(title = "Critère LRR A2a : Effectifs cumulés de l'ensemble des stations", y = "Espèce", x = "Pourcentage d'évolution") +
+  theme_bw() +
+  theme(
+    strip.background = element_rect(color = "black", fill = "#faffff"),
+    legend.position = "bottom",
+    panel.background = element_blank(),  # Enlever le fond
+    panel.grid.major = element_blank(),  # Enlever le quadrillage majeur
+    panel.grid.minor = element_blank(),  # Enlever le quadrillage mineur
+    axis.text.x = element_blank(),  # Supprimer les étiquettes de l'axe x
+    axis.title.x = element_blank(),  # Supprimer le titre de l'axe x
+    axis.ticks.x = element_blank()  # Enlever les ticks de l'axe x
+  ) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1), expand = expansion(mult = c(0.05, 0.05)), breaks = c(-90, -80, -50, -30, 0, 50, 100)) +  # Formater l'axe des ordonnées en pourcentage et ajouter un tic à -90
+  scale_fill_manual(values = c("#ed0000", "#92D050"),
+                    labels = c("Diminution", "Augmentation"), 
+                    name = "Tendance temporelle")
+
+# Afficher le graphique
+print(ope_indicateur_critere_A2a_graph)
+```
+
+
+
 

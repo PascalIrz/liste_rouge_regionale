@@ -240,13 +240,31 @@ gg_texte_usuel
 
 À partir de ce graphique, nous pouvons éliminer les espèces qui sont trop rares, c'est à dire ayant une densité moyenne et un taux d'occurrence très faible (c'est-à-dire pour lesquelles nous n'avons pas assez de données - cela correspond aux espèces situées en bas à gauche du graphique). Les espèces ayant le plus de données sur lesquelles s'appuyer apparaissent en haut à droite du graphique : ce sont les espèces qui ont une forte occurrence ainsi qu'une forte densité moyenne. 
 
-Dans le cadre de notre étude, on observe que les espèces étudiées dans la précédente liste rouge régionale (2015) apparaissent pour la quasi-totalité dans la partie supérieure droite du graphique, à l'exception de la carpe commune (CCO) et de l'épinoche (EPI). 
+Dans le cadre de notre étude, on observe que les espèces étudiées dans la précédente liste rouge régionale (2015) apparaissent pour la quasi-totalité dans la partie supérieure droite du graphique, à l'exception de quelques espèces comme la carpe commune (CCO), l'épinoche (EPI), la lamproie marine (LPM)... 
+
+Nous réajustons ainsi la sélection d'espèce de la précendente liste rouge régionale en éliminant les espèces contenants trop peu de données. La sélection finale des espèces est contenue dans l'objet *mes_especes*. Nous appliquons cette sélection à notre dataframe *esp_ope_selection*.
+
+```{r Objet espece_lrr_2015 et mes_especes}
+especes_lrr_2015 <- c("ABL","ANG","ALA","BRB","BRE","BRO","CCO","CHA","CHE",
+                      "EPI","EPT","GAR","GOU","GRE","LPP","LPM","LOF","PER",
+                      "ROT","SAT","TAN","TRF","VAI","VAR")
+
+mes_especes <- c("ANG","BRO","CHA","CHE","GAR","GOU","LPP","LOF","PER","SAT","TRF","VAI","VAR")
+```
+
+
+```{r Filtrage espèce esp_ope_selection}
+esp_ope_selection <- esp_ope_selection %>% 
+  filter(esp_code_alternatif %in% mes_especes)
+```
 
 
 # Sauvegarde 
 
 ```{r Sauvegarde}
-save(esp_ope_selection,
+save(especes_lrr_2015, 
+     mes_especes,
+     esp_ope_selection,
      file = "../processed_data/selection_especes.rda")
 ```
 

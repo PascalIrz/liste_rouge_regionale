@@ -283,25 +283,23 @@ ope_densite_tendances_mk_st_globale <- mk_st_by_group(ope_densite_complet,
 
 On renomme les variables en français / 
 
-
 ```{r}
 # Remplacer les valeurs
-# ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
-#   mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
-#   rename(Tendance = trend)
-# 
-# ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
-#   mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>% 
-#   rename(Tendance = trend)
+ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
+  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>%
+  rename(Tendance = trend)
+
+ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
+  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>%
+  rename(Tendance = trend)
 ```
 
 
 ```{r}
 # Pour ope_densite_tendances_mk_st_globale
 ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
-         trend = if_else(is.nan(mk_pvalue), "Abs", trend)) %>%
-  rename(Tendance = trend) %>% 
+  mutate(Tendance = recode(Tendance, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
+         Tendance = if_else(is.nan(mk_pvalue), "Abs", Tendance)) %>%
   mutate(sig = case_when(
       mk_pvalue < 0.001 ~ "***",
       mk_pvalue < 0.01 ~ "**",
@@ -314,9 +312,8 @@ ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
 ```{r}
 # Pour ope_densite_tendances_mk_st_lrr
 ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
-         trend = if_else(is.nan(mk_pvalue), "Abs", trend)) %>%
-  rename(Tendance = trend) %>% 
+  mutate(Tendance = recode(Tendance, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
+         Tendance = if_else(is.nan(mk_pvalue), "Abs", Tendance)) %>%
   mutate(sig = case_when(
       mk_pvalue < 0.001 ~ "***",
       mk_pvalue < 0.01 ~ "**",
@@ -359,15 +356,19 @@ ope_densite_code_complet_periode_lrr <- ope_densite_periode_lrr_sans_abs %>%
 
 
 ```{r Calcul mk_st, fig.height = 10, fig.width = 11}
-
 mes_esp_rapport <- c("ANG", "GAR", "SAT")
+mes_sta_supp <- c("42207", "44190", "47049")
+```
 
 
+```{r Calcul mk_st, fig.height = 10, fig.width = 11}
 # Combine data and plot with facet_wrap
 carte_tendance_lrr <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet_periode_lrr, 
                                       by = "pop_id") %>% 
-                            filter(esp_code_alternatif %in% mes_esp_rapport)%>%
+                            filter(
+                              #esp_code_alternatif %in% mes_esp_rapport,
+                                   !pop_id %in% mes_sta_supp)%>%
                             filter(!is.na(Tendance))) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
@@ -388,9 +389,13 @@ carte_tendance_lrr <- ggplot(sta_id_ope_selection %>%
         plot.margin = unit(c(1, 1, 1, 1), "cm")) +    
   ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
 
-carte_tendance_lrr
+carte_tendance_lrr <- carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
+```
 
-carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
+
+```{r Enregistrement carte, fig.height = 10, fig.width = 11}
+ggsave(filename = "../assets/carte_tendances_sta_lrr.png", 
+       plot = carte_tendance_lrr, width = 10, height = 8, dpi = 300) # Enregistrer l'image
 
 ```
 
@@ -416,7 +421,9 @@ Représentation de la carte globale
 # Combine data and plot with facet_wrap
 carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet, by = "pop_id") %>% 
-                            filter(esp_code_alternatif %in% mes_esp_rapport)) +
+                            filter(
+                              #!esp_code_alternatif %in% mes_esp_rapport,
+                                    !pop_id %in% mes_sta_supp)) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
   geom_sf(aes(col = Tendance, 
@@ -436,10 +443,16 @@ carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>%
         plot.margin = unit(c(1, 1, 1, 1), "cm")) +
    ggtitle("Tendances temporelles des densités par espèce à l'échelle des points de prélèvement - période globale (30 ans)")
 
-carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
+carte_sta_facet_globale <- carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
 
 ```
 
+
+```{r Enregistrement carte, fig.height = 10, fig.width = 11}
+ggsave(filename = "../assets/carte_tendances_sta_globale.png", 
+       plot = carte_sta_facet_globale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
+
+```
 
 
 
