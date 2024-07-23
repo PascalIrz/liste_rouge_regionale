@@ -11,14 +11,24 @@ glmm_calcul_modele <- function(data,
     return(NULL)
   }
   
-  model <- try(glmer(valeur ~  scale(annee) +
+  # model <- try(glmer(valeur ~  scale(annee) +
+  #                      pro_libelle +
+  #                    scale(ope_surface_calculee) +
+  #                      (scale(annee) | pop_id) +
+  #                      scale(julian) +
+  #                      scale(I(julian^2)),
+  #                    data = filtered_data,
+  #                    family = poisson), 
+  #                    silent = TRUE)
+  
+  model <- try(glmer(valeur ~  (annee | pop_id) +
+                       annee +
                        pro_libelle +
-                     scale(ope_surface_calculee) +
-                       (scale(annee) | pop_id) +
+                       ope_surface_calculee +
                        scale(julian) +
                        scale(I(julian^2)),
                      data = filtered_data,
-                     family = poisson), 
+                     family = poisson),
                      silent = TRUE)
 
   

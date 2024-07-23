@@ -18,9 +18,9 @@ glmm_application_modele <- function(data,
     results <- combinations %>%
       pmap(function(espece, 
                     stade, 
-                    indicateur) 
-                    #ope_surface_calculee, 
-                    #pro_libelle) 
+                    indicateur, 
+                    ope_surface_calculee, 
+                    pro_libelle) 
     {
         glmm_calcul_modele(data = period_data,
                            mon_espece = espece)

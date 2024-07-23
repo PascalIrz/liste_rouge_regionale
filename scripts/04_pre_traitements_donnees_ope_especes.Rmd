@@ -390,6 +390,7 @@ resultat_verif_effectif <- verif_effectif %>%
   filter(nbr_lignes!= lop_effectif)
 ```
 
+
 Lorsque le nombre de ligne est supérieur au lop_effectif, il s'agit d'erreur de retranscription. On remplace alors la valeur de lop_effectif par le nombre de ligne contenu dans la colonne "nbr_lignes". 
 
 ```{r modification erreurs lot_effectif}
@@ -426,7 +427,20 @@ if (nb_unique + nb_na == nb_lignes) {
 } else {
   print("Le nombre de valeurs uniques de mei_id n'est pas égal au nombre de lignes de mei_ope_selection.")}
 ```
-Dans l'exemple de la Bretagne, on observe que le nombre de valeurs uniques de *mei_id* est pas égal au nombre de lignes de *mei_ope_selection*(en comprennant les NA). 
+
+
+Dans l'exemple de la Bretagne, on observe que le nombre de valeurs uniques de *mei_id* est pas égal au nombre de lignes de *mei_ope_selection*(en comprennant les NA). Il est donc necessaire de corriger ces erreurs ; temporairement, on assigne à ces NA un identifiant provisoire afin de ne pas avoir de blocage pour la suite de l'étude. 
+
+```{r Création id provisoire mei_id na}
+mei_ope_selection <- mei_ope_selection %>% # Convertir mei_id en chaîne de caractères
+  mutate(mei_id = as.character(mei_id))
+
+# Création d'un vecteur de noms pour remplacer les NA
+na_vigilance <- paste0("na_vigilance_", seq_along(which(is.na(mei_ope_selection$mei_id))))
+
+mei_ope_selection <- mei_ope_selection %>% # Remplacement des NA dans mei_id par les valeurs de na_vigilance
+  mutate(mei_id = replace(mei_id, is.na(mei_id), na_vigilance))
+```
 
 
 

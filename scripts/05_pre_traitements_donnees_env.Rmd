@@ -157,7 +157,7 @@ mutate(valeur = ifelse(very_aberrant,
                                        zoo::rollapply(valeur, width = 3, FUN = function(x) median(x, na.rm = TRUE), fill = NA, align = "center"))),
                          valeur)) %>%
   ungroup() %>%
-  select(-Q1, -Q3, -IQR, -lower_bound, -upper_bound, -median_val)
+  select(-Q1, -Q3, -IQR, -lower_bound, -upper_bound, -median_val, -very_aberrant, - aberrant, - aberrant_color)
 ```
 
 

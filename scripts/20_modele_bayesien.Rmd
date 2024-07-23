@@ -4,7 +4,7 @@ subtitle: "Méthode Bayésien - démographie des espèces de poissons d'eau douc
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
-  mes_especes: !r c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+  mes_especes: !r c("ANG", "BRO", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "LPP", "SAT", "VAR")
 ---
 
 
@@ -162,8 +162,38 @@ save(mc,
 
 
 
+On souhaite considérer l'effet du protocole : 
+
+```{r}
+
+mes_especes <- c("ANG", "BRO", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "LPP", "SAT", "VAR")
+data_pro <- data %>% 
+  mef_ajouter_type_protocole() %>% 
+  filter(esp_code_alternatif == mes_especes)
+```
 
 
+```{r}
+mc_pro <- mod_popgrowAlt(data_pro,
+                  var_id = "pop_id",
+                  var_tmp = "annee",
+                  var_tax = "esp_code_alternatif",
+                  var_cnt = "catch_size",
+                  var_surf = "ope_surface_calculee",
+                  var_pro = "pro_libelle",
+                  period = list(c(2005,2023),
+                                c(2008, 2023),
+                                c(2011, 2023),
+                                c(2013, 2023)),
+                  n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
+
+
+save(mc_pro,
+     file = "../processed_data/bay_final_result2.rda")
+
+
+
+```
 
 
 
@@ -171,12 +201,12 @@ save(mc,
 
 # Analyse des résultats 
 
-```{r}
-result$mcmc_summary
+```{r,  fig.height = 145, fig.width = 140}
+mc$mcmc_summary
 
-denplot(mcmc.out$mcmc_chain)
+denplot(mc$mcmc_chain)
 
-plot(mcmc.out$mcmc_chain$chain2)
+plot(mc$mcmc_chain$chain2)
 
 test <- mcmc.out$mcmc_summary
 plot(mcmc.out$mcmc_summary)
