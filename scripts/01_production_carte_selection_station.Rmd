@@ -9,7 +9,6 @@ output:
     toc_float: true
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE,
@@ -20,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 01_production_carte_selection_station
 
-Après avoir sélectionné les différentes stations / points de prélèvements et opérations de pêches de l'aire géographique ciblée, une carte globale est réalisée.  
+  Après avoir sélectionné les différentes stations / points de prélèvements et opérations de pêches de l'aire géographique ciblée, une carte globale est réalisée.  
 
 
 # Installation 
@@ -37,8 +36,10 @@ library(png)
 ```
 
 ```{r Chargement des données}
-load(file = "../processed_data/selection_pop_ope_carte.rda") # Chargement des données 
+load(file = "../processed_data/selection_pop_ope_carte.rda") # Chargement des données
+```
 
+```{r Chargement de la palette de couleur}
 pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")## Chargement de la palette de couleur 
 ```
 
@@ -47,12 +48,12 @@ pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D
 
 ## Création de la carte de situation
 
-Il s'agit de créer une petite carte de situation permettant de situer l'aire géographique étudiée à l'échelle de la France. 
+  Dans un premier temps, il s'agit de créer une petite carte de situation permettant de situer l'aire géographique étudiée à l'échelle de la France (ici la Bretagne). 
 
-```{r Carte situation}
-france <- ne_countries(country = "france", returnclass = "sf") # Sélection du pays de l'étude (ici la France)
+```{r Création carte situation}
+france <- ne_countries(country = "france", returnclass = "sf") # Sélection du pays de l'étude (#France)
 
-carte_france_dept <- ggplot(data = france) + # Création de la zone précise de l'étude (ici la Bretagne)
+carte_france_dept <- ggplot(data = france) + # Création de la zone précise de l'étude (#Bretagne)
   geom_sf(fill = "gray82", color = "black") +
   theme_void() +
   annotate("path",
@@ -71,7 +72,7 @@ carte_france_dept_grob <- ggplotGrob(carte_france_dept)# Convertir la carte de F
 
 ## Création de la carte station
 
-Il s'agit de créer la carte principale regroupant les stations étudiées. 
+  Il s'agit de créer la carte principale regroupant les stations étudiées (données issues de pré-traitements réalisés dans le script *00_selection_pop_ope*). 
 
 ```{r Création carte station}
 carte_sta <- ggplot(sta_id_ope_selection) +
@@ -94,14 +95,14 @@ carte_combinee <- ggdraw() + # Assemblage des cartes pré-créée
   draw_plot(carte_sta) +
   draw_plot(carte_france_dept, x = 0.015, y = 0.03, width = 0.4, height = 0.25, hjust = 0.05, vjust = -0.75)
 
-logo <- readPNG("../assets/ofb_logo.png")
+logo <- readPNG("../assets/ofb_logo.png") # Ajout du logo de l'OFB
 
 carte_combinee <- carte_combinee + # Créer la carte combinée avec le logo
   annotation_raster(logo, xmin = 0.8, xmax = 0.98, ymin = 0.015, ymax = 0.13)
 
 titre <- ggdraw() + # Ajouter un titre
   draw_label("Stations bretonnes sélectionnées pour 
-             l'actualisation de la Liste Rouge Régionale des poissons d'eau douce", fontface = 'bold', x = 0.5, y = 0.70, size = 10) + 
+             l'appui à l'actualisation de la Liste Rouge Régionale des poissons d'eau douce 2024", fontface = 'bold', x = 0.5, y = 0.70, size = 10) + 
   theme(plot.margin = margin(0, 0, 0, 0))
 
 carte_finale <- plot_grid(titre, carte_combinee, ncol = 1, rel_heights = c(0.1, 1)) # Combiner le titre et la carte
