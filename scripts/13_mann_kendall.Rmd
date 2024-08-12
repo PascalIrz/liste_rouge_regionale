@@ -70,7 +70,7 @@ reg_indicateur_reduit <- reg_indicateur_reduit %>%
 ```
 
 
-```{r Mise en place des périodes}
+```{r}
 periodes <- list(c(1990,2023),
                  c(2005, 2023), 
                  c(2008, 2023),
@@ -81,7 +81,7 @@ periodes <- list(c(1990,2023),
 ```
 
 
-```{r Mise en place des périodes}
+```{r}
 # reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>% 
 #   rename(stade = stade.x)
 ```
@@ -89,7 +89,6 @@ periodes <- list(c(1990,2023),
 
 
 ```{r Mise en place des périodes 2}
-
 # Appeler la fonction pour calculer les résultats pour chaque période
 reg_indicateur_lrr_tendances_mk_st <- mk_st_multi_periodes(df = reg_indicateur_reduit,
                                                               periods = periodes,
@@ -123,27 +122,27 @@ Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons
 
 ```{r}
 # Créer le tableau synthétique avec gt
-tab_reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
-  select(esp_code_alternatif,
-         periode,
-         indicateur,
-         trend,
-         sig) %>% 
-  arrange(esp_code_alternatif, 
-          indicateur) %>%   # Ordonner par espèce, indicateur et stade
-  gt() %>%
-  tab_header(
-    title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
-  ) %>%
-  cols_label(
-    esp_code_alternatif = "Code Espèce",
-    indicateur = "Indicateur",
-    trend = "Tendance Mann-Kendall / Sen Theil",
-    sig = "Significativité") %>%
-  tab_options(table.font.size = "small", data_row.padding = px(5))
-
-# Afficher le tableau
-tab_reg_indicateur_lrr_tendances_mk_st
+# tab_reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
+#   select(esp_code_alternatif,
+#          periode,
+#          indicateur,
+#          trend,
+#          sig) %>% 
+#   arrange(esp_code_alternatif, 
+#           indicateur) %>%   # Ordonner par espèce, indicateur et stade
+#   gt() %>%
+#   tab_header(
+#     title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
+#   ) %>%
+#   cols_label(
+#     esp_code_alternatif = "Code Espèce",
+#     indicateur = "Indicateur",
+#     trend = "Tendance Mann-Kendall / Sen Theil",
+#     sig = "Significativité") %>%
+#   tab_options(table.font.size = "small", data_row.padding = px(5))
+# 
+# # Afficher le tableau
+# tab_reg_indicateur_lrr_tendances_mk_st
 
 ```
 
@@ -158,7 +157,7 @@ tab_reg_indicateur_lrr_tendances_mk_st
 ## Application aux points de prélèvements 
 
 
-```{r Chargement des packages}
+```{r Chargement}
 library(tidyverse)
 library(trend)
 library(sf)
@@ -167,13 +166,13 @@ library(COGiter)
 
 # Chargement des données :
 
-```{r Chargement de la palette}
+```{r}
 ## Chargement de la palette de couleur 
 pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
 ```
 
 
-```{r Chargement des données}
+```{r}
 ## Chargement des données ----
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
@@ -183,7 +182,7 @@ load(file = "../processed_data/selection_pop_ope_carte.rda")
 ```
 
 
-```{r Chargement des fonctions}
+```{r}
 ## Chargement des fonctions ----
 source(file = "../R/mk_st_by_group.R")
 source(file = "../R/calcul_taux_evolution.R")
@@ -355,19 +354,70 @@ ope_densite_code_complet_periode_lrr <- ope_densite_periode_lrr_sans_abs %>%
 ```
 
 
-```{r Calcul mk_st, fig.height = 10, fig.width = 11}
+```{r, fig.height = 10, fig.width = 11}
 mes_esp_rapport <- c("ANG", "GAR", "SAT", "TRF")
 mes_sta_supp <- c("42207", "44190", "47049")
 ```
 
+```{r, fig.height = 9, fig.width = 11}
 
-```{r Calcul mk_st, fig.height = 10, fig.width = 11}
+carte_tendance_lrr <- ggplot(sta_id_ope_selection %>%
+                               left_join(ope_densite_code_complet_periode_lrr, by = "pop_id") %>%
+                               filter(!esp_code_alternatif %in% c("ANG","GAR", "SAT", "TRF"),
+                                      !pop_id %in% mes_sta_supp) %>%
+                               filter(!is.na(Tendance))) +
+  geom_sf(data = mes_depts, fill = "white", color = "black") +
+  geom_sf(data = buffer, fill = NA, color = "grey") +
+  geom_sf(aes(shape = Tendance, 
+              fill = ifelse(Tendance == "Non significative", 
+                            ifelse(sens_slope > 0, "Positif", "Négatif"), Tendance), 
+              size = factor(ifelse(Tendance == "Non significative", 1, 2))),
+          stroke = 0.2) +
+  scale_fill_manual(
+    name = "Tendance",
+    values = c(
+      "Diminution" = "red",
+      "Augmentation" = "darkgreen",
+      "Non significative" = "gray",
+      "Positif" = "#92D050",
+      "Négatif" = "#FF6F6F"
+    )
+  ) +
+  scale_shape_manual(
+    name = "Tendance",
+    values = c(
+      "Diminution" = 22, # carré plein
+      "Augmentation" = 24, # triangle plein
+      "Non significative" = 21 # cercle plein
+    )
+  ) +
+  scale_size_manual(
+    values = c("1" = 2, "2" = 4),
+    guide = 'none'
+  ) +
+  facet_wrap(~ esp_code_alternatif) +
+  theme(
+    panel.background = element_rect(fill = "lightblue"),
+    legend.position = "bottom",
+    legend.key = element_rect(fill = NA),
+    axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5),
+    plot.margin = unit(c(1, 1, 1, 1), "cm")) 
+#  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
+
+carte_tendance_lrr <- carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
+
+carte_tendance_lrr
+
+```
+
+
+```{r, fig.height = 10, fig.width = 11}
 # Combine data and plot with facet_wrap
 carte_tendance_lrr <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet_periode_lrr, 
                                       by = "pop_id") %>% 
                             filter(
-                              esp_code_alternatif %in% mes_esp_rapport,
+                              !esp_code_alternatif %in% c("ANG","GAR", "SAT", "TRF"),
                                    !pop_id %in% mes_sta_supp)%>%
                             filter(!is.na(Tendance))) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
@@ -418,7 +468,7 @@ ope_densite_code_complet <- ope_densite_code %>%
 
 Représentation de la carte globale
 
-```{r Carte période complète, fig.height = 10, fig.width = 11}
+```{r, fig.height = 10, fig.width = 11}
 # Combine data and plot with facet_wrap
 carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
                             left_join(ope_densite_code_complet, by = "pop_id") %>% 
@@ -444,15 +494,64 @@ carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>%
    ggtitle("Tendances temporelles des densités par espèce à l'échelle des points de prélèvement - période globale (30 ans)")
 
 carte_sta_facet_globale <- carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
+```
+
+
+```{r Carte période complète, fig.height = 10, fig.width = 11}
+
+carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
+                            left_join(ope_densite_code_complet, by = "pop_id") %>% 
+                            filter(
+                              !esp_code_alternatif %in% mes_esp_rapport,
+                                    !pop_id %in% mes_sta_supp)) +
+  geom_sf(data = mes_depts, fill = "white", color = "black") +
+  geom_sf(data = buffer, fill = NA, color = "grey") +
+  geom_sf(aes(shape = Tendance, 
+              fill = ifelse(Tendance == "Non significative", 
+                            ifelse(sens_slope > 0, "Positif", "Négatif"), Tendance), 
+              size = factor(ifelse(Tendance == "Non significative", 1, 2))),
+          stroke = 0.2) +
+  scale_fill_manual(
+    name = "Tendance",
+    values = c(
+      "Diminution" = "red",
+      "Augmentation" = "darkgreen",
+      "Non significative" = "gray",
+      "Positif" = "#92D050",
+      "Négatif" = "#FF6F6F"
+    )
+  ) +
+  scale_shape_manual(
+    name = "Tendance",
+    values = c(
+      "Diminution" = 22, # carré plein
+      "Augmentation" = 24, # triangle plein
+      "Non significative" = 21 # cercle plein
+    )
+  ) +
+  scale_size_manual(
+    values = c("1" = 2, "2" = 4),
+    guide = 'none'
+  ) +
+  facet_wrap(~ esp_code_alternatif) +
+  theme(
+    panel.background = element_rect(fill = "lightblue"),
+    legend.position = "bottom",
+    legend.key = element_rect(fill = NA),
+    axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5),
+    plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
+
+carte_sta_facet_globale <- carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
 
 carte_sta_facet_globale
 
 ```
 
 
-```{r Enregistrement carte, fig.height = 10, fig.width = 11}
-ggsave(filename = "../assets/carte_tendances_sta_globale.png", 
-       plot = carte_sta_facet_globale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
+```{r, fig.height = 10, fig.width = 11}
+# ggsave(filename = "../assets/carte_tendances_sta_globale.png", 
+#        plot = carte_sta_facet_globale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
 
 ```
 
@@ -462,10 +561,10 @@ ggsave(filename = "../assets/carte_tendances_sta_globale.png",
 # Sauvegarde 
 
 ```{r Sauvegarde}
-save(reg_indicateur_lrr_tendances_mk_st,
-     reg_indicateur_lrr_tendances_lm,
-     tab_reg_indicateur_lrr_tendances_mk_st,
-     tab_reg_indicateur_lrr_tendances_lm,
-     file = "../processed_data/lm_mann_kendall_tendances.rda")
+# save(reg_indicateur_lrr_tendances_mk_st,
+#      reg_indicateur_lrr_tendances_lm,
+#      tab_reg_indicateur_lrr_tendances_mk_st,
+#      tab_reg_indicateur_lrr_tendances_lm,
+#      file = "../processed_data/lm_mann_kendall_tendances.rda")
 ```
 

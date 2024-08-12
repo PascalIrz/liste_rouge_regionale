@@ -19,13 +19,13 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 00_selection_pop_ope
 
-L'objectif de cette étude est d'évaluer les tendances démographiques des poissons d'eau douce de Bretagne. Ce travail vient en appui à la révision de la liste rouge régionale de 2017 produite par Vigneron et al., 2017. 
+  L'objectif de cette étude est d'évaluer les tendances démographiques des poissons d'eau douce de Bretagne. Ce travail vient en appui à la révision de la liste rouge régionale de 2017 produite par Vigneron *et al.*, 2017. 
 
-Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples représentatifs de la dynamique de population des poissons d'eau douce de Bretagne de 1990 à 2023.
+  Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples représentatifs de la dynamique de population des poissons d'eau douce de Bretagne de 1990 à 2023.
 
-Ce script vise à constituer un premier jeu de données regroupant une sélection de stations bretonnes à étudier, tirées de la base nationale ASPE (regroupant l'ensemble des données piscicoles disponibles en France). Ces données serviront à construire des séries temporelles représentatives des dynamiques de population de poissons d'eau douce de Bretagne. Elle permettrons ainsi une première évaluation simple et globale des dynamiques populationnelles des poissons d'eau douce de Bretagne. 
-
-Dans un second temps (à partir du script 15), une analyse plus fine de ces dynamiques populationnelles sera effectuée à l'aide d'outils bayésiens développés par Dortel et al., 2022. 
+  Ce script vise à constituer un premier jeu de données regroupant une sélection de stations bretonnes à étudier, tirées de la base nationale ASPE (regroupant l'ensemble des données piscicoles disponibles en France). Ces données serviront à construire des séries temporelles représentatives des dynamiques de population de poissons d'eau douce de Bretagne. Elles permettrons ainsi une première évaluation simple et globale des dynamiques populationnelles des poissons d'eau douce de Bretagne. 
+  
+  Dans un second temps (à partir du script 15_pre_traitement_modele_bayesien), une analyse plus fine de ces dynamiques populationnelles sera effectuée à l'aide d'outils bayésiens développés par Dortel *et al.*, 2022. 
 
 
 # Installation 
@@ -65,7 +65,7 @@ pal3 <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1
 
 ## Paramètres
 
-Plusieurs paramètres sont définis pour cette étude, ils peuvent être modifiés en fonction des objectifs souhaités. Parmi ces paramètres :
+  Plusieurs paramètres sont définis pour cette étude, ils peuvent être modifiés en fonction des objectifs souhaités. Parmi ces paramètres :
 
 - La taille du *buffer* (en mètre) : zone tampon entourant les départements de la Bretagne. 
 
@@ -106,7 +106,7 @@ mes_types_de_peche <- c("Pêche complète à un ou plusieurs passages", # Types 
 
 n_mini_annee <- 9 # Nombre minimum d'années des séries de pêches 
 
-n_max_manquant <- 2 # Nombre d'années manquantes maximum consécutives sur les série de pêches 
+n_max_manquant <- 2 # Nombre d'années manquantes maximum consécutives sur les séries de pêches 
 
 annee_depart <- 1990 # Année de départ de l'étude 
 
@@ -116,7 +116,7 @@ annee_fin <- 2023 # Année de fin de l'étude
 
 # Constitution du jeu de données 
 
-Dans un premier temps, il s'agit de créer une "passerelle" qui permettra de joindre l'ensemble des différentes données retenues pour les futures analyses. Cette passerelle facilitera l'ajout de diverses tables de données contenant des informations sur les stations / opérations de pêche /données individuelles relatives aux poissons issues de la base ASPE. Pour cela, nous utiliserons la fonction "mef_ajouter_..." permettant d'ajouter de nouvelles tables à nos jeux de données.
+  Dans un premier temps, il s'agit de créer une "passerelle" qui permettra de joindre l'ensemble des différentes données retenues pour les futures analyses. Cette passerelle facilitera l'ajout de diverses tables de données contenant des informations sur les stations / opérations de pêche / données individuelles relatives aux poissons issues de la base *aspe*. Pour cela, nous utiliserons la fonction "mef_ajouter_..." permettant d'ajouter de nouvelles tables à nos jeux de données.
 
 ```{r Création passerelle}
 passerelle <- mef_creer_passerelle() # Création d'une passerelle
@@ -125,7 +125,7 @@ passerelle <- mef_creer_passerelle() # Création d'une passerelle
 
 ## Sélection de l'aire géographique
 
-Pour notre étude, nous nous concentrerons sur la Bretagne, incluant les départements 22, 29, 35 et 56. Ces départements sont modifiables selon l'objectif de l'étude.
+  Pour notre étude, nous nous concentrerons sur la Bretagne, incluant les départements 22, 29, 35 et 56. Ces départements sont modifiables selon la région et l'objectif de l'étude.
 
 ```{r Sélection aire géographique}
 mes_depts <- departements_metro_geo %>% 
@@ -141,11 +141,11 @@ mes_depts %>%
 
 ## Mise en place d'un buffer
 
-Notre étude se concentre sur la Bretagne. Toutes les stations bretonnes sont regroupées dans un jeu de données initial. Ici, il ne s’agit pas de réfléchir à l’échelle des bassins versants, leurs limites n’étant pas toujours évidentes. Un buffer est donc mis en place autour des limites départementales pour considérer les stations aux emplacements ambigüs et englober les stations frontalières. La taille du buffer est définie selon l'aire géographique considérée (cf. Paramètres).
+  Notre étude se concentre sur la Bretagne. Toutes les stations bretonnes sont regroupées dans un jeu de données initial. Ici, il ne s’agit pas de réfléchir à l’échelle des bassins versants, leurs limites n’étant pas toujours évidentes. Un buffer est donc mis en place autour des limites départementales pour considérer les stations aux emplacements ambigüs et englober les stations frontalières. La taille du buffer est définie selon l'aire géographique considérée (cf. Paramètres).
 
 ```{r Mise en place buffer}
 buffer <- st_buffer(mes_depts, # Mise en place d'un buffer 
-                    taille_buffer) # PARAMETRE
+                    taille_buffer) # Paramètres
 ```
 
 
@@ -159,7 +159,7 @@ mapview( # Visualisation de l'aire géographique et du buffer ----
 
 ## Points de prélèvements
 
-Nous souhaitons maintenant observer l'ensemble des stations / points de prélèvements (lieux des opérations de pêche) présents sur cette aire géographique. Les points de prélèvements sont regroupés dans un dataframe *pop_depts* et sont représentés au sein de cette aire géographique. 
+  Nous souhaitons maintenant observer l'ensemble des stations / points de prélèvements (lieux des opérations de pêche) présents sur cette aire géographique. Les points de prélèvements sont regroupés dans un dataframe *pop_depts* et sont représentés au sein de cette aire géographique. 
 
 ```{r Création dataframe points de prélèvements}
 pop_depts <- point_prelevement %>% # Les points de prélèvements sont regroupés dans le df pop_depts
@@ -180,7 +180,7 @@ mapview( # Visualisation des points de prélèvements présents dans l'aire géo
 ```
 
 
-Dans l'aire géographique sélectionnée, le nombre de points de prélèvements s'élève à 11837 (*pop_id*). Une station (*sta_id*) peut contenir plusieurs points de prélèvements. L'inverse n'est en revanche pas possible - si c'est le cas, voir la ci-dessous la partie "Vérification des données". Après visualisation de l'aire géographique et de ses points de prélèvements associés, une sauvegarde des *pop_id* est réalisée dans la passerelle.
+  Dans l'aire géographique sélectionnée, le nombre de points de prélèvements s'élève à 11837 (*pop_id*). Une station (*sta_id*) peut contenir plusieurs points de prélèvements. L'inverse n'est en revanche pas possible - si c'est le cas, voir ci-dessous la partie "Vérification des données". Après visualisation de l'aire géographique et de ses points de prélèvements associés, une sauvegarde des *pop_id* est réalisée dans la passerelle.
 
 ```{r Sauvegarde pop_id}
 passerelle <- passerelle %>%
@@ -190,33 +190,33 @@ passerelle <- passerelle %>%
 
 ## Réseaux de pêche
 
-Il existe plusieurs réseaux de pêche en France. Chacune des stations (*sta_id*) et des points de prélèvements (*pop_id*) peuvent correspondre à un ou plusieurs types de réseaux de pêche. Ces différents réseaux sont identifiables par leur *obj_libelle* renseigné dans la base ASPE. Nous ajoutons cette information dans notre jeu de données à l'aide la passerelle (*mef_ajouter_objectif()*), et nous sélectionnons seulement les réseaux souhaités pour l'étude : ici le RCS, le RHP et le RRP.
+  Il existe plusieurs réseaux de pêche en France. Chacune des stations (*sta_id*) et des points de prélèvements (*pop_id*) peuvent correspondre à un ou plusieurs types de réseaux de pêche. Ces différents réseaux sont identifiables par leur *obj_libelle* renseignés dans la base *aspe*. Nous ajoutons cette information dans notre jeu de données à l'aide la passerelle (*mef_ajouter_objectif()*), et nous sélectionnons seulement les réseaux souhaités pour l'étude : ici le RCS, le RHP et le RRP.
 
 ```{r Sélection réseaux de pêches} 
 passerelle <- passerelle %>%
   mef_ajouter_objectif() %>%
-  filter(obj_libelle %in% mes_reseaux)   # PARAMETRE - Sélection des réseaux de pêche
+  filter(obj_libelle %in% mes_reseaux)   # Paramètres - Sélection des réseaux de pêche
 ```
 
 
 ### But des différents réseaux sélectionnés : RHP, RCS et RRP
 
-Dans le but d'évaluer l'état et l'évolution des peuplements piscicoles et de caractériser les perturbations subies par les écosystèmes aquatiques continentaux, un réseau de surveillance, le Réseau Hydrobiologique et Piscicole (RHP), a été mis en place - depuis 1990. 
+  Le Réseau Hydrobiologique et Piscicole (RHP) a été mis en place dans les années 1990. Il a pour but d’évaluer l’état et l’évolution des peuplements piscicoles et de caractériser les perturbations subies par les écosystèmes aquatiques continentaux. En Bretagne, il s’appuie sur un suivi régulier de 32 stations représentatives des différents types de cours d’eau et de divers degrés de perturbations anthropiques (Vigneron *et al.*, 2006). Le suivi de certaines stations RHP a été interrompu en 2011 compte tenu de la construction du programme de surveillance de la Directive Cadre sur l’Eau. 
 
-Le réseau de Contrôle de Surveillance (RCS) visant à évaluer la qualité des milieux et leur degré d'altérations est mis en place depuis 2007. 
+  Le Réseau de Contrôle de Surveillance (RCS), mis en place depuis 2007, géré par l’OFB, est composé de 86 stations (dont certaines stations appartiennent au RHP). Il vise, par un suivi bisannuel, à évaluer l’état écologique des milieux. 
 
-Le réseau de réference Perrenne (RPP) est mis en place depuis 2013. 
+  Le Réseau de Référence Pérenne (RRP), mis en place en 2013, est conçu pour évaluer sur le long terme les tendances d’état des milieux naturels, i.e. pas ou peu anthropisés. Il est composé de 17 stations de référence, intégrant l’échantillonnage de certaines anciennes stations RHP mais aussi de nouvelles stations. 
 
 
 ## Types de pêche 
 
-Sur chacun des points de prélèvements sélectionnés, des opérations de pêche sont réalisées. Les opérations de pêches portent toutes un numéro d'identifiant unique (1 *ope_id* = 1 pêche). Différents types de pêche, c'est à dire utilisant des protocoles différents, peuvent être réalisés au sein d'une même station ou d'un même point de prélèvement à travers le temps. Un même point de prélèvement peut ainsi avoir des protocoles différents d'une année à une autre. Les techniques de pêches relatives aux opérations sont identifiables par le *pro_libelle*. Nous ajoutons cette information dans notre jeu de données à l'aide de la passerelle (*mef_ajouter_type_protocole()*), et nous sélectionnons seulement les types de pêches souhaitées pour l'étude : la "Pêche complète à un ou plusieurs passages", la "Pêche partielle par points (grand milieu)", la "Pêche par ambiances" et la "Pêche partielle sur berge" (cf Paramètres).
+  Sur chacun des points de prélèvements sélectionnés, des opérations de pêche sont réalisées. Les opérations de pêches portent toutes un numéro d'identifiant unique (1 *ope_id* = 1 pêche). Différents types de pêche, c'est-à-dire utilisant des protocoles différents, peuvent être réalisés au sein d'une même station ou d'un même point de prélèvement à travers le temps. Un même point de prélèvement peut ainsi avoir des protocoles différents d'une année à une autre. Les techniques de pêches relatives aux opérations sont identifiables par le *pro_libelle*. Nous ajoutons cette information dans notre jeu de données à l'aide de la passerelle (*mef_ajouter_type_protocole()*), et nous sélectionnons seulement les types de pêches souhaitées pour l'étude : "Pêche complète à un ou plusieurs passages", "Pêche partielle par points (grand milieu)", "Pêche par ambiances" et "Pêche partielle sur berge" (cf Paramètres).
 
 
 ```{r Sélection types de pêche}
 ope_pro_libelle <- passerelle %>%
   mef_ajouter_type_protocole() %>%
-  filter(pro_libelle %in% mes_types_de_peche) %>%  # PARAMETRE - Sélection des types de pêches 
+  filter(pro_libelle %in% mes_types_de_peche) %>%  # Paramètres - Sélection des types de pêches 
   select(sta_id:ope_id, pro_libelle) %>% 
   distinct()
 ```
@@ -224,30 +224,32 @@ ope_pro_libelle <- passerelle %>%
 
 ## Opérations de pêche
 
-Pour chaque point de prélèvement (*pop_id*), plusieurs opérations de pêche peuvent être réalisées une même année. Afin de garder une cohérence dans notre jeu de données, nous souhaitons seulement conserver l'opération de pêche la plus tardive de l'année. 
+  Pour chaque point de prélèvement (*pop_id*), plusieurs opérations de pêche peuvent être réalisées une même année. Afin de garder une cohérence dans notre jeu de données, nous souhaitons seulement conserver l'opération de pêche la plus tardive de l'année. 
 
 ```{r Sélection opérations de pêche}
 ope_selection <- ope_pro_libelle %>%
   mef_ajouter_ope_date() %>% 
   group_by(pop_id, annee) %>% 
-  filter(ope_date == max(ope_date))# Sélection d'une pêche par année (la plus tardive) par point de prélèvement
+  filter(ope_date == max(ope_date)) # Sélection d'une pêche par année (la plus tardive) par point de prélèvement
 ```
 
-Ainsi, nous devons maintenant avoir une seule opération de pêche (*ope_id*) par année et par point de prélèvement.  
+  Ainsi, nous devons maintenant avoir une seule opération de pêche (*ope_id*) par année et par point de prélèvement.  
 
-Nous souhaitons maintenant nous concentrer sur notre période d'étude. Nous réduisons le jeu de données à notre année de départ et à notre année de fin - renseigné dans les paramètres (ici de 1990 à 2023).
+  Nous souhaitons maintenant nous concentrer sur notre période d'étude. Nous réduisons le jeu de données à notre année de départ et à notre année de fin, renseignées dans les paramètres (ici de 1990 à 2023).
 
 ```{r Reduction jeu de données}
 ope_selection <- ope_selection %>% # Réduction du jeu de donnée à notre année de départ et de fin
-  filter(annee >= annee_depart, # Année de départ (paramètre)
-         annee <= annee_fin)    # Année de fin (paramètre)
+  filter(annee >= annee_depart, # Année de départ (paramètres)
+         annee <= annee_fin)    # Année de fin (paramètres)
 ```
 
 
 
 ## Caractéristiques des séries temporelles
 
-Nous souhaitons sélectionner les sites (*sta_id*) qui ont été suivis pendant suffisamment longtemps pour constituer des séries temporelles robustes. Nous identifions le nombre d’années de données disponibles par point de prélèvement et appliquons des critères de sélection basés sur la durée et la continuité des suivis. Afin d’obtenir une robustesse statistique suffisante, une sauvegarde des stations avec au moins 10 années de données consécutives sur un même point de prélèvement est appliquée (utilisation de la fonction *borner_series*). La fonction *borner_serie* à pour objectif de déterminer les dates de début et de fin d'une série de données satisfaisant à une condition de proximité temporelle entre observations successives (ici un minimum de 10 années de pêches consécutives séparées par un maximum de 2 années de pêches consécutives manquantes).
+  Nous souhaitons sélectionner les sites (*sta_id*) qui ont été suivis pendant suffisamment longtemps pour constituer des séries temporelles robustes. Nous identifions le nombre d’années de données disponibles par point de prélèvement et appliquons des critères de sélection basés sur la durée et la continuité des suivis. Afin d’obtenir une robustesse statistique suffisante, une sauvegarde des stations avec au moins 10 années de données consécutives sur un même point de prélèvement est appliquée (utilisation de la fonction *borner_series*). 
+
+  La fonction *borner_serie* à pour objectif de déterminer les dates de début et de fin d'une série de données satisfaisant à une condition de proximité temporelle entre observations successives (ici un minimum de 10 années de pêches consécutives séparées par un maximum de 2 années de pêches consécutives manquantes).
 
 
 ```{r Création séries temporelles - fonction borner_serie}
@@ -265,7 +267,7 @@ pop_serie_tempo <- pop_serie_tempo %>%
 ```
 
 
-Le dataframe *pop_serie_tempo* contient maintenant les séries temporelles à etudier. Il contient donc l'ensemble des points de prélèvements (*pop_id*) que nous avons retenus à l'issue de l'application de nos critères de sélection (paramètres). Nous réalisons une mise à jour du jeu de données *ope_selection*, en ne selectionnant que les *pop_id* retenus précèdemment. Nous ajoutons à l'aide de *mef_ajouter_libelle_site()* les noms des stations retenues. 
+  Le dataframe *pop_serie_tempo* contient maintenant les séries temporelles à etudier. Il contient donc l'ensemble des points de prélèvements (*pop_id*) que nous avons retenus à l'issue de l'application de nos critères de sélection (paramètres). Nous réalisons une mise à jour du jeu de données *ope_selection*, en ne selectionnant que les *pop_id* retenus précèdemment. Nous ajoutons à l'aide de *mef_ajouter_libelle_site()* les noms des stations retenues. 
 
 ```{r Actualisation ope_selection}
 ope_selection <- ope_selection %>% 
@@ -274,13 +276,13 @@ ope_selection <- ope_selection %>%
 ```
 
 
-*ope_selection* contient l'ensemble des stations (*sta_id*),  des points de prélèvements (*pop_id*) et  des opérations de pêche (*ope_id*) que nous étudierons pour l'actualisation de la liste rouge régionale de Bretagne des poissons d'eau douce.
+*ope_selection* contient l'ensemble des stations (*sta_id*),  des points de prélèvements (*pop_id*) et  des opérations de pêche (*ope_id*) que nous étudierons pour contribuer à l'actualisation de la liste rouge régionale de Bretagne des poissons d'eau douce.
 
 
 
 ### Représentation graphique
 
-Nous réalisons une représentation graphique des séries temporelles constituées. Nous ajoutons les types de pêches (*pro_libelle*) associées aux opérations des séries. En amont, les libellés des points de prélèvements sont remis en forme et rajoutés dans le jeu de données *ope_selection*. 
+  Nous réalisons une représentation graphique des séries temporelles constituées. Nous ajoutons les types de pêches (*pro_libelle*) associées aux opérations des séries. En amont, les libellés des points de prélèvements sont mis en forme et ajoutés dans le jeu de données *ope_selection*. 
 
 ```{r Ajout libellés points de prélèvements}
 regles_modification <- tribble( # Définir les règles de modification des libellés
@@ -330,7 +332,7 @@ regles_modification <- tribble( # Définir les règles de modification des libel
 ```
 
 
-```{r Mise à jout des libellés}
+```{r Mise à jour des libellés}
 ope_selection <- ope_selection %>%
   left_join(regles_modification, by = c("pop_libelle" = "ancien_libelle")) %>% # Ajout des nouveaux libellés
   mutate(n_pop_libelle = coalesce(nouveau_libelle, pop_libelle)) %>%
@@ -362,13 +364,12 @@ ope_selection %>% # Représentation graphique des stations sélectionnées et de
         legend.position = "bottom") +
   coord_flip() +
   scale_y_continuous(breaks = seq(min(ope_selection$annee), max(ope_selection$annee), by = 3))
-
 ```
 
 
 ## Effort de pêche
 
-Nous souhaitons visualiser les différents efforts de pêche par points de prélèvements sélectionnés. Il s'agit d'observer si un déséquilibre se dessine entre les stations sélectionnées et l'ensemble du territoire couvert par l'étude.
+  Nous souhaitons visualiser les différents efforts de pêche par points de prélèvements sélectionnés. Il s'agit d'observer si un déséquilibre se dessine entre les stations sélectionnées et l'ensemble du territoire couvert par l'étude.
 
 ```{r Préparation visualisation effort pêche}
 ope_selection_sta <- ope_selection %>%
@@ -382,14 +383,12 @@ ope_selection_sta <- ope_selection %>%
   aspe::geo_attribuer(buffer)
 ```
 
-
 ```{r Préparation visualisation effort pêche échantillon}
 sta_id_ope_selection <- ope_selection_sta %>% 
   group_by(sta_id) %>% 
   sample_n(1) %>% 
   ungroup() # Pour la visualisation graphique je n'ai besoin que d'un seul exemple d'ope_id par station
 ```
-
 
 ```{r Visualisation effort pêche}
 mapview(list(buffer, mes_depts), # Visualisation de l'effort de pêche
@@ -406,7 +405,7 @@ mapview(list(buffer, mes_depts), # Visualisation de l'effort de pêche
           labels = list(text = sta_id_ope_selection$nb_ope_par_sta, cex = 1.5))
 ```
 
-Sur la carte, la grandeur des points nous indique la proportion d'opérations disponibles sur la station représentée. Ainsi, nous enregistrons les opérations (*ope_id*) selectionnées dans la passerelle.
+  Sur la carte, la grandeur des points nous indique la proportion d'opérations disponibles sur la station représentée. Ainsi, nous enregistrons les opérations (*ope_id*) selectionnées dans la passerelle.
 
 ```{r Enregistrement operations passerelle}
 passerelle <- passerelle %>% # Enregistrement des opérations de pêches retenues dans la passerelle
@@ -417,19 +416,19 @@ passerelle <- passerelle %>% # Enregistrement des opérations de pêches retenue
 
 # Vérification du jeu de données 
 
-Il s'agit ici de mettre en qualité les données et de détecter des erreurs potentielles présentes dans le jeu de données constitué. 
+  Il s'agit ici de mettre en qualité les données et de détecter des erreurs potentielles présentes dans le jeu de données constitué. 
 
 
 ## Les points de prélèvements et les stations
 
-Pour chacune des pêches réalisées, des points de prélèvement attachés à des stations sont inscrits dans la base. Il s'agit ici d'identifier, pour chaque station, combien de point de prélèvement sont associés. Le résultat permet une vérification des éventuels doublons. 
+  Pour chacune des pêches réalisées, des points de prélèvement attachés à des stations sont inscrits dans la base. Il s'agit ici d'identifier, pour chaque station, combien de point de prélèvement sont associés à ces dernières (permettant une vérification d'éventuels doublons dans la base *aspe*). 
 
-Remarque : l’idée étant d’obtenir les séries chronologiques les plus longues, il est important de vérifier si une fusion de point de prélèvement est envisageable (en cas de proximité géographique). Il s'agit également d'identifier, pour chaque point de prélèvement, combien de station sont combinées (le résultat devant être égale à 1, sinon une erreur est probable).
+**Remarque** : l’idée étant d’obtenir les séries chronologiques les plus longues, il est important de vérifier si une fusion de points de prélèvement est envisageable (en cas de proximité géographique de deux points de prélèvement différents). Il s'agit également d'identifier, pour chaque point de prélèvement, à combien de station ils sont attachés (le résultat devant être égale à 1, sinon une erreur est probable).
 
 
-### Un point de prélèvement = Une station ?
+### 1 point de prélèvement = 1 station ?
 
-Nous vérifions qu'un point de prélèvement (*pop_id*) est bien rattaché à une seule station (*sta_id*). Si ce n'est pas le cas, il s'agit d'une erreur dans la base de donnée qu'il est nécessaire de corriger pour la suite de l'étude. 
+  Nous vérifions qu'un point de prélèvement (*pop_id*) est bien rattaché à une seule station (*sta_id*). Si ce n'est pas le cas, il s'agit d'une erreur dans la base de donnée qu'il est nécessaire de corriger pour la suite de l'étude. 
 
 ```{r Recherche erreur 1}
 pop_plusieurs_sta <- ope_selection %>% 
@@ -451,12 +450,11 @@ Nombre de points (`pop_id`) correspondant à plusieurs stations (`sta_id`) : `r 
 
 
 
-### Un station = Un point de prélèvement ?
+### 1 station = 1 point de prélèvement ?
 
-Nous vérifions qu'une station (*sta_id*)  est bien rattaché à un point de prélèvement (*pop_id*). Si ce n'est pas le cas, il ne s'agit pas d'une erreur du jeu de données. Cependant, une optimisation potentielle peut être réalisée. 
+  Nous vérifions qu'une station (*sta_id*)  est bien rattachée à un point de prélèvement (*pop_id*). Si ce n'est pas le cas, il ne s'agit pas d'une erreur du jeu de données. Cependant, une optimisation potentielle peut être réalisée. 
 
-Dans certains cas pratiques, le point de prélèvement peut être amené à être légèrement déplacer d'une année à une autre (pour des contraintes techniques / humaines / ...). Il s'agit d'étudier la possibilité, si les contextes des deux *pop_id* sont similaires,  de rassembler ces points de prélèvements sous un seul identifiant afin de composer des séries temporelles plus longues. 
-
+  Dans une étude temporelle longue, les points de prélèvement peuvent être amenés à être légèrement déplacés d'une année à une autre (pour des raisons de contraintes techniques / humaines / ...). Il s'agit d'étudier la possibilité, si les contextes des deux *pop_id* sont similaires,  de rassembler ces points de prélèvements sous un seul identifiant afin de composer des séries temporelles plus longues. 
 
 ```{r Recherche erreur 2}
 sta_plusieurs_pop <- ope_selection %>% # Recherche erreur : 1 station = ? opération(s) (vérification doublons) 
@@ -489,7 +487,7 @@ sta_plusieurs_pop %>%
 
 # Sauvegarde 
 
-Sauvegarde pour la sélection des espèces : script 03_analyse_selection_especes.
+Sauvegarde pour le script suivant (sélection des espèces) : script 03_analyse_selection_especes.
 
 ```{r Sauvegarde}
 save(pop_serie_tempo,

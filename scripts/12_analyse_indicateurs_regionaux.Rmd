@@ -267,12 +267,12 @@ indicateur_labels <- c(
 ```
 
 
-```{r, fig.height = 10, fig.width = 10}
+```{r, fig.height = 20, fig.width = 10}
 reg_indicateur_graph_reduit <- reg_indicateur_lrr_tendances_lm %>%
   filter(indicateur %in% c("densite_surface",
                            "taux_occurrence",
                            "pourcentage_juveniles")) %>% 
-  filter(esp_code_alternatif %in% c("ANG", "SAT", "GAR","TRF")) %>% 
+  filter(!(esp_code_alternatif %in% c("ANG", "SAT", "GAR","TRF"))) %>% 
   ggplot(aes(x = annee, 
              y = valeur, 
              group = stade, 
@@ -296,9 +296,13 @@ reg_indicateur_graph_reduit <- reg_indicateur_lrr_tendances_lm %>%
         panel.grid.minor = element_line(color = "lightgrey")
        # axis.text.x = element_text(angle = 45)
         ) +
-  geom_vline(data = . %>% filter(esp_code_alternatif %in% c("SAT", "TRF") & annee == 2013), 
+  geom_vline(data = . %>% filter(esp_code_alternatif %in% c("CHA", "GOU") & annee == 2013), 
              aes(xintercept = 2013), linetype = "dotted", color = "red", size = 1) +
-  geom_vline(data = . %>% filter(esp_code_alternatif == "GAR" & annee == 2011), 
+  geom_vline(data = . %>% filter(esp_code_alternatif %in% c("CHE", "LPP") & annee == 2005), 
+             aes(xintercept = 2005), linetype = "dotted", color = "red", size = 1) +
+  geom_vline(data = . %>% filter(esp_code_alternatif %in% c("BRO", "LOF") & annee == 2008), 
+             aes(xintercept = 2008), linetype = "dotted", color = "red", size = 1) +
+  geom_vline(data = . %>% filter(esp_code_alternatif %in% c("PER", "VAI", "VAR") & annee == 2011), 
              aes(xintercept = 2011), linetype = "dotted", color = "red", size = 1)
 
 
@@ -423,13 +427,6 @@ print(reg_indicateur_lrr_tendances_lm)
 
 
 # On souhaite faire la même chose avec les test de mann-kendall qsuivis de la regression de Sen-Theil : 
-
-A FAIRE
-
-```{r}
-reg_indicateur_lrr_tendances_lm 
-```
-
 
 
 
