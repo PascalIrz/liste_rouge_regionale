@@ -504,4 +504,14 @@ plot(resid_sim_mod_4)
 plot(resid_sim_mod_5)
 ```
 
+model <- glmmTMB(scale(valeur) ~ scale(annee) +
+                   pro_libelle +
+                   scale(ope_surface_calculee) +
+                   scale(julian) +
+                   scale(I(julian^2)) +
+                   (1 | pop_id),
+                 data = ope_effectif_glm,
+                 ziformula = ~ 1,  # Formule pour la partie zéro-inflation
+                 family = poisson)
+
 

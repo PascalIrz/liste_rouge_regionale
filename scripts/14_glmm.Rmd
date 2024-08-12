@@ -84,7 +84,7 @@ glm(y ~ x1 + x2 + ..., data = ..., family = poisson)
 Afin d'appliquer les modèles GLMM, il est nécessaire de construire un jeu de données contenant les valeurs des effectifs, les espèces, les stades, les *pop_id*, mais aussi les types de réseaux, les surfaces d'opérations et les protocoles de pêches. Nous utilisons dans un premier temps, le jeu de données relatifs aux effectifs des opérations de pêches (*ope_effectifs*) car nous souhaitons observer les effets des réseaux et des protocoles sur les résultats des opérations. 
 
 
-```{r Etablir les périodes d'études GLM}
+```{r Etablir les periodes etudes GLM}
 liste_periodes_etude <- list(c(2008, 2023), 
                              c(2005, 2023),
                              c(1990, 2023),
@@ -109,20 +109,17 @@ ope_effectif_glm <- ope_effectif_absences %>%
          ope_date,
          pro_libelle,
          annee)
-```
 
-```{r Construction jeu de donnees 2}
 ope_effectif_glm <- ope_effectif_glm %>% #Ajout des pop_id dans le dataframe
   left_join(y=operation %>% 
               select(ope_id,
                      pop_id= ope_pop_id)) %>% 
   mutate(pop_id = as.factor(pop_id))
-```
 
-```{r}
 ope_effectif_glm <- ope_effectif_glm %>%
   mutate(julian = lubridate::yday(ope_date)) %>%
-  ungroup()
+  ungroup() %>% 
+  rename(espece = esp_code_alternatif)
 ```
 
 
@@ -133,15 +130,6 @@ ope_effectif_glm <- ope_effectif_glm %>%
 
 Afin d'excéuter l'analyse, deux fonctions ont été créer : *glm_calcul_modele* (en charge de calculer les valeurs des modèles GLM) et *glm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Il est donc nécessaire de charger, dans la partie II d'installation, les deux fonctions. 
 
-```{r Préparations données fonction GLMM}
-ope_effectif_glm <- ope_effectif_glm %>%
-  rename(espece = esp_code_alternatif) %>%
-  ungroup() %>%
-  select(-ope_id,
-         -indicateur,
-         -stade)
-```
-
 
 ```{r Excecution fonction GLMM}
 glmm_resultats <- glmm_application_modele(data = ope_effectif_glm,
@@ -149,9 +137,10 @@ glmm_resultats <- glmm_application_modele(data = ope_effectif_glm,
 ```
 
 
+
 ```{r Mise en forme sortie fonction GLMM 2}
-glmm_resultats1 <- glmm_resultats %>% 
-  filter(row_name == "scale(annee)") %>% 
+glmm_resultats <- glmm_resultats %>% 
+  filter(row_name == "annee") %>% 
   select(periode,
          esp_code_alternatif,
          p_value,
@@ -166,7 +155,7 @@ glmm_resultats1 <- glmm_resultats %>%
 
 ```{r Sélection des données résultats GLMM}
 # Filtrer les données selon les critères spécifiés
-glmm_resultats_format <- glmm_resultats1 %>%
+glmm_resultats_format <- glmm_resultats %>%
   filter(
     (esp_code_alternatif == "ANG" & periode == "1990-2023") |
     (esp_code_alternatif %in% c("CHE", "LPP") & periode == "2005-2023") |
@@ -179,7 +168,7 @@ glmm_resultats_format <- glmm_resultats1 %>%
 
 
 # On réalise un tableau : 
-```{r Réalisation tableau résultat GLMM}
+```{r Réalisation tableau GLMM}
 tab_glmm_resultats <- glmm_resultats_format %>%
   select(esp_code_alternatif,
          periode,
@@ -207,7 +196,7 @@ tab_glmm_resultats
 
 # Sauvegarde
 
-```{r Sauvegarde script données 14}
+```{r Sauvegarde script données 1}
 save(glmm_resultats_format,
      reg_indicateur_lrr_tendances_lm,
      reg_indicateur_lrr_tendances_mk_st,

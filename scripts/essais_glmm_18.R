@@ -192,3 +192,21 @@ res_ang <- summary(model_glm_ang)$coefficients %>%
 
 
 
+model <- glmer(valeur ~ (scale (annee)| pop_id) +
+                 pro_libelle +
+                 scale(ope_surface_calculee) +
+                     scale(julian) +
+                     scale(I(julian^2)),
+                   data = ope_effectif_glm,
+                   family = poisson)
+
+residuals <- resid(model1, type = "pearson")
+# Plot des résidus
+plot(residuals)
+qqnorm(residuals)
+qqline(residuals, col = "red")
+hist(residuals, breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+plot(fitted(model), residuals)
+abline(h = 0, col = "red")
+acf(residuals)

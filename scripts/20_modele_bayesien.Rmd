@@ -154,9 +154,8 @@ mc <- mod_popgrow(data,
                   n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
 
 
-save(mc,
-     mc_ang,
-     file = "../processed_data/bay_final_result.rda")
+save(mc_pro,
+     file = "../processed_data/bay_final_result_pro.rda")
 
 ```
 

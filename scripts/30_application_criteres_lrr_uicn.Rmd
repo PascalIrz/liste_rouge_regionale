@@ -234,30 +234,36 @@ reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>%
 ```
 
 
-```{r}
-# Créer le graphique avec les barres coupées et les segments pointillés
+
+```{r, fig.height = 7, fig.width = 10}
+# Définir les espèces avec contour plein
+species_full_border <- c("ANG", "GAR", "VAI", "TRF", "SAT")
+
+reg_indicateur_critere_A2b_tab_sig <- reg_indicateur_critere_A2b_tab_sig %>%
+  mutate(
+    border_type = ifelse(esp_code_alternatif %in% species_full_border, "solid", "dotted"),
+    bar_alpha = ifelse(esp_code_alternatif %in% species_full_border, 0.85, 0.3)
+  )
+
 reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b_tab_sig %>%
-  ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), y = pourcentage_evo_cut, fill = factor(sign(pourcentage_evo)))) +
+  ggplot(aes(x = reorder(esp_code_alternatif, pourcentage_evo), 
+             y = pourcentage_evo_cut, 
+             fill = factor(sign(pourcentage_evo)))) +
   geom_rect(aes(ymin = -Inf, ymax = -80, xmin = -Inf, xmax = Inf), fill = color_CR, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
+  geom_bar(aes(linetype = border_type), stat = "identity", color = "black", width = 0.7, alpha = reg_indicateur_critere_A2b_tab_sig$bar_alpha) +
   geom_text(data = NULL, aes(x = 13, y = -85, label = "CR"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -80, ymax = -50, xmin = -Inf, xmax = Inf), fill = color_EN, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
+  geom_bar(aes(linetype = border_type), stat = "identity", color = "black", width = 0.7, alpha = reg_indicateur_critere_A2b_tab_sig$bar_alpha) +
   geom_text(data = NULL, aes(x =13, y = -60, label = "EN"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -50, ymax = -30, xmin = -Inf, xmax = Inf), fill = color_VU, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
+  geom_bar(aes(linetype = border_type), stat = "identity", color = "black", width = 0.7, alpha = reg_indicateur_critere_A2b_tab_sig$bar_alpha) +
   geom_text(data = NULL, aes(x = 13, y = -35, label = "VU"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -30, ymax = -20, xmin = -Inf, xmax = Inf), fill = color_NT, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
-  geom_text(data = NULL, aes(x = 13, y = -20, label = "NT"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
+  geom_bar(aes(linetype = border_type), stat = "identity", color = "black", width = 0.7, alpha = reg_indicateur_critere_A2b_tab_sig$bar_alpha) +
+  geom_text(data = NULL, aes(x = 13, y = -22, label = "NT"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
   geom_rect(aes(ymin = -20, ymax = Inf, xmin = -Inf, xmax = Inf), fill = color_Minor, alpha = 0.2) +
-  geom_bar(stat = "identity", color = "black", width = 0.7, alpha = 0.8) +
+  geom_bar(aes(linetype = border_type), stat = "identity", color = "black", width = 0.7, alpha = reg_indicateur_critere_A2b_tab_sig$bar_alpha) +
   geom_text(data = NULL, aes(x = 13, y = -5, label = "LC"), vjust = 1.5, hjust = 1, size = 4, color = "black", fontface = "italic") +
-  geom_text(aes(label = label),
-            fontface = "bold",
-            vjust = -0.5,
-            y =0,
-            check_overlap = TRUE) +
   labs(x = NULL, y = "Taux d'évolution de la densité surfacique") +
   theme_bw() +
   theme(
@@ -274,19 +280,22 @@ reg_indicateur_critere_A2b_graph <- reg_indicateur_critere_A2b_tab_sig %>%
   scale_fill_manual(values = c("#ed0000", "#92D050"),
                     labels = c("Diminution", "Augmentation"), 
                     name = "Tendance temporelle") +
+  scale_linetype_manual(values = c("solid" = "solid", "dotted" = "dotted"),
+                        labels = c("solid" = "Significatif", "dotted" = "Non significatif"),
+                        name = "GLMM et/ou MK-ST",
+                        guide = guide_legend(override.aes = list(linetype = c("dotted","solid"), fill = c("grey", alpha("darkgrey", 0.3))))) +
   coord_cartesian(ylim = c(-92, 30)) +
-  # Ajouter des segments pointillés
   geom_segment(data = reg_indicateur_critere_A2b_tab_sig %>% 
                  filter(is_cut),
-               aes(x = reorder(esp_code_alternatif, pourcentage_evo), xend = reorder(esp_code_alternatif, pourcentage_evo),
-                   y = pourcentage_evo_cut, yend = pourcentage_evo_cut + 10),
-               linetype = "dotted", color = "black", size = 1.5)
+               aes(x = reorder(esp_code_alternatif, pourcentage_evo), 
+                   xend = reorder(esp_code_alternatif, pourcentage_evo),
+                   y = pourcentage_evo_cut, 
+                   yend = pourcentage_evo_cut + 10),
+               linetype = "dotted", color = "black", size = 1.5) 
+  #geom_text(aes(label = esp_code_alternatif), vjust = -0.5, color = "black", fontface = "bold")
 
 print(reg_indicateur_critere_A2b_graph)
-
 ```
-
-
 
 
 
@@ -392,16 +401,7 @@ reg_indicateur_critere_A2b_tab_global <- reg_indicateur_critere_A2b_tab_global %
              by = "esp_code_alternatif")
 
 reg_indicateur_critere_A2b_tab_global_sig <- reg_indicateur_critere_A2b_tab_global %>% 
-  filter(esp_code_alternatif %in% c("ANG",
-                                    "BRO",
-                                    "SAT",
-                                    "GAR",
-                                    "VAI",
-                                    "VAR",
-                                    "CHA",
-                                    "GOU",
-                                    "SAT",
-                                    "TRF"))
+  filter(esp_code_alternatif %in% mes_especes)
  
  # Ajouter une colonne pour les étiquettes combinées
  reg_indicateur_critere_A2b_tab_global_sig <- reg_indicateur_critere_A2b_tab_global_sig %>% 
@@ -487,6 +487,15 @@ print(reg_indicateur_critere_A2b_graph_global)
 
 ```
 
+
+
+
+
+
+
+
+
+
 ## Critère A : Réduction de la population
 
 Pour utiliser ce critère, il est nécessaire de pouvoir justifier une réduction quantifiée du nombre d'individus matures sur 10 ans ou 3 générations, en retenant la plus longue de ces deux durées (maximum 100 ans). 
@@ -548,7 +557,8 @@ ope_indicateur_critere_A2a <- bind_rows(ope_indicateur_max_annee, ope_indicateur
 
 
 On calcul maintenant le pourcentage d'évolution entre l'annnée max et l'année-temps de génération de l'espèce :
-  ```{r}
+
+```{r}
 # Calcul des pourcentages d'évolution des valeurs d'indicateurs
 ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
   group_by(esp_code_alternatif) %>% 
@@ -619,9 +629,6 @@ color_Minor <- "#faf0e0"  # Préoccupation mineure, blanc
 
 ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>%
   mutate(label = paste0(esp_code_alternatif))
-
-ope_indicateur_critere_A2a <- ope_indicateur_critere_A2a %>% 
-  filter(esp_code_alternatif %in% c("ANG","CHA","LPP","SAT","TRF", "VAI"))
 
 
 # Modifier le code pour encadrer les barres avec un trait noir, formater l'axe des ordonnées en pourcentage, et ajouter des parenthèses après les noms
