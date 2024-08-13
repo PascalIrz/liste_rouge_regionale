@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 05_pre_traitements_donnees_env
 
-Il s'agit de réaliser les pré-traitements des données environnementales utilisées pour l'étude. Cette étape permet notamment de détecter et de corriger les erreurs ou incohérences présentes dans le jeu de données relatives aux variables environnementales, contribuant ainsi à la mise en qualité des données.
+  Il s'agit de réaliser les pré-traitements des données environnementales utilisées pour l'étude. Cette étape permet notamment de détecter et de corriger les erreurs ou incohérences présentes dans le jeu de données relatives aux variables environnementales, contribuant ainsi à la mise en qualité des données.
 
 Un aspect essentiel de ce travail est la gestion des valeurs manquantes (appelées « NA ») présentes dans le jeu de données. En effet, certaines données peuvent être absentes d'une année à l'autre. Pour certains paramètres dont la valeur est relativement stable, ces valeurs manquantes seront remplacées par la médiane des données des mêmes stations des années précédentes.
 
@@ -49,7 +49,7 @@ load(rdata_tables)
 
 Création d'un dataframe contenant les variables environnementales relatives aux opérations contenues dans la passerelle (cf Script 00_selection_pop_ope).  
 
-```{r Creation dataframe}
+```{r Création df ope_selection_param_env}
 ope_selection_param_env <- passerelle %>%  # Création du dataframe à partir de la passerelle  
   select(-lop_id,
          -pre_id) %>% 
@@ -68,9 +68,9 @@ ope_selection_param_env <- passerelle %>%  # Création du dataframe à partir de
 ```
 
 
-## Gestion des "NA"
+## Gestion des *NA*
 
-Les données manquantes (NA) sont isolées dans un jeu de données extérieur afin de rassembler et de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les NA sont remplacés par les médianes des données n-1 et n+1 entourant la valeur manquante (relatives aux stations / points de prélèvements). 
+  Les données manquantes (*NA*) sont isolées dans un jeu de données extérieur afin de rassembler et de les identifier. L'ensemble des données environnementales sont ensuite triées par paramètres et par années. Les *NA* sont remplacés par les médianes des données *n-1* et *n+1* entourant la valeur manquante (relative à la station / point de prélèvement). 
 
 ```{r Gestion des NA}
 valeur_na <- ope_selection_param_env %>% # Les NA sont rassemblés dans le dataframe valeur_na
@@ -89,7 +89,7 @@ ope_selection_param_env <- ope_selection_param_env %>%
 
 ## Gestion des valeurs aberrantes
 
-Etape 1 : Identification des valeurs aberrantes et très aberrantes :
+*Étape 1* : Identification des valeurs aberrantes d'une part et des valeurs jugées **très aberrantes** d'autre part :
 
 ```{r Identifications valeurs aberrantes}
 ope_selection_param_env <- ope_selection_param_env %>%
@@ -108,28 +108,28 @@ ope_selection_param_env <- ope_selection_param_env %>%
 
 ### Représentation graphique 
 
-Nous réalisons une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données (elles apparaissent en rouge à titre indicatif). Il s'agit de représenter toutes les valeurs des paramètres, par années, et par station. Une fois identifiées, les erreurs sont à corriger sur la base ASPE. 
+  Nous réalisons une représentation graphique permettant de remarquer facilement les valeurs abérantes du jeu de données (elles apparaissent en rouge à titre indicatif). Il s'agit de représenter toutes les valeurs des paramètres, par année, et par station. Une fois identifiées, les erreurs sont à corriger sur la base *aspe*. 
 
-Étape 2 : Visualisation avec les valeurs aberrantes en orange et les valeurs très aberrantes en rouge :
+*Étape 2* : Visualisation des valeurs aberrantes (en orange) et les valeurs très aberrantes (en rouge) :
 
-```{r représentation grahique, fig.height = 55, fig.width = 10}
+```{r Représentation grahique, fig.height = 55, fig.width = 10}
 ope_selection_param_env <- ope_selection_param_env %>%
   mutate(aberrant_color = case_when(
-    very_aberrant ~ "Très aberrant",
-    aberrant ~ "Aberrant",
-    TRUE ~ "Normal"
+    very_aberrant ~ "Très aberrante",
+    aberrant ~ "Aberrante",
+    TRUE ~ "Normale"
   ))
 
 donnees_env_aberrantes <- ggplot(ope_selection_param_env, aes(x = annee, y = valeur, fill = aberrant_color)) +
   geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("Normal" = "#2C7BB6", "Aberrant" = "orange", "Très aberrant" = "red")) +
+  scale_fill_manual(values = c("Normale" = "#2C7BB6", "Aberrante" = "orange", "Très aberrante" = "red")) +
   facet_grid2(~ pop_id ~ parametre, 
               scales = "free_y", 
               independent = "y") +
-  labs(title = "Variabilité inter-annuelle des paramètres environnementaux", 
+  labs(title = "Variabilité inter-annuelle des paramètres environnementaux - détection des valeurs aberrantes", 
        x = "Année", 
        y = "Valeur",
-       fill = "Données") +
+       fill = "Donnée") +
   theme_minimal(base_size = 12) +  
   theme(panel.background = element_rect(fill = "#faf0e0", color = NA), 
         strip.background = element_rect(fill = "grey90"),  
@@ -144,8 +144,10 @@ donnees_env_aberrantes <- ggplot(ope_selection_param_env, aes(x = annee, y = val
 # Afficher le graphique
 print(donnees_env_aberrantes)
 ```
-Les erreurs ainsi identifiées doivent être corrigées au sein de la base ASPE. De manière temporaire, on remplace les valeurs très aberrantes susceptibles d'influencer les futures analyses, par des valeurs médianes. 
-Étape 3 : Remplacer les valeurs très aberrantes par la médiane des années N-1 et N+1 du paramètre.
+
+Les erreurs ainsi identifiées doivent être corrigées au sein de la base *aspe*. De manière temporaire, on remplace les valeurs très aberrantes susceptibles d'influencer les futures analyses, par des valeurs médianes. 
+
+*Étape 3 *: Remplacer les valeurs très aberrantes par la médiane des années *n-1* et *n+1* du paramètre.
 
 ```{r Remplacement des valeurs très aberrantes}
 ope_selection_param_env <- ope_selection_param_env %>%
@@ -170,3 +172,7 @@ save(ope_selection_param_env,
      file = "../processed_data/pre_traitements_donnees_env.rda")
 ```
 
+
+# Référence bibliographique
+  
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/

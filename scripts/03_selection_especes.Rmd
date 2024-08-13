@@ -269,4 +269,7 @@ save(especes_lrr_2015,
 
 # Références bibliographiques 
 
+
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/
+
   Vigneron, T., Germis, G., Baglinère, J.-L., Catroux, H., Caudal, A.-L. (2017). Les poissons d’eau douce menacés en Bretagne. In Siorat F, Le Mao P, Yésou P, eds. Conservation de la faune et de la flore : Listes rouges et responsabilité de la Bretagne. *Penn ar Bed* 227, 60 - 79. 

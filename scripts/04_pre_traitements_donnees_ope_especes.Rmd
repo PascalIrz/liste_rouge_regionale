@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Pré-traitement des données des opérations et des données individuelles des espèces"
+subtitle: "Pré-traitements des données des opérations et des données individuelles des espèces"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
@@ -22,20 +22,20 @@ knitr::opts_chunk$set(echo = TRUE,
 Script : 04_pre_traitements_donnees_ope_especes
 
 
-Il s'agit de réaliser une étape de pré-traitement et de mise en qualité des données sur la sélection des opérations réalisée précedemment. Il s'agit également de réaliser une mise en qualité des données individuelles des espèces propres à chacune des opérations. Il s'agit notamment d'observer les valeurs aberrantes contenues dans les mesures individuelles des poissons (tailles / poids / ...). 
+  Il s'agit de réaliser une étape de pré-traitements et de mise en qualité des données sur la sélection des opérations réalisée précedemment. Il s'agit également de réaliser une mise en qualité des données individuelles des espèces propres à chacune des opérations. Il s'agit notamment d'observer les valeurs aberrantes contenues dans les mesures individuelles des poissons (mesures de tailles / poids / ...). 
 
 # Installation 
 
 ## Paramètres 
 
-Des paramètres sont fixés et sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres :
+  Des paramètres sont fixés et sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres :
 
-- Sélection des passages de pêche à retirer : dans notre étude, les passages "2" et "3" sont retirés par soucis d'homogénéité entre protocoles de pêches. Seul les passages "0" et "1" sont alors conservés. Ces derniers correspondent au premier ou à l'unique passage réalisé lors d'une opération de pêche.   
+- Sélection des passages de pêche à retirer : dans notre étude, les passages "2" et "3" sont retirés par soucis d'homogénéité entre les différents protocoles de pêches. Seuls les passages "0" et "1" sont  conservés. Ces derniers correspondent au premier ou à l'unique passage réalisé lors d'une opération de pêche.   
 
 
 ## Chargement des packages et des données 
 
-```{r chargement des packages}
+```{r Chargement des packages}
 library(aspe)
 #devtools::install_github("PascalIrz/aspeQual") # Instalation du package 'aspeQual'
 library(aspeQual)
@@ -44,12 +44,12 @@ library(readxl)
 library(DT)
 ```
 
-```{r chargement des données}
+```{r Chargement des données}
 load(file = "../processed_data/selection_pop_ope.rda")
 load(file = "../processed_data/selection_especes.rda")
 ```
 
-```{r chargement des tables aspe}
+```{r Chargement des tables aspe}
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
@@ -61,12 +61,12 @@ mei_table <- misc_nom_dernier_fichier(
 load(mei_table)
 ```
 
-```{r chargement des données importées}
+```{r Chargement des données importées}
 ## Lire le fichier Excel contenant les classes de maturité des espèces
 traits_biologiques <- read_excel("../raw_data/traits_biologiques.xlsx")
 ```
 
-```{r chargement fonction}
+```{r Chargement fonctions}
 source(file = "../R/detecter_erreurs_tailles.R")
 source(file = "../R/classe_couleur_erreur.R")
 ```
@@ -74,35 +74,35 @@ source(file = "../R/classe_couleur_erreur.R")
 
 # Constitution du jeu de données
 
-Dans cette étude, nous souhaitons distinguer les individus "adultes" des individus "juvéniles". Pour cela, nous devons réaliser une "classe de taille" de référence permettant, à partir de la taille des poissons péchés lors des opérations, de séparer les poissons "adultes" des "juvéniles". Ce choix est réalisé en raisonnance avec la méthodologie de la liste rouge qui incite à n'évaluer que les individus matures dans les analyses si les données le permettent. 
+  Dans cette étude, nous souhaitons distinguer les individus "adultes" des individus "juvéniles". Pour cela, nous devons réaliser une "classe de taille" de référence permettant, à partir de la taille des poissons pêchés lors des opérations, de séparer les poissons "adultes" des "juvéniles". Ce choix est réalisé en raisonnance avec la méthodologie de la liste rouge qui incite à n'évaluer que les individus matures dans les analyses si les données le permettent (UICN France, 2018). 
 
 
 ## Selection des tailles de maturité des espèces
 
-En complément de la base ASPE, un tableau indiquant pour chaque espèce la taille maximale des 0+ est constitué (= taille référence minimum adulte). La longueur du poisson est utilisé comme proxy de son age.  Les tailles de maturité de *référence* sont renseignées à partir de 5 sources différentes pour chacune des espèces, et rassemblées dans un fichier Excel à importer sur R. 
+  En complément de la base *aspe*, un tableau indiquant pour chaque espèce la taille maximale des 0+ est constitué (= taille référence minimum adulte). La longueur du poisson est utilisée comme proxy de son âge.  Les tailles de maturité de *référence* sont renseignées à partir de 5 sources différentes pour chacune des espèces, et rassemblées dans un fichier Excel à importer sur R. 
 
 
-### Constitution du fichier Excel "traits_biologiques"
+### Construction du fichier Excel "traits_biologiques"
 
-L'excel "traits_biologiques" doit être constitué en amont de l'exécution de ce script. Il contient 7 colonnes et 1 ligne par espèce présente sur la région étudiée : 
+  L'excel "traits_biologiques" doit être constitué en amont de l'exécution de ce script. Il contient 7 colonnes et 1 ligne par espèce présente sur la région étudiée : 
 
-- 1ere colonne : "espece_presence_lrr_2015" : la valeur 1 est inscrite si l'espèces a été présente sur la précédente lrr ; la valeur 0 est inscrite dans le cas contraire.
+- 1ere colonne : "espece_presence_lrr_2015" : la valeur 1 est inscrite si l'espèce a été présente sur la précédente lrr ; la valeur 0 est inscrite dans le cas contraire.
 
 - 2ème colonne : "esp_nom_commun" : nom commun de l'espèce.
-- 3ème colonne : "esp_code_alternatif" : Code à 3 lettres de l'espèce.
-- n colonne(s) : Valeurs de taille référence minimum adulte issue de documentation
-- n+n colonne : "taille_maturite_ref" : Valeur médiane des différentes tailles issues de la documentation*.
+- 3ème colonne : "esp_code_alternatif" : code à 3 lettres de l'espèce.
+- n colonne(s) : valeurs de taille référence minimum adulte issue de la documentation.
+- n+1 colonne : "taille_maturite_ref" : valeur médiane des différentes tailles issues de la documentation*.
 
 * Dans le cas de cette étude - 5 colonnes issues de différentes sources :
-1 et 2 : ouvrages d'identification des poissons d'eau douce de France ; 
-3 : observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille du fichier ASPE ; 
+1 et 2 : Ouvrages d'identification des poissons d'eau douce de France (Keith *et al.*, 2020 ; Derouch, 2024); 
+3 : Observation des courbes de tailles dans le fichier R "estimation_taille_0+" à partir des données de taille de la base *aspe*; 
 4 : Valeurs de *fishbase* ; 
-5 : Valeurs de référence des espèces d'Occitanie
+5 : Valeurs de référence des espèces d'Occitanie.
 
-Les différentes tailles de référence sont donc regroupées dans le tableau *traits_biologiques* et pour chacune des espèces, la médiane de l'ensemble des valeurs recueillies a été retenue pour être inscrite comme la valeur de référence de maturité.
+  Les différentes tailles de référence sont donc regroupées dans le tableau *traits_biologiques* et pour chacune des espèces, la médiane de l'ensemble des valeurs recueillies a été retenue pour être inscrite comme la valeur de référence de maturité.
 
 
-```{r construction_df_tailles_maturite}
+```{r Construction_df_tailles_maturite}
 traits_biologiques <- traits_biologiques %>% # Construction d'un jeu de données contenant les tailles de maturité 
   select(esp_code_alternatif,
          espece_presence_lrr_2015,
@@ -112,9 +112,9 @@ traits_biologiques <- traits_biologiques %>% # Construction d'un jeu de données
 
 ## Création d'un jeu de données des mesures individuelles
 
-Il s'agit maintenant de créer un jeu de données contenant l'ensemble des données individuelles relatives aux espèces sélectionnées ainsi qu'aux opérations de pêches contenues dans la passerelle (cf script 00_selection_pop_ope et 03_analyse_selection_especes). La taille des poissons est indiquée en millimètres et le poids en gramme. Dans ce nouveau jeu de données *mei_ope_selection*, nous ne retenons que les données en lien avec le dataframe esp_ope_selection (espèces sélectionnées lors du dernier script). 
+  Il s'agit maintenant de créer un dataframe contenant l'ensemble des données individuelles relatives aux espèces sélectionnées ainsi qu'aux opérations de pêches contenues dans la passerelle (cf script 00_selection_pop_ope et 03_analyse_selection_especes). La taille des poissons est indiquée en millimètre et le poids en gramme. Dans ce nouveau jeu de données *mei_ope_selection*, nous ne retenons que les données en lien avec le dataframe *esp_ope_selection* (espèces sélectionnées lors du dernier script). 
 
-```{r creation_df_mei_ope_selection}
+```{r Creation_df_mei_ope_selection}
 mei_ope_selection <- passerelle %>%
   mef_ajouter_ope_date() %>% 
   mef_ajouter_mei() %>%
@@ -139,10 +139,9 @@ mei_ope_selection <- passerelle %>%
 ```
 
 
-Nous retirons les passages supérieur à 1 qui ne seront pas étudiés par soucis d'homogénéité des données (cf Paramètres). Nous ne sélectionnons que les espèces  sélectionnées suite au script 03_selection_especes (contenues dans l'objet *mes_especes*).
+  Nous retirons les passages supérieurs à 1 qui ne seront pas étudiés par soucis d'homogénéité des données (cf Paramètres). Nous ne considérons que les espèces sélectionnées suite au script 03_selection_especes (contenues dans l'objet *mes_especes*).
 
-
-```{r pre-traitement donnees}
+```{r Pre-traitement donnees}
 mei_ope_selection <- mei_ope_selection %>% 
   mutate(pas_numero = replace_na(pas_numero,0)) %>% # Passages "NA" transformés en "0" (équivalent)
   filter(!pas_numero %in% params$passage_a_retirer,
@@ -151,22 +150,21 @@ mei_ope_selection <- mei_ope_selection %>%
 ```
 
 
+## Données manquantes
 
-## Données Manquantes
-
-Certaines valeurs absentes / manquantes ("NA") peuvent être observées au sein du jeu de données constitué. Ceci peut être dû à des problèmes de retranscription dans la base de données ASPE. Parfois il est possible d'observer une absence de valeurs de tailles individuelles (*mei_taille*). Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe "valeur_na". 
+  Certaines valeurs absentes / manquantes ("NA") peuvent être observées au sein du jeu de données constitué. Celles-ci peuvent être dûes à des problèmes de retranscription dans la base de données *aspe*. Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe *valeur_na*. 
 
 ```{r Regroupement des valeurs NA}
-valeur_na <- mei_ope_selection %>% #Isolement des lignes contenant des NA dans un dataframe
+valeur_na <- mei_ope_selection %>% # Isolement des lignes contenant des NA dans un dataframe
   filter(if_any(everything(), is.na))
   
 mei_ope_selection <- na.omit(mei_ope_selection)
 ```
 
-La taille médiane des espèces à l'échelle de leur station est calculée dans le jeu de données *esp_taille_med_sta*. Ces valeurs sont ensuite assignées comme valeurs de références en cas de valeurs manquantes.
+  La taille médiane des espèces à l'échelle de leur station est calculée dans le jeu de données *esp_taille_med_sta*. Ces valeurs sont ensuite assignées comme valeurs de références en cas de valeurs manquantes (à la station).
 
 ```{r Création esp_taille_na_med_sta}
-esp_taille_na_med_sta <- mei_ope_selection %>% # DF contenant les tailles médiannes des espèces par stations
+esp_taille_na_med_sta <- mei_ope_selection %>% # Dataframe contenant les tailles médiannes des espèces par station
   group_by(sta_id,
            esp_code_alternatif) %>%
   summarise(mei_taille_med = median(mei_taille, na.rm = TRUE)) %>%
@@ -174,13 +172,13 @@ esp_taille_na_med_sta <- mei_ope_selection %>% # DF contenant les tailles média
 ```
 
 ```{r Remplacement des valeurs NA}
-valeur_na_complet <- valeur_na %>% # Remplacement valeurs de tailles manquantes par les valeurs du df esp_taille_na_med_sta
+valeur_na_complet <- valeur_na %>% # Remplacement valeurs de tailles manquantes par les valeurs du dataframe esp_taille_na_med_sta
   left_join(esp_taille_na_med_sta, by = c("sta_id", "esp_code_alternatif")) %>% 
   mutate(mei_taille = coalesce(mei_taille, mei_taille_med)) %>% 
   select(-mei_taille_med)
 ```
 
-Le jeu de données initial *mei_ope_selection* est ensuite complété des lignes précèdemment retirées (les valeurs de tailles manquantes sont remplacées par les données de tailles médianes des espèces à l'échelle de la station). 
+  Le jeu de données initial *mei_ope_selection* est ensuite complété des lignes précèdemment retirées (les valeurs de tailles manquantes sont remplacées par les données de tailles médianes des espèces à l'échelle de la station). 
 
 ```{r Remplacement valeurs NA mei_ope_selection}
 mei_ope_selection <- bind_rows(mei_ope_selection, valeur_na_complet)
@@ -192,7 +190,7 @@ mei_ope_selection <- bind_rows(mei_ope_selection, valeur_na_complet)
 Une distinction des classes d'âges est réalisée sur le jeu de données *mei_ope_selection* : à chaque espèce correspond alors 3 stades différents : 
 - "ad": individu adulte dont la taille est supérieure à la *taille_maturite_ref* spécifique à l'espèce ;
 - "juv": individu juvénile dont la taille est inférieure à la *taille_maturité_ref* spécifique à l'espèce ;
-- "ind": Indifférencier = toutes classes d'âge confondues (ad + juv).
+- "ind": Indifférencié = toutes classes d'âges confondues (ad + juv).
 
 
 ```{r distinction classes ages}
@@ -208,7 +206,7 @@ mei_ope_selection <- mei_ope_selection %>%
 
 # Relation tailles / poids
 
-La mise en place des relations tailles / poids est réalisée grâce au package apse et au tuto *Construire des relations taille- poids*, réalisé par Mr Pascal Irz (https://rpubs.com/kamoke/729779). Cette relation nous permet de relier la longueur d'un poisson à son poids. Les mesures de poids sont rarement prises lors des pêches mais son pourtant nécessaires dans le calcul d'indicateurs simples comme pour les biomasses. Ainsi, nous utilisons cette relation afin d'obtenir des valeurs de poids indicatives remplaçcant les valeurs NA de poids dans notre jeu de données *mei_ope_selection*. Elles seront alors remplacées par des estimations de poids en fonction de la taille du poissons : *poids_tp*.  
+  La mise en place des relations tailles / poids est réalisée grâce au package *apse* et au tutoriel *Construire des relations taille- poids*, réalisé par **Mr Pascal Irz** (https://rpubs.com/kamoke/729779). Cette relation nous permet de relier la longueur d'un poisson à son poids. Les mesures de poids sont rarement prises lors des pêches mais son pourtant nécessaires dans le calcul d'indicateurs simples comme pour les biomasses. Ainsi, nous utilisons cette relation afin d'obtenir des valeurs de poids indicatives remplaçant les valeurs *NA* de poids dans notre jeu de données *mei_ope_selection*. Elles seront alors remplacées par des estimations de poids en fonction de la taille du poissons : *poids_tp*.  
 
 ```{r Application relation taille_poids}
 mei_taille_poids <- aspe::data_taille_poids %>% # Utilisation des relations taille - poids du package aspe
@@ -257,12 +255,12 @@ mei_ope_selection <- mei_ope_selection %>%
 
 # Qualité des données individuelles (tailles / poids)
 
-Maintenant que nous avons toutes les données regroupées dans un dataframe général (*mei_ope_selection*), nous pouvons passer au traitement qualitatif des données individuelles des poissons et notamment des valeurs poids et de tailles. 
+  Maintenant que nous avons toutes les données regroupées dans un dataframe général (*mei_ope_selection*), nous pouvons passer au traitement qualitatif des données individuelles des poissons et notamment des valeurs poids et de tailles. 
 
 
 ## Vérification des poids estimés 
 
-En ajoutant les valeurs de poids mesurés (*mei_poids*), nous pouvons les comparer aux poids estimés par la relation (*poids_tp*). Il s'agit de regarder les différences entre les poids réels et les poids estimés. 
+  En ajoutant les valeurs de poids mesurés (*mei_poids*), nous pouvons les comparer aux poids estimés par la relation (*poids_tp*). Il s'agit de regarder les différences entre les poids réels et les poids estimés. 
 
 ```{r Ajout mesures poids}
 mei_ope_selection <- mei_ope_selection %>% # Ajout des mesures de poids existantes
@@ -270,12 +268,12 @@ mei_ope_selection <- mei_ope_selection %>% # Ajout des mesures de poids existant
   select(ope_id:poids_tp, mei_poids)
 ```
 
-```{r DF avec les tailles réelles}
+```{r DF tailles réelles}
 mei_ope_selection_poids <- mei_ope_selection %>%
   filter(!is.na(mei_poids)) # Filtrer les données pour enlever les NA dans la colonne mei_poids
 ```
 
-```{r graphique poids réel/estimé, fig.height = 10, fig.width = 10}
+```{r Graphique poids réel/estimé, fig.height = 10, fig.width = 10}
 ggplot(mei_ope_selection_poids, aes(x = poids_tp, y = mei_poids, color = esp_code_alternatif)) +
   geom_point(alpha = 0.7, size = 3) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
@@ -304,16 +302,16 @@ Nous observons que beaucoup de valeurs "0" sont présentes dans les valeurs de p
 
 ### Mise en place de seuils de détection d'erreurs de tailles
 
-Il s'agit de mettre en place des seuils pour détecter des erreurs potentielles dans les tailles de poissons. Il s'agit donc d'instaurer des valeurs de tailles "minimums" et "maximums" pour chaque espèce. Pour cela, nous crééons un jeu de données ne contenant que les lignes ayant fait l'objet de mesures sur la longueur totale du poisson : 
+  Il s'agit de mettre en place des seuils pour détecter des erreurs potentielles dans les tailles de poissons. Il s'agit donc d'instaurer des valeurs de tailles "minimum" et "maximum" pour chaque espèce. Pour cela, nous crééons un jeu de données ne contenant que les lignes ayant fait l'objet de mesures sur la longueur totale du poisson : 
 
-```{r filtrer données longueur totale }
+```{r Filtrer données longueur totale }
 esp_lt_data <- mei_ope_selection %>%
   ungroup() %>% 
   filter(tlo_libelle == "Totale", 
          esp_code_alternatif == esp_code_alternatif)
 ```
 
-La fonction *qtp_seuils* permet d'isoler les tailles minimum et maximum des différentes espèces au sein du jeu de données *esp_lt_data*. Cette fonction est tirée du packages aspeQual - dédié à la mise en qualité de la base ASPE - réalisé par Mr Pascal Irz. 
+  La fonction *qtp_seuils* permet d'isoler les tailles minimum et maximum des différentes espèces au sein du jeu de données *esp_lt_data*. Cette fonction est tirée du packages *aspeQual* dédié à la mise en qualité de la base *aspe* réalisé par Mr Pascal Irz. 
 
 ```{r Taille min et max especes}
 mei_df_seuils <- aspeQual::qtp_seuils(df = esp_lt_data,
@@ -322,7 +320,7 @@ mei_df_seuils <- aspeQual::qtp_seuils(df = esp_lt_data,
                                       seuil_densite = 0.001)
 ```
 
-*mei_df_seuil* est un jeu de données contenant les tailles mini et maxi de chacune des espèces présentes dans *mei_ope_selection*. Les deux dataframes sont alors empilés : 
+*mei_df_seuil* est un jeu de données contenant les tailles minimum et maximum de chacune des espèces présentes dans *mei_ope_selection*. Les deux dataframes sont alors empilés : 
 
 ```{r Jointure seuils}
 mei_ope_selection <- mei_ope_selection %>% # Joindre les seuils calculés avec le jeu de données principal
@@ -332,21 +330,21 @@ mei_ope_selection <- mei_ope_selection %>% # Joindre les seuils calculés avec l
 
 ## Détection des erreurs de tailles
 
-La fonction *detecter_erreurs_tailles* est créée afin de recenser les valeurs de tailles abérantes contenus dans un dataframe. Elle est appliquée sur notre jeu de données *mei_ope_selection*. *erreur_df* est le jeu de données dans lequel l'ensemble des données de tailles supérieures ou inférieures aux seuils calculés précédemment sont stockées.Il est nécessaire de corriger ces éventuelles erreurs de saisies ou d'unités directement dans la base ASPE.
+  La fonction *detecter_erreurs_tailles* est créée afin de recenser les valeurs de tailles abérantes contenues dans un dataframe. Elle est appliquée sur notre jeu de données *mei_ope_selection*. *erreur_df* est le jeu de données dans lequel l'ensemble des données de tailles supérieures ou inférieures aux seuils calculés précédemment sont stockées. Il est nécessaire de corriger ces éventuelles erreurs de saisies ou d'unités directement dans la base *aspe*.
 
-```{r detection erreurs}
+```{r Detection erreurs}
 erreurs_df <- detecter_erreurs_tailles(df = mei_ope_selection)
 ```
  
 Nous affichons, par ordre de priorité, les erreurs les plus abérrantes contenues dans le jeu de données *erreurs_df*. Nous fixons l'ordre d'abérration des données à travers les variables var_rouge / var_darkorange / var_orange, contenues dans la fonction *classe_couleur_erreur*.   
 
-```{r organisation détection erreurs}
+```{r Organisation détection erreurs}
 erreurs_df <- erreurs_df %>% 
   rowwise() %>%
   mutate(color = classe_couleur_erreur(var_taille = mei_taille,
                                 valeur_mini = mini,
                                 valeur_maxi = maxi,
-                                var_rouge = 150,
+                                var_rouge = 150, # Rouge lorsque la taille réelle dépasse 150mm de la taille indiquée comme maximum
                                 var_darkorange = 75,
                                 var_orange = 25)) %>%
   ungroup() %>%
@@ -354,14 +352,13 @@ erreurs_df <- erreurs_df %>%
     color == "red" ~ 1,
     color == "darkorange" ~ 2,
     color == "orange" ~ 3,
-    TRUE ~ 4  # Pour s'assurer qu'il y a une valeur de gravité pour chaque ligne
-  )) %>%
+    TRUE ~ 4)) %>%  # Pour s'assurer qu'il y a une valeur de gravité pour chaque ligne
   arrange(severity)
 ```
 
-Le tableau d'erreurs peut être affiché, avec en couleur, les ordres de priorités de correction des erreurs. 
+Le tableau d'erreurs peut être affiché, avec en couleur, les ordres de priorités de correction des erreurs (allant de blanc à rouge). 
 
-```{r représentation détection erreurs}
+```{r Représentation détection erreurs}
 datatable(erreurs_df %>% select(-severity), options = list(pageLength = 25)) %>%
   formatStyle('color',
     columns = c("ope_id", "esp_code_alternatif", "mei_id", "mini", "maxi", "mei_taille"),
@@ -373,9 +370,10 @@ datatable(erreurs_df %>% select(-severity), options = list(pageLength = 25)) %>%
 
 
 # Qualité des données de lots (lop_id / lop_effectif)
+
 ## Vérification *lop_id*
 
-Dans le jeu de données *mei_ope_selection*, on s'attend à avoir autant de ligne **lop_id** (identifiant de lots) que de ligne **lop_effectif** (effectifs du lot). Il peut cependant y avoir des exceptions,  notamment lorsque la nature du lot est "S/M" et à une valeur d'effectif de 30. 
+  Dans le jeu de données *mei_ope_selection*, on s'attend à avoir autant de ligne **lop_id** (identifiants de lots) que de ligne **lop_effectif** (effectifs des lots). Il peut cependant y avoir des exceptions,  notamment lorsque la nature du lot est "S/M" et a une valeur d'effectif de 30. 
 
 ```{r Vérification effectif lot}
 verif_effectif <- mei_ope_selection %>%
@@ -390,10 +388,9 @@ resultat_verif_effectif <- verif_effectif %>%
   filter(nbr_lignes!= lop_effectif)
 ```
 
+  Lorsque le nombre de ligne est supérieur au *lop_effectif*, il s'agit d'erreur de retranscription. On remplace alors la valeur de *lop_effectif* par le nombre de ligne contenu dans la colonne "nbr_lignes". 
 
-Lorsque le nombre de ligne est supérieur au lop_effectif, il s'agit d'erreur de retranscription. On remplace alors la valeur de lop_effectif par le nombre de ligne contenu dans la colonne "nbr_lignes". 
-
-```{r modification erreurs lot_effectif}
+```{r Modification erreurs lot_effectif}
 mei_ope_selection <- mei_ope_selection %>%
   left_join(verif_effectif, by = c("esp_code_alternatif", "lop_id", "lop_effectif")) %>%
   mutate(lop_effectif = ifelse(lop_effectif < nbr_lignes, nbr_lignes, lop_effectif)) %>%
@@ -401,10 +398,9 @@ mei_ope_selection <- mei_ope_selection %>%
 ```
 
 
-
 ## Vérification *mei_id*
 
-Dans ce même jeu de données, il doit normalement n'y avoir qu'un *mei_id* par ligne (et pas de doublons) : ainsi, *nb_unique* doit théoriquement être égal au nombre total de lignes de *mei_ope_selection* (nous devons y soustraires les *mei_id* ayant des valeurs NA (cas anormaux venant de la base ASPE - à corriger - mais sans conséquence pour la suite de l'analyse). 
+  Dans ce même jeu de données, il doit normalement n'y avoir qu'un *mei_id* par ligne (et pas de doublons) : ainsi, *nb_unique* doit théoriquement être égal au nombre total de lignes de *mei_ope_selection* (nous devons cependant y soustraire les *mei_id* ayant des valeurs NA (cas anormaux venant de la base ASPE - à corriger - mais sans conséquence pour la suite de l'analyse)). 
 
 ```{r Calcul nombre mei_id unique}
 nb_unique <- mei_ope_selection %>% # Calcul du nombre unique de mei_id
@@ -428,8 +424,7 @@ if (nb_unique + nb_na == nb_lignes) {
   print("Le nombre de valeurs uniques de mei_id n'est pas égal au nombre de lignes de mei_ope_selection.")}
 ```
 
-
-Dans l'exemple de la Bretagne, on observe que le nombre de valeurs uniques de *mei_id* est pas égal au nombre de lignes de *mei_ope_selection*(en comprennant les NA). Il est donc necessaire de corriger ces erreurs ; temporairement, on assigne à ces NA un identifiant provisoire afin de ne pas avoir de blocage pour la suite de l'étude. 
+Dans l'exemple de la Bretagne, on observe que le nombre de valeurs uniques de *mei_id* n'est pas égal au nombre de lignes de *mei_ope_selection*(en comprennant les valeurs NA). Il est donc necessaire de corriger ces erreurs ; temporairement, on assigne à ces NA un identifiant provisoire afin de ne pas avoir de blocage pour la suite de l'étude. 
 
 ```{r Création id provisoire mei_id na}
 mei_ope_selection <- mei_ope_selection %>% # Convertir mei_id en chaîne de caractères
@@ -453,3 +448,15 @@ save(mei_ope_selection,
      file = "../processed_data/pre_traitements_donnees_especes.rda")
 ```
 
+
+# Références bibliographiques 
+
+  Derouch, M. (2024). Cahier d’identification des Poissons d’eau douce de France. Mèze : Biotope éditions, 128 p. 
+  
+  Keith, P., Poulet, N., Denys, G., Changeux, T., Feunteun, É., Persat, H. (2020). Les poissons d'eau douce de France. Deuxième édition. Muséum national d'Histoire naturelle, Paris ; Biotope, Mèze, 704 p. (Inventaires & biodiversité ; 18).
+  
+  Irz, P. (2023). aspeQual: quality control over the aspe database. R package version 1.0.0, https://github.com/PascalIrz/aspeQual/ 
+  
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/
+
+  UICN France (2018). Guide pratique pour la réalisation de Listes rouges régionales des espèces menacées - Méthodologie de l’UICN & démarche d’élaboration. Seconde édition. Paris, France.

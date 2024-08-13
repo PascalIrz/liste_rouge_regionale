@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-07-13" />
+<meta name="date" content="2024-08-13" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -3927,9 +3927,9 @@ border-radius: 0px;
 
 
 <h1 class="title toc-ignore">Liste Rouge Régionale des poissons d’eau douce de Bretagne</h1>
-<h3 class="subtitle">Pré-traitement des données des opérations et des données individuelles des espèces</h3>
+<h3 class="subtitle">Pré-traitements des données des opérations et des données individuelles des espèces</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-07-13</h4>
+<h4 class="date">2024-08-13</h4>
 
 </div>
 
@@ -3937,7 +3937,7 @@ border-radius: 0px;
 <div id="objectif-dynamique-de-population-des-poissons-deau-douce-de-bretagne" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Objectif : Dynamique de population des poissons d’eau douce de Bretagne</h1>
 <p>Script : 04_pre_traitements_donnees_ope_especes</p>
-<p>Il s’agit de réaliser une étape de pré-traitement et de mise en qualité des données sur la sélection des opérations réalisée précedemment. Il s’agit également de réaliser une mise en qualité des données individuelles des espèces propres à chacune des opérations. Il s’agit notamment d’observer les valeurs aberrantes contenues dans les mesures individuelles des poissons (tailles / poids / …).</p>
+<p>Il s’agit de réaliser une étape de pré-traitements et de mise en qualité des données sur la sélection des opérations réalisée précedemment. Il s’agit également de réaliser une mise en qualité des données individuelles des espèces propres à chacune des opérations. Il s’agit notamment d’observer les valeurs aberrantes contenues dans les mesures individuelles des poissons (mesures de tailles / poids / …).</p>
 </div>
 <div id="installation" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Installation</h1>
@@ -3945,7 +3945,7 @@ border-radius: 0px;
 <h2><span class="header-section-number">2.1</span> Paramètres</h2>
 <p>Des paramètres sont fixés et sont modifiables selon les préférences et les objectifs visés. Parmi ces paramètres :</p>
 <ul>
-<li>Sélection des passages de pêche à retirer : dans notre étude, les passages “2” et “3” sont retirés par soucis d’homogénéité entre protocoles de pêches. Seul les passages “0” et “1” sont alors conservés. Ces derniers correspondent au premier ou à l’unique passage réalisé lors d’une opération de pêche.</li>
+<li>Sélection des passages de pêche à retirer : dans notre étude, les passages “2” et “3” sont retirés par soucis d’homogénéité entre les différents protocoles de pêches. Seuls les passages “0” et “1” sont conservés. Ces derniers correspondent au premier ou à l’unique passage réalisé lors d’une opération de pêche.</li>
 </ul>
 </div>
 <div id="chargement-des-packages-et-des-données" class="section level2" number="2.2">
@@ -3975,26 +3975,26 @@ source(file = &quot;../R/classe_couleur_erreur.R&quot;)</code></pre>
 </div>
 <div id="constitution-du-jeu-de-données" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Constitution du jeu de données</h1>
-<p>Dans cette étude, nous souhaitons distinguer les individus “adultes” des individus “juvéniles”. Pour cela, nous devons réaliser une “classe de taille” de référence permettant, à partir de la taille des poissons péchés lors des opérations, de séparer les poissons “adultes” des “juvéniles”. Ce choix est réalisé en raisonnance avec la méthodologie de la liste rouge qui incite à n’évaluer que les individus matures dans les analyses si les données le permettent.</p>
+<p>Dans cette étude, nous souhaitons distinguer les individus “adultes” des individus “juvéniles”. Pour cela, nous devons réaliser une “classe de taille” de référence permettant, à partir de la taille des poissons pêchés lors des opérations, de séparer les poissons “adultes” des “juvéniles”. Ce choix est réalisé en raisonnance avec la méthodologie de la liste rouge qui incite à n’évaluer que les individus matures dans les analyses si les données le permettent (UICN France, 2018).</p>
 <div id="selection-des-tailles-de-maturité-des-espèces" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Selection des tailles de maturité des espèces</h2>
-<p>En complément de la base ASPE, un tableau indiquant pour chaque espèce la taille maximale des 0+ est constitué (= taille référence minimum adulte). La longueur du poisson est utilisé comme proxy de son age. Les tailles de maturité de <em>référence</em> sont renseignées à partir de 5 sources différentes pour chacune des espèces, et rassemblées dans un fichier Excel à importer sur R.</p>
-<div id="constitution-du-fichier-excel-traits_biologiques" class="section level3" number="3.1.1">
-<h3><span class="header-section-number">3.1.1</span> Constitution du fichier Excel “traits_biologiques”</h3>
+<p>En complément de la base <em>aspe</em>, un tableau indiquant pour chaque espèce la taille maximale des 0+ est constitué (= taille référence minimum adulte). La longueur du poisson est utilisée comme proxy de son âge. Les tailles de maturité de <em>référence</em> sont renseignées à partir de 5 sources différentes pour chacune des espèces, et rassemblées dans un fichier Excel à importer sur R.</p>
+<div id="construction-du-fichier-excel-traits_biologiques" class="section level3" number="3.1.1">
+<h3><span class="header-section-number">3.1.1</span> Construction du fichier Excel “traits_biologiques”</h3>
 <p>L’excel “traits_biologiques” doit être constitué en amont de l’exécution de ce script. Il contient 7 colonnes et 1 ligne par espèce présente sur la région étudiée :</p>
 <ul>
-<li><p>1ere colonne : “espece_presence_lrr_2015” : la valeur 1 est inscrite si l’espèces a été présente sur la précédente lrr ; la valeur 0 est inscrite dans le cas contraire.</p></li>
+<li><p>1ere colonne : “espece_presence_lrr_2015” : la valeur 1 est inscrite si l’espèce a été présente sur la précédente lrr ; la valeur 0 est inscrite dans le cas contraire.</p></li>
 <li><p>2ème colonne : “esp_nom_commun” : nom commun de l’espèce.</p></li>
-<li><p>3ème colonne : “esp_code_alternatif” : Code à 3 lettres de l’espèce.</p></li>
-<li><p>n colonne(s) : Valeurs de taille référence minimum adulte issue de documentation</p></li>
-<li><p>n+n colonne : “taille_maturite_ref” : Valeur médiane des différentes tailles issues de la documentation*.</p></li>
+<li><p>3ème colonne : “esp_code_alternatif” : code à 3 lettres de l’espèce.</p></li>
+<li><p>n colonne(s) : valeurs de taille référence minimum adulte issue de la documentation.</p></li>
+<li><p>n+1 colonne : “taille_maturite_ref” : valeur médiane des différentes tailles issues de la documentation*.</p></li>
 <li><p>Dans le cas de cette étude - 5 colonnes issues de différentes sources :
-1 et 2 : ouvrages d’identification des poissons d’eau douce de France ;
-3 : observation des courbes de tailles dans le fichier R “estimation_taille_0+” à partir des données de taille du fichier ASPE ;
+1 et 2 : Ouvrages d’identification des poissons d’eau douce de France (Keith <em>et al.</em>, 2020 ; Derouch, 2024);
+3 : Observation des courbes de tailles dans le fichier R “estimation_taille_0+” à partir des données de taille de la base <em>aspe</em>;
 4 : Valeurs de <em>fishbase</em> ;
-5 : Valeurs de référence des espèces d’Occitanie</p></li>
+5 : Valeurs de référence des espèces d’Occitanie.</p>
+<p>Les différentes tailles de référence sont donc regroupées dans le tableau <em>traits_biologiques</em> et pour chacune des espèces, la médiane de l’ensemble des valeurs recueillies a été retenue pour être inscrite comme la valeur de référence de maturité.</p></li>
 </ul>
-<p>Les différentes tailles de référence sont donc regroupées dans le tableau <em>traits_biologiques</em> et pour chacune des espèces, la médiane de l’ensemble des valeurs recueillies a été retenue pour être inscrite comme la valeur de référence de maturité.</p>
 <pre class="r"><code>traits_biologiques &lt;- traits_biologiques %&gt;% # Construction d&#39;un jeu de données contenant les tailles de maturité 
   select(esp_code_alternatif,
          espece_presence_lrr_2015,
@@ -4003,7 +4003,7 @@ source(file = &quot;../R/classe_couleur_erreur.R&quot;)</code></pre>
 </div>
 <div id="création-dun-jeu-de-données-des-mesures-individuelles" class="section level2" number="3.2">
 <h2><span class="header-section-number">3.2</span> Création d’un jeu de données des mesures individuelles</h2>
-<p>Il s’agit maintenant de créer un jeu de données contenant l’ensemble des données individuelles relatives aux espèces sélectionnées ainsi qu’aux opérations de pêches contenues dans la passerelle (cf script 00_selection_pop_ope et 03_analyse_selection_especes). La taille des poissons est indiquée en millimètres et le poids en gramme. Dans ce nouveau jeu de données <em>mei_ope_selection</em>, nous ne retenons que les données en lien avec le dataframe esp_ope_selection (espèces sélectionnées lors du dernier script).</p>
+<p>Il s’agit maintenant de créer un dataframe contenant l’ensemble des données individuelles relatives aux espèces sélectionnées ainsi qu’aux opérations de pêches contenues dans la passerelle (cf script 00_selection_pop_ope et 03_analyse_selection_especes). La taille des poissons est indiquée en millimètre et le poids en gramme. Dans ce nouveau jeu de données <em>mei_ope_selection</em>, nous ne retenons que les données en lien avec le dataframe <em>esp_ope_selection</em> (espèces sélectionnées lors du dernier script).</p>
 <pre class="r"><code>mei_ope_selection &lt;- passerelle %&gt;%
   mef_ajouter_ope_date() %&gt;% 
   mef_ajouter_mei() %&gt;%
@@ -4025,7 +4025,7 @@ source(file = &quot;../R/classe_couleur_erreur.R&quot;)</code></pre>
          pro_libelle,
          annee,
          tlo_libelle)</code></pre>
-<p>Nous retirons les passages supérieur à 1 qui ne seront pas étudiés par soucis d’homogénéité des données (cf Paramètres). Nous ne sélectionnons que les espèces sélectionnées suite au script 03_selection_especes (contenues dans l’objet <em>mes_especes</em>).</p>
+<p>Nous retirons les passages supérieurs à 1 qui ne seront pas étudiés par soucis d’homogénéité des données (cf Paramètres). Nous ne considérons que les espèces sélectionnées suite au script 03_selection_especes (contenues dans l’objet <em>mes_especes</em>).</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% 
   mutate(pas_numero = replace_na(pas_numero,0)) %&gt;% # Passages &quot;NA&quot; transformés en &quot;0&quot; (équivalent)
   filter(!pas_numero %in% params$passage_a_retirer,
@@ -4033,19 +4033,19 @@ source(file = &quot;../R/classe_couleur_erreur.R&quot;)</code></pre>
   distinct()</code></pre>
 </div>
 <div id="données-manquantes" class="section level2" number="3.3">
-<h2><span class="header-section-number">3.3</span> Données Manquantes</h2>
-<p>Certaines valeurs absentes / manquantes (“NA”) peuvent être observées au sein du jeu de données constitué. Ceci peut être dû à des problèmes de retranscription dans la base de données ASPE. Parfois il est possible d’observer une absence de valeurs de tailles individuelles (<em>mei_taille</em>). Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe “valeur_na”.</p>
-<pre class="r"><code>valeur_na &lt;- mei_ope_selection %&gt;% #Isolement des lignes contenant des NA dans un dataframe
+<h2><span class="header-section-number">3.3</span> Données manquantes</h2>
+<p>Certaines valeurs absentes / manquantes (“NA”) peuvent être observées au sein du jeu de données constitué. Celles-ci peuvent être dûes à des problèmes de retranscription dans la base de données <em>aspe</em>. Les lignes contenant des valeurs manquantes sont regroupées dans un dataframe <em>valeur_na</em>.</p>
+<pre class="r"><code>valeur_na &lt;- mei_ope_selection %&gt;% # Isolement des lignes contenant des NA dans un dataframe
   filter(if_any(everything(), is.na))
   
 mei_ope_selection &lt;- na.omit(mei_ope_selection)</code></pre>
-<p>La taille médiane des espèces à l’échelle de leur station est calculée dans le jeu de données <em>esp_taille_med_sta</em>. Ces valeurs sont ensuite assignées comme valeurs de références en cas de valeurs manquantes.</p>
-<pre class="r"><code>esp_taille_na_med_sta &lt;- mei_ope_selection %&gt;% # DF contenant les tailles médiannes des espèces par stations
+<p>La taille médiane des espèces à l’échelle de leur station est calculée dans le jeu de données <em>esp_taille_med_sta</em>. Ces valeurs sont ensuite assignées comme valeurs de références en cas de valeurs manquantes (à la station).</p>
+<pre class="r"><code>esp_taille_na_med_sta &lt;- mei_ope_selection %&gt;% # Dataframe contenant les tailles médiannes des espèces par station
   group_by(sta_id,
            esp_code_alternatif) %&gt;%
   summarise(mei_taille_med = median(mei_taille, na.rm = TRUE)) %&gt;%
   ungroup()</code></pre>
-<pre class="r"><code>valeur_na_complet &lt;- valeur_na %&gt;% # Remplacement valeurs de tailles manquantes par les valeurs du df esp_taille_na_med_sta
+<pre class="r"><code>valeur_na_complet &lt;- valeur_na %&gt;% # Remplacement valeurs de tailles manquantes par les valeurs du dataframe esp_taille_na_med_sta
   left_join(esp_taille_na_med_sta, by = c(&quot;sta_id&quot;, &quot;esp_code_alternatif&quot;)) %&gt;% 
   mutate(mei_taille = coalesce(mei_taille, mei_taille_med)) %&gt;% 
   select(-mei_taille_med)</code></pre>
@@ -4057,7 +4057,7 @@ mei_ope_selection &lt;- na.omit(mei_ope_selection)</code></pre>
 <p>Une distinction des classes d’âges est réalisée sur le jeu de données <em>mei_ope_selection</em> : à chaque espèce correspond alors 3 stades différents :
 - “ad”: individu adulte dont la taille est supérieure à la <em>taille_maturite_ref</em> spécifique à l’espèce ;
 - “juv”: individu juvénile dont la taille est inférieure à la <em>taille_maturité_ref</em> spécifique à l’espèce ;
-- “ind”: Indifférencier = toutes classes d’âge confondues (ad + juv).</p>
+- “ind”: Indifférencié = toutes classes d’âges confondues (ad + juv).</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% 
   left_join(traits_biologiques) 
 
@@ -4068,7 +4068,7 @@ mei_ope_selection &lt;- mei_ope_selection %&gt;%
 </div>
 <div id="relation-tailles-poids" class="section level1" number="4">
 <h1><span class="header-section-number">4</span> Relation tailles / poids</h1>
-<p>La mise en place des relations tailles / poids est réalisée grâce au package apse et au tuto <em>Construire des relations taille- poids</em>, réalisé par Mr Pascal Irz (<a href="https://rpubs.com/kamoke/729779" class="uri">https://rpubs.com/kamoke/729779</a>). Cette relation nous permet de relier la longueur d’un poisson à son poids. Les mesures de poids sont rarement prises lors des pêches mais son pourtant nécessaires dans le calcul d’indicateurs simples comme pour les biomasses. Ainsi, nous utilisons cette relation afin d’obtenir des valeurs de poids indicatives remplaçcant les valeurs NA de poids dans notre jeu de données <em>mei_ope_selection</em>. Elles seront alors remplacées par des estimations de poids en fonction de la taille du poissons : <em>poids_tp</em>.</p>
+<p>La mise en place des relations tailles / poids est réalisée grâce au package <em>apse</em> et au tutoriel <em>Construire des relations taille- poids</em>, réalisé par <strong>Mr Pascal Irz</strong> (<a href="https://rpubs.com/kamoke/729779" class="uri">https://rpubs.com/kamoke/729779</a>). Cette relation nous permet de relier la longueur d’un poisson à son poids. Les mesures de poids sont rarement prises lors des pêches mais son pourtant nécessaires dans le calcul d’indicateurs simples comme pour les biomasses. Ainsi, nous utilisons cette relation afin d’obtenir des valeurs de poids indicatives remplaçant les valeurs <em>NA</em> de poids dans notre jeu de données <em>mei_ope_selection</em>. Elles seront alors remplacées par des estimations de poids en fonction de la taille du poissons : <em>poids_tp</em>.</p>
 <pre class="r"><code>mei_taille_poids &lt;- aspe::data_taille_poids %&gt;% # Utilisation des relations taille - poids du package aspe
   group_by(esp_code_alternatif,
            tlo_libelle) %&gt;%
@@ -4136,24 +4136,24 @@ mei_esp_tp_manquantes &lt;- mei_tp_manquantes %&gt;%
 <h2><span class="header-section-number">5.2</span> Vérification des tailles</h2>
 <div id="mise-en-place-de-seuils-de-détection-derreurs-de-tailles" class="section level3" number="5.2.1">
 <h3><span class="header-section-number">5.2.1</span> Mise en place de seuils de détection d’erreurs de tailles</h3>
-<p>Il s’agit de mettre en place des seuils pour détecter des erreurs potentielles dans les tailles de poissons. Il s’agit donc d’instaurer des valeurs de tailles “minimums” et “maximums” pour chaque espèce. Pour cela, nous crééons un jeu de données ne contenant que les lignes ayant fait l’objet de mesures sur la longueur totale du poisson :</p>
+<p>Il s’agit de mettre en place des seuils pour détecter des erreurs potentielles dans les tailles de poissons. Il s’agit donc d’instaurer des valeurs de tailles “minimum” et “maximum” pour chaque espèce. Pour cela, nous crééons un jeu de données ne contenant que les lignes ayant fait l’objet de mesures sur la longueur totale du poisson :</p>
 <pre class="r"><code>esp_lt_data &lt;- mei_ope_selection %&gt;%
   ungroup() %&gt;% 
   filter(tlo_libelle == &quot;Totale&quot;, 
          esp_code_alternatif == esp_code_alternatif)</code></pre>
-<p>La fonction <em>qtp_seuils</em> permet d’isoler les tailles minimum et maximum des différentes espèces au sein du jeu de données <em>esp_lt_data</em>. Cette fonction est tirée du packages aspeQual - dédié à la mise en qualité de la base ASPE - réalisé par Mr Pascal Irz.</p>
+<p>La fonction <em>qtp_seuils</em> permet d’isoler les tailles minimum et maximum des différentes espèces au sein du jeu de données <em>esp_lt_data</em>. Cette fonction est tirée du packages <em>aspeQual</em> dédié à la mise en qualité de la base <em>aspe</em> réalisé par Mr Pascal Irz.</p>
 <pre class="r"><code>mei_df_seuils &lt;- aspeQual::qtp_seuils(df = esp_lt_data,
                                       var_taxon = esp_code_alternatif,
                                       var_a_tester = mei_taille,
                                       seuil_densite = 0.001)</code></pre>
-<p><em>mei_df_seuil</em> est un jeu de données contenant les tailles mini et maxi de chacune des espèces présentes dans <em>mei_ope_selection</em>. Les deux dataframes sont alors empilés :</p>
+<p><em>mei_df_seuil</em> est un jeu de données contenant les tailles minimum et maximum de chacune des espèces présentes dans <em>mei_ope_selection</em>. Les deux dataframes sont alors empilés :</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% # Joindre les seuils calculés avec le jeu de données principal
   left_join(mei_df_seuils, by = &quot;esp_code_alternatif&quot;)</code></pre>
 </div>
 </div>
 <div id="détection-des-erreurs-de-tailles" class="section level2" number="5.3">
 <h2><span class="header-section-number">5.3</span> Détection des erreurs de tailles</h2>
-<p>La fonction <em>detecter_erreurs_tailles</em> est créée afin de recenser les valeurs de tailles abérantes contenus dans un dataframe. Elle est appliquée sur notre jeu de données <em>mei_ope_selection</em>. <em>erreur_df</em> est le jeu de données dans lequel l’ensemble des données de tailles supérieures ou inférieures aux seuils calculés précédemment sont stockées.Il est nécessaire de corriger ces éventuelles erreurs de saisies ou d’unités directement dans la base ASPE.</p>
+<p>La fonction <em>detecter_erreurs_tailles</em> est créée afin de recenser les valeurs de tailles abérantes contenues dans un dataframe. Elle est appliquée sur notre jeu de données <em>mei_ope_selection</em>. <em>erreur_df</em> est le jeu de données dans lequel l’ensemble des données de tailles supérieures ou inférieures aux seuils calculés précédemment sont stockées. Il est nécessaire de corriger ces éventuelles erreurs de saisies ou d’unités directement dans la base <em>aspe</em>.</p>
 <pre class="r"><code>erreurs_df &lt;- detecter_erreurs_tailles(df = mei_ope_selection)</code></pre>
 <pre><code>##     ope_id esp_code_alternatif   mei_id mini maxi mei_taille
 ## 1    50950                 LOF  7118164   17  138        150
@@ -4334,7 +4334,7 @@ mei_esp_tp_manquantes &lt;- mei_tp_manquantes %&gt;%
   mutate(color = classe_couleur_erreur(var_taille = mei_taille,
                                 valeur_mini = mini,
                                 valeur_maxi = maxi,
-                                var_rouge = 150,
+                                var_rouge = 150, # Rouge lorsque la taille réelle dépasse 150mm de la taille indiquée comme maximum
                                 var_darkorange = 75,
                                 var_orange = 25)) %&gt;%
   ungroup() %&gt;%
@@ -4342,10 +4342,9 @@ mei_esp_tp_manquantes &lt;- mei_tp_manquantes %&gt;%
     color == &quot;red&quot; ~ 1,
     color == &quot;darkorange&quot; ~ 2,
     color == &quot;orange&quot; ~ 3,
-    TRUE ~ 4  # Pour s&#39;assurer qu&#39;il y a une valeur de gravité pour chaque ligne
-  )) %&gt;%
+    TRUE ~ 4)) %&gt;%  # Pour s&#39;assurer qu&#39;il y a une valeur de gravité pour chaque ligne
   arrange(severity)</code></pre>
-<p>Le tableau d’erreurs peut être affiché, avec en couleur, les ordres de priorités de correction des erreurs.</p>
+<p>Le tableau d’erreurs peut être affiché, avec en couleur, les ordres de priorités de correction des erreurs (allant de blanc à rouge).</p>
 <pre class="r"><code>datatable(erreurs_df %&gt;% select(-severity), options = list(pageLength = 25)) %&gt;%
   formatStyle(&#39;color&#39;,
     columns = c(&quot;ope_id&quot;, &quot;esp_code_alternatif&quot;, &quot;mei_id&quot;, &quot;mini&quot;, &quot;maxi&quot;, &quot;mei_taille&quot;),
@@ -4353,15 +4352,15 @@ mei_esp_tp_manquantes &lt;- mei_tp_manquantes %&gt;%
     backgroundColor = styleEqual(
       c(&quot;red&quot;, &quot;darkorange&quot;, &quot;orange&quot;), 
       c(&quot;red&quot;, &quot;darkorange&quot;, &quot;orange&quot;)))</code></pre>
-<div class="datatables html-widget html-fill-item" id="htmlwidget-b58427373488a187c846" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-b58427373488a187c846">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89","90","91","92","93","94","95","96","97","98","99","100","101","102","103","104","105","106","107","108","109","110","111","112","113","114","115","116","117","118","119","120","121","122","123","124","125","126","127","128","129","130","131","132","133","134","135","136","137","138","139","140","141","142","143","144","145","146","147","148","149","150","151","152","153","154","155","156","157","158","159","160","161","162","163","164","165","166","167","168","169","170","171","172"],[8194,6844,6292,6292,6292,6292,6292,84516,85742,87010,88035,88035,6309,6391,51357,6292,6292,6292,6726,6671,6292,6342,6755,6292,6292,6025,6726,6504,6292,6292,6773,6671,6292,5719,6179,6254,38964,38964,82517,82696,83341,83342,84550,86944,86977,8249,5300,5955,6833,5955,6499,5955,6400,5955,87653,87950,6214,6391,90507,90507,50950,51357,51357,51357,51357,51357,51357,51357,51357,6510,6278,6292,6517,5462,6514,5707,5710,5719,6150,6568,6726,6292,6702,6615,6568,6157,6568,6511,6030,6285,6292,5299,6292,6127,6127,6127,6127,6127,6302,6171,6659,6726,51357,50768,51004,38673,38891,38891,38919,38919,38926,38943,38943,38945,38945,38945,38945,38945,38952,38952,38955,38956,38956,38962,38964,38964,81664,38917,82317,82364,82876,84513,84516,86944,86956,87012,6918,8218,8218,6866,5955,6925,6871,6894,6918,8044,8218,7980,6925,6925,7981,8174,6925,6876,8052,6861,5955,8043,8051,6894,8051,6841,87955,87994,6164,6483,6689,6378,6418,6098,6722,6318],["BRO","BRO","SAT","SAT","SAT","SAT","SAT","SAT","GAR","GAR","VAI","VAI","LOF","SAT","CHA","SAT","SAT","SAT","GAR","TRF","SAT","GAR","BRO","SAT","SAT","GAR","GAR","TRF","SAT","SAT","GAR","SAT","SAT","GAR","PER","ANG","CHA","CHA","LOF","LOF","ANG","GAR","LOF","LOF","SAT","SAT","SAT","GAR","GAR","GAR","SAT","GAR","TRF","GAR","GAR","VAI","CHA","SAT","GAR","CHE","LOF","LOF","LOF","LOF","LOF","CHA","CHA","CHA","CHA","GAR","GOU","SAT","GAR","GAR","GAR","GAR","GAR","GAR","TRF","VAI","GAR","SAT","VAI","GAR","VAI","GAR","VAI","GAR","VAI","VAI","SAT","GAR","SAT","VAI","VAI","VAI","VAI","VAI","GAR","GAR","GAR","GAR","SAT","GAR","GAR","GAR","VAI","LPP","VAI","VAI","CHA","CHA","CHA","CHA","LOF","CHA","CHA","CHA","CHA","CHA","VAI","CHA","CHA","LOF","LOF","CHA","GAR","VAI","VAI","LOF","VAI","VAI","GOU","VAI","VAI","GAR","CHA","VAR","VAI","GOU","GAR","GOU","VAR","VAR","VAI","VAR","VAI","GAR","GOU","LOF","CHE","VAI","CHA","LOF","CHA","VAI","GAR","VAR","BRO","VAR","BRO","VAR","VAI","VAI","LOF","LOF","CHA","LOF","GAR","LOF","LOF","LOF"],[1520217,896489,1099226,1099234,1099240,1099233,1099224,12779016,17565114,19211262,20849562,20849564,1107577,1147873,7124620,1099227,1099228,1099243,881674,874153,1099235,1123082,884387,1099238,1099231,1027873,881637,858256,1099242,1099225,887583,874154,1099232,11450120,1062155,1089548,6837328,6837442,8658191,9174433,11046275,11046491,13382888,19143674,19193169,1550082,937702,1017645,895554,1017648,857384,1017643,847498,1017646,20626537,20803106,1073888,1147874,22661620,22661640,7118164,11396311,11396368,7124778,7124756,11396176,11396191,11396217,11396281,858783,841706,1099237,860858,956256,860441,11687980,11640751,11450173,1051494,1186035,881379,1099222,876935,867951,1186037,1054033,1186036,1176970,11727668,1096209,1099236,937618,1099230,12033403,12033406,12033409,12033420,12033421,1103700,1059212,871679,881411,7124482,7108450,7119724,6754666,6820520,6820619,6824909,6824968,6826857,6830205,6830209,6830805,6831131,6831199,6831205,6831210,6833404,6833415,6834524,6834816,6834881,6837039,6837389,6837461,7880301,6823737,8349458,8379057,9353382,12778174,12779226,19143729,19171459,19213106,906454,1540498,1581791,899951,1017644,908720,900094,903571,906476,1555115,1540494,1533894,908719,908887,1545632,1570675,909009,1237156,1569670,1234358,1017647,1543469,1515276,903560,1515309,896007,20805274,20859703,1056309,1172785,1205866,1143983,847910,1040270,1209428,1112679],[58,58,26,26,26,26,26,26,10,10,12,12,17,26,11,26,26,26,10,3,26,10,58,26,26,10,10,3,26,26,10,26,26,10,3,32,11,11,17,17,32,10,17,17,26,26,26,10,10,10,26,10,3,10,10,12,11,26,10,11,17,17,17,17,17,11,11,11,11,10,16,26,10,10,10,10,10,10,3,12,10,26,12,10,12,10,12,10,12,12,26,10,26,12,12,12,12,12,10,10,10,10,26,10,10,10,12,9,12,12,11,11,11,11,17,11,11,11,11,11,12,11,11,17,17,11,10,12,12,17,12,12,16,12,12,10,11,31,12,16,10,16,31,31,12,31,12,10,16,17,11,12,11,17,11,12,10,31,58,31,58,31,12,12,17,17,11,17,10,17,17,17],[672,672,613,613,613,613,613,613,258,258,98,98,138,613,103,613,613,613,258,388,613,258,672,613,613,258,258,388,613,613,258,613,613,258,385,796,103,103,138,138,796,258,138,138,613,613,613,258,258,258,613,258,388,258,258,98,103,613,258,488,138,138,138,138,138,103,103,103,103,258,195,613,258,258,258,258,258,258,388,98,258,613,98,258,98,258,98,258,98,98,613,258,613,98,98,98,98,98,258,258,258,258,613,258,258,258,98,201,98,98,103,103,103,103,138,103,103,103,103,103,98,103,103,138,138,103,258,98,98,138,98,98,195,98,98,258,103,268,98,195,258,195,268,268,98,268,98,258,195,138,488,98,103,138,103,98,258,268,672,268,672,268,98,98,138,138,103,138,258,138,138,138],[900,888,690,710,700,740,690,740,360,342,192,182,217,695,142,640,650,640,320,430,650,327,740,680,670,320,310,415,680,640,296,650,680,330,414,840,136,137,199,188,826,303,165,198,640,670,680,310,302,285,675,305,432,310,290,140,139,670,303,542,150,139,147,155,141,114,114,109,115,263,14,620,270,271,280,263,272,265,390,109,270,630,107,272,110,272,105,273,11,104,620,280,620,107,101,107,103,102,271,275,270,260,21,270,259,283,6,3,7,3,8,3,7,3,6,8,4,5,3,6,9,7,5,7,5,128,267,5,101,142,100,99,215,100,3,278,111,285,11,197,260,13,286,30,11,274,11,265,14,15,493,107,107,141,106,106,260,271,57,30,53,280,115,10,15,10,106,150,262,11,140,14],["red","red","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>ope_id<\/th>\n      <th>esp_code_alternatif<\/th>\n      <th>mei_id<\/th>\n      <th>mini<\/th>\n      <th>maxi<\/th>\n      <th>mei_taille<\/th>\n      <th>color<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":25,"columnDefs":[{"className":"dt-right","targets":[1,3,4,5,6]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"ope_id","targets":1},{"name":"esp_code_alternatif","targets":2},{"name":"mei_id","targets":3},{"name":"mini","targets":4},{"name":"maxi","targets":5},{"name":"mei_taille","targets":6},{"name":"color","targets":7}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[7]; $(row).css({'background-color':value == \"red\" ? \"red\" : value == \"darkorange\" ? \"darkorange\" : value == \"orange\" ? \"orange\" : null});\n}"},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-4d8bb10e01060f8f51f5" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-4d8bb10e01060f8f51f5">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89","90","91","92","93","94","95","96","97","98","99","100","101","102","103","104","105","106","107","108","109","110","111","112","113","114","115","116","117","118","119","120","121","122","123","124","125","126","127","128","129","130","131","132","133","134","135","136","137","138","139","140","141","142","143","144","145","146","147","148","149","150","151","152","153","154","155","156","157","158","159","160","161","162","163","164","165","166","167","168","169","170","171","172"],[8194,6844,6292,6292,6292,6292,6292,84516,85742,87010,88035,88035,6309,6391,51357,6292,6292,6292,6726,6671,6292,6342,6755,6292,6292,6025,6726,6504,6292,6292,6773,6671,6292,5719,6179,6254,38964,38964,82517,82696,83341,83342,84550,86944,86977,8249,5300,5955,6833,5955,6499,5955,6400,5955,87653,87950,6214,6391,90507,90507,50950,51357,51357,51357,51357,51357,51357,51357,51357,6510,6278,6292,6517,5462,6514,5707,5710,5719,6150,6568,6726,6292,6702,6615,6568,6157,6568,6511,6030,6285,6292,5299,6292,6127,6127,6127,6127,6127,6302,6171,6659,6726,51357,50768,51004,38673,38891,38891,38919,38919,38926,38943,38943,38945,38945,38945,38945,38945,38952,38952,38955,38956,38956,38962,38964,38964,81664,38917,82317,82364,82876,84513,84516,86944,86956,87012,6918,8218,8218,6866,5955,6925,6871,6894,6918,8044,8218,7980,6925,6925,7981,8174,6925,6876,8052,6861,5955,8043,8051,6894,8051,6841,87955,87994,6164,6483,6689,6378,6418,6098,6722,6318],["BRO","BRO","SAT","SAT","SAT","SAT","SAT","SAT","GAR","GAR","VAI","VAI","LOF","SAT","CHA","SAT","SAT","SAT","GAR","TRF","SAT","GAR","BRO","SAT","SAT","GAR","GAR","TRF","SAT","SAT","GAR","SAT","SAT","GAR","PER","ANG","CHA","CHA","LOF","LOF","ANG","GAR","LOF","LOF","SAT","SAT","SAT","GAR","GAR","GAR","SAT","GAR","TRF","GAR","GAR","VAI","CHA","SAT","GAR","CHE","LOF","LOF","LOF","LOF","LOF","CHA","CHA","CHA","CHA","GAR","GOU","SAT","GAR","GAR","GAR","GAR","GAR","GAR","TRF","VAI","GAR","SAT","VAI","GAR","VAI","GAR","VAI","GAR","VAI","VAI","SAT","GAR","SAT","VAI","VAI","VAI","VAI","VAI","GAR","GAR","GAR","GAR","SAT","GAR","GAR","GAR","VAI","LPP","VAI","VAI","CHA","CHA","CHA","CHA","LOF","CHA","CHA","CHA","CHA","CHA","VAI","CHA","CHA","LOF","LOF","CHA","GAR","VAI","VAI","LOF","VAI","VAI","GOU","VAI","VAI","GAR","CHA","VAR","VAI","GOU","GAR","GOU","VAR","VAR","VAI","VAR","VAI","GAR","GOU","LOF","CHE","VAI","CHA","LOF","CHA","VAI","GAR","VAR","BRO","VAR","BRO","VAR","VAI","VAI","LOF","LOF","CHA","LOF","GAR","LOF","LOF","LOF"],[1520217,896489,1099226,1099234,1099240,1099233,1099224,12779016,17565114,19211262,20849562,20849564,1107577,1147873,7124620,1099227,1099228,1099243,881674,874153,1099235,1123082,884387,1099238,1099231,1027873,881637,858256,1099242,1099225,887583,874154,1099232,11450120,1062155,1089548,6837328,6837442,8658191,9174433,11046275,11046491,13382888,19143674,19193169,1550082,937702,1017645,895554,1017648,857384,1017643,847498,1017646,20626537,20803106,1073888,1147874,22661620,22661640,7118164,11396311,11396368,7124778,7124756,11396176,11396191,11396217,11396281,858783,841706,1099237,860858,956256,860441,11687980,11640751,11450173,1051494,1186035,881379,1099222,876935,867951,1186037,1054033,1186036,1176970,11727668,1096209,1099236,937618,1099230,12033403,12033406,12033409,12033420,12033421,1103700,1059212,871679,881411,7124482,7108450,7119724,6754666,6820520,6820619,6824909,6824968,6826857,6830205,6830209,6830805,6831131,6831199,6831205,6831210,6833404,6833415,6834524,6834816,6834881,6837039,6837389,6837461,7880301,6823737,8349458,8379057,9353382,12778174,12779226,19143729,19171459,19213106,906454,1540498,1581791,899951,1017644,908720,900094,903571,906476,1555115,1540494,1533894,908719,908887,1545632,1570675,909009,1237156,1569670,1234358,1017647,1543469,1515276,903560,1515309,896007,20805274,20859703,1056309,1172785,1205866,1143983,847910,1040270,1209428,1112679],[58,58,26,26,26,26,26,26,10,10,12,12,17,26,11,26,26,26,10,3,26,10,58,26,26,10,10,3,26,26,10,26,26,10,3,32,11,11,17,17,32,10,17,17,26,26,26,10,10,10,26,10,3,10,10,12,11,26,10,11,17,17,17,17,17,11,11,11,11,10,16,26,10,10,10,10,10,10,3,12,10,26,12,10,12,10,12,10,12,12,26,10,26,12,12,12,12,12,10,10,10,10,26,10,10,10,12,9,12,12,11,11,11,11,17,11,11,11,11,11,12,11,11,17,17,11,10,12,12,17,12,12,16,12,12,10,11,31,12,16,10,16,31,31,12,31,12,10,16,17,11,12,11,17,11,12,10,31,58,31,58,31,12,12,17,17,11,17,10,17,17,17],[672,672,613,613,613,613,613,613,258,258,98,98,138,613,103,613,613,613,258,388,613,258,672,613,613,258,258,388,613,613,258,613,613,258,385,796,103,103,138,138,796,258,138,138,613,613,613,258,258,258,613,258,388,258,258,98,103,613,258,488,138,138,138,138,138,103,103,103,103,258,195,613,258,258,258,258,258,258,388,98,258,613,98,258,98,258,98,258,98,98,613,258,613,98,98,98,98,98,258,258,258,258,613,258,258,258,98,201,98,98,103,103,103,103,138,103,103,103,103,103,98,103,103,138,138,103,258,98,98,138,98,98,195,98,98,258,103,268,98,195,258,195,268,268,98,268,98,258,195,138,488,98,103,138,103,98,258,268,672,268,672,268,98,98,138,138,103,138,258,138,138,138],[900,888,690,710,700,740,690,740,360,342,192,182,217,695,142,640,650,640,320,430,650,327,740,680,670,320,310,415,680,640,296,650,680,330,414,840,136,137,199,188,826,303,165,198,640,670,680,310,302,285,675,305,432,310,290,140,139,670,303,542,150,139,147,155,141,114,114,109,115,263,14,620,270,271,280,263,272,265,390,109,270,630,107,272,110,272,105,273,11,104,620,280,620,107,101,107,103,102,271,275,270,260,21,270,259,283,6,3,7,3,8,3,7,3,6,8,4,5,3,6,9,7,5,7,5,128,267,5,101,142,100,99,215,100,3,278,111,285,11,197,260,13,286,30,11,274,11,265,14,15,493,107,107,141,106,106,260,271,57,30,53,280,115,10,15,10,106,150,262,11,140,14],["red","red","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","darkorange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","orange","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige","beige"]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>ope_id<\/th>\n      <th>esp_code_alternatif<\/th>\n      <th>mei_id<\/th>\n      <th>mini<\/th>\n      <th>maxi<\/th>\n      <th>mei_taille<\/th>\n      <th>color<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":25,"columnDefs":[{"className":"dt-right","targets":[1,3,4,5,6]},{"orderable":false,"targets":0},{"name":" ","targets":0},{"name":"ope_id","targets":1},{"name":"esp_code_alternatif","targets":2},{"name":"mei_id","targets":3},{"name":"mini","targets":4},{"name":"maxi","targets":5},{"name":"mei_taille","targets":6},{"name":"color","targets":7}],"order":[],"autoWidth":false,"orderClasses":false,"rowCallback":"function(row, data, displayNum, displayIndex, dataIndex) {\nvar value=data[7]; $(row).css({'background-color':value == \"red\" ? \"red\" : value == \"darkorange\" ? \"darkorange\" : value == \"orange\" ? \"orange\" : null});\n}"},"selection":{"mode":"multiple","selected":null,"target":"row","selectable":null}},"evals":["options.rowCallback"],"jsHooks":[]}</script>
 </div>
 </div>
 <div id="qualité-des-données-de-lots-lop_id-lop_effectif" class="section level1" number="6">
 <h1><span class="header-section-number">6</span> Qualité des données de lots (lop_id / lop_effectif)</h1>
 <div id="vérification-lop_id" class="section level2" number="6.1">
 <h2><span class="header-section-number">6.1</span> Vérification <em>lop_id</em></h2>
-<p>Dans le jeu de données <em>mei_ope_selection</em>, on s’attend à avoir autant de ligne <strong>lop_id</strong> (identifiant de lots) que de ligne <strong>lop_effectif</strong> (effectifs du lot). Il peut cependant y avoir des exceptions, notamment lorsque la nature du lot est “S/M” et à une valeur d’effectif de 30.</p>
+<p>Dans le jeu de données <em>mei_ope_selection</em>, on s’attend à avoir autant de ligne <strong>lop_id</strong> (identifiants de lots) que de ligne <strong>lop_effectif</strong> (effectifs des lots). Il peut cependant y avoir des exceptions, notamment lorsque la nature du lot est “S/M” et a une valeur d’effectif de 30.</p>
 <pre class="r"><code>verif_effectif &lt;- mei_ope_selection %&gt;%
   group_by(esp_code_alternatif,
            lop_id,
@@ -4372,7 +4371,7 @@ mei_esp_tp_manquantes &lt;- mei_tp_manquantes %&gt;%
 
 resultat_verif_effectif &lt;- verif_effectif %&gt;%
   filter(nbr_lignes!= lop_effectif)</code></pre>
-<p>Lorsque le nombre de ligne est supérieur au lop_effectif, il s’agit d’erreur de retranscription. On remplace alors la valeur de lop_effectif par le nombre de ligne contenu dans la colonne “nbr_lignes”.</p>
+<p>Lorsque le nombre de ligne est supérieur au <em>lop_effectif</em>, il s’agit d’erreur de retranscription. On remplace alors la valeur de <em>lop_effectif</em> par le nombre de ligne contenu dans la colonne “nbr_lignes”.</p>
 <pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;%
   left_join(verif_effectif, by = c(&quot;esp_code_alternatif&quot;, &quot;lop_id&quot;, &quot;lop_effectif&quot;)) %&gt;%
   mutate(lop_effectif = ifelse(lop_effectif &lt; nbr_lignes, nbr_lignes, lop_effectif)) %&gt;%
@@ -4380,7 +4379,7 @@ resultat_verif_effectif &lt;- verif_effectif %&gt;%
 </div>
 <div id="vérification-mei_id" class="section level2" number="6.2">
 <h2><span class="header-section-number">6.2</span> Vérification <em>mei_id</em></h2>
-<p>Dans ce même jeu de données, il doit normalement n’y avoir qu’un <em>mei_id</em> par ligne (et pas de doublons) : ainsi, <em>nb_unique</em> doit théoriquement être égal au nombre total de lignes de <em>mei_ope_selection</em> (nous devons y soustraires les <em>mei_id</em> ayant des valeurs NA (cas anormaux venant de la base ASPE - à corriger - mais sans conséquence pour la suite de l’analyse).</p>
+<p>Dans ce même jeu de données, il doit normalement n’y avoir qu’un <em>mei_id</em> par ligne (et pas de doublons) : ainsi, <em>nb_unique</em> doit théoriquement être égal au nombre total de lignes de <em>mei_ope_selection</em> (nous devons cependant y soustraire les <em>mei_id</em> ayant des valeurs NA (cas anormaux venant de la base ASPE - à corriger - mais sans conséquence pour la suite de l’analyse)).</p>
 <pre class="r"><code>nb_unique &lt;- mei_ope_selection %&gt;% # Calcul du nombre unique de mei_id
   summarise(nb_unique = n_distinct(mei_id, na.rm = TRUE)) %&gt;% 
   pull()
@@ -4397,7 +4396,15 @@ if (nb_unique + nb_na == nb_lignes) {
 } else {
   print(&quot;Le nombre de valeurs uniques de mei_id n&#39;est pas égal au nombre de lignes de mei_ope_selection.&quot;)}</code></pre>
 <pre><code>## [1] &quot;Le nombre de valeurs uniques de mei_id est égal au nombre de lignes de mei_ope_selection.&quot;</code></pre>
-<p>Dans l’exemple de la Bretagne, on observe que le nombre de valeurs uniques de mei_id est pas égal au nombre de lignes de <em>mei_ope_selection</em>(en comprennant les NA).</p>
+<p>Dans l’exemple de la Bretagne, on observe que le nombre de valeurs uniques de <em>mei_id</em> n’est pas égal au nombre de lignes de <em>mei_ope_selection</em>(en comprennant les valeurs NA). Il est donc necessaire de corriger ces erreurs ; temporairement, on assigne à ces NA un identifiant provisoire afin de ne pas avoir de blocage pour la suite de l’étude.</p>
+<pre class="r"><code>mei_ope_selection &lt;- mei_ope_selection %&gt;% # Convertir mei_id en chaîne de caractères
+  mutate(mei_id = as.character(mei_id))
+
+# Création d&#39;un vecteur de noms pour remplacer les NA
+na_vigilance &lt;- paste0(&quot;na_vigilance_&quot;, seq_along(which(is.na(mei_ope_selection$mei_id))))
+
+mei_ope_selection &lt;- mei_ope_selection %&gt;% # Remplacement des NA dans mei_id par les valeurs de na_vigilance
+  mutate(mei_id = replace(mei_id, is.na(mei_id), na_vigilance))</code></pre>
 </div>
 </div>
 <div id="sauvegarde" class="section level1" number="7">
@@ -4405,6 +4412,14 @@ if (nb_unique + nb_na == nb_lignes) {
 <p>Nous sauvegardons dans un fichier .rda le jeu de données <em>mei_ope_selection</em> qui nous servira pour des analyses ultérieures.</p>
 <pre class="r"><code>save(mei_ope_selection,
      file = &quot;../processed_data/pre_traitements_donnees_especes.rda&quot;)</code></pre>
+</div>
+<div id="références-bibliographiques" class="section level1" number="8">
+<h1><span class="header-section-number">8</span> Références bibliographiques</h1>
+<p>Derouch, M. (2024). Cahier d’identification des Poissons d’eau douce de France. Mèze : Biotope éditions, 128 p. </p>
+<p>Keith, P., Poulet, N., Denys, G., Changeux, T., Feunteun, É., Persat, H. (2020). Les poissons d’eau douce de France. Deuxième édition. Muséum national d’Histoire naturelle, Paris ; Biotope, Mèze, 704 p. (Inventaires &amp; biodiversité ; 18).</p>
+<p>Irz, P. (2023). aspeQual: quality control over the aspe database. R package version 1.0.0, <a href="https://github.com/PascalIrz/aspeQual/" class="uri">https://github.com/PascalIrz/aspeQual/</a></p>
+<p>Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, <a href="https://github.com/PascalIrz/aspe/" class="uri">https://github.com/PascalIrz/aspe/</a></p>
+<p>UICN France (2018). Guide pratique pour la réalisation de Listes rouges régionales des espèces menacées - Méthodologie de l’UICN &amp; démarche d’élaboration. Seconde édition. Paris, France.</p>
 </div>
 
 
