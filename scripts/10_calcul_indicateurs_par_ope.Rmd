@@ -36,7 +36,7 @@ library(aspe)
 Nous avons besoin des jeux de données constitués lors des précédents scripts. 
 
 ```{r Chargement des données}
-load(file = "../processed_data/selection_pop_ope.rda") ## Chargement des données pré-enregistrées ----
+load(file = "../processed_data/selection_pop_ope.rda") # Chargement des données pré-enregistrées
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
 load(file = "../processed_data/pre_traitements_donnees_especes.rda")
