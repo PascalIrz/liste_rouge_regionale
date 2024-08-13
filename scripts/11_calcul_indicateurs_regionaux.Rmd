@@ -20,13 +20,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 11_calcul_indicateurs_regionaux
 
-Dans le dernier script (10), nous avons produit un tableau de bord combinant divers indicateurs simples à l'échelle de chaque opérations de pêches. Ce premier tableau de bord est représentatif de la dynamique de population des poissons d'eau douce pour une année n à un point de prélèvement donné.
+  Dans le script précèdent (*10_calcul_indicateurs_par_ope*), nous avons produit un tableau de bord combinant divers indicateurs simples à l'échelle de chaque opération de pêche. Ce premier tableau de bord est représentatif de la dynamique de population des poissons d'eau douce pour une année *n* à un point de prélèvement donné. La seconde étape consiste à réaliser le même travail, mais à une échelle régionale.
 
-La seconde étape consiste à réaliser le même travail, mais à une échelle régionale.
-
-Ce script vise donc à créer un tableau d'indicateurs simples à l'échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons chaque année leurs valeurs à l'échelle régionale en prenant la médiane des valeurs obtenues sur l'ensemble des stations/points de prélèvement à l'année.
-
-A l'issue de ce script, une approche analytique pourra être réalisée. 
+Ce script vise donc à créer un tableau d'indicateurs simples à l'échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons les valeurs annuelles des stations à l'échelle régionale en prenant la médiane des valeurs. À l'issue de ce script, une approche analytique pourra être réalisée. 
 
 
 # Installation 
@@ -34,15 +30,13 @@ A l'issue de ce script, une approche analytique pourra être réalisée.
 ## Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
-library(tidyverse)
+library(tidyverse) # Chargement des packages
 library(aspe)
 ```
 
 
 ```{r Chargement des données}
-## Chargement des données ----
-load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/selection_pop_ope.rda") # Chargement des données
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
@@ -50,8 +44,7 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 
 
 ```{r Chargement des fonctions}
-## Chargement des fonctions ----
-source(file = "../R/mk_st_by_group.R")
+source(file = "../R/mk_st_by_group.R") # Chargement des fonctions
 source(file = "../R/calcul_taux_evolution.R")
 source(file = "../R/mann_kendall_sen.R")
 ```
@@ -67,16 +60,14 @@ pal <- c("#007844", "#92D050", "#0087C1", "#FCEE21", "#00AEEF", "#1D1D1B", "#A97
 
 ## Indicateurs généraux à l'échelle de la région
 
-Deux indicateurs simples peuvent être calculés à l'échelle de la région. Il s'agit du taux d'occurrence de chaque espèce (par années), et du pourcentage de sites prospectés où l'espèce est présente (par périodes et/ou par années).
-
-
+Deux indicateurs simples peuvent être calculés à l'échelle de la région. Il s'agit du taux d'occurrence de chaque espèce par années, et du pourcentage de sites prospectés où l'espèce est présente (par périodes et/ou par années).
 
 
 ### Taux d'occurrence régionaux
 
-Les taux d'occurrence des espèces par années (correspondant aux nombres de présence l'année n divisé par le nombre de stations totales échantillonnées l'année n) sont calculés.   
+Les taux d'occurrence des espèces par années - correspondant aux nombres de stations enregistrant une présence de l'espèce l'année *n* divisé par le nombre de stations totales échantillonnées l'année *n*) sont calculés.   
 
-```{r Preparation calcul taux occurrence}
+```{r Préparation calcul taux occurrence}
 # Filtre et compte les occurrences distinctes d'opérations pour chaque année et espèce
 occur <- ope_indicateur %>% 
   filter(stade == "ind",                    # Filtre les lignes où le stade = "ind"
@@ -97,21 +88,17 @@ n_ope_par_an <- ope_indicateur %>%
 Les résultats sont empilés dans le jeu de données *reg_taux_occ*.
 
 ```{r Calcul taux occurrence}
-# Calcule les taux d'occurrences
 reg_taux_occ <- occur %>% 
   left_join(n_ope_par_an) %>%             
-  mutate(valeur = n_occur / n_ope,   # Calcule le taux d'occurrence en divisant n_occur par n_ope
+  mutate(valeur = n_occur / n_ope,   # Calcul des taux d'occurrence en divisant n_occur par n_ope
          indicateur = "taux_occurrence",  
          stade = "ind")                   
-
 ```
 
 
+### Pourcentage de présence des espèces par station
 
-### Pourcentage de présence des espèces par stations
-
-Nous souhaitons calculer le pourcentage des sites / stations prospectés où l'espèce a été trouvée (à l'échelle de toute la région). Il s'agit donc d'un seul pourcentage moyen par espèces et par période de temps ou d'années. 
-
+Nous souhaitons calculer le pourcentage des sites / stations prospectés où l'espèce a été trouvée (à l'échelle de toute la région). Il s'agit donc d'un seul pourcentage moyen par espèce et par période de temps ou d'années. 
 
 ```{r Préparation calcul pourcentage présence especes}
 ope_biomasse <- ope_indicateur %>% 
@@ -144,15 +131,12 @@ print(reg_pc_site_presence_esp)
 ```
 
 
-
 ## Regroupement des indicateurs à l'échelle régionale
 
-Le dataframe reg_indicateur regroupe l'ensemble des indicateurs calculés à l'échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par années et par stades. Une exception est faite pour l'indicateur "pourcentage_juveniles", qui est agrégé en utilisant la moyenne et non la médiane, étant donné qu'il s'agit d'un pourcentage.
+Le dataframe *reg_indicateur* regroupe l'ensemble des indicateurs calculés à l'échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par années et par stades. Une exception est faite pour l'indicateur *pourcentage_juveniles*, qui est agrégé en utilisant la moyenne et non la médiane, étant donné qu'il s'agit d'un pourcentage.
 
 ```{r Construction tab reg_indicateur, fig.height = 55, fig.width = 10}
-
 # Calcul des indicateurs régionaux en fonction des médianes annuelles et par stade avec une exception pour le pourcentage de juvéniles (utilisant la moyenne)
-
 reg_indicateur <- ope_indicateur %>%
   group_by(esp_code_alternatif,            # Regrouper par code alternatif de l'espèce
            annee,                          # Regrouper par année
@@ -164,7 +148,6 @@ reg_indicateur <- ope_indicateur %>%
   )) %>%
   ungroup() %>%                            # Annuler le regroupement
   distinct()                               # Supprimer les doublons
-
 ```
 
 
@@ -179,14 +162,13 @@ reg_indicateur <- reg_indicateur %>%
 ```
 
 
+# Les taux d'évolution des indicateurs
 
-# Les Taux d'Evolution des indicateurs
+  Nous souhaitons calculer les taux d'évolution inter-annuels des valeurs de chaque indicateur, c'est-à-dire entre l'année *n* et l'année *n-1*, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la valeur de l'indicateur (et donc une potentielle croissance de la population) ; si il est négatif, cela correspond à un déclin de la valeur de l'indicateur (et donc une potentielle décroissance de la population). 
 
-Nous souhaitons calculer les taux d'évolution inter-annuel des valeurs de chaques indicateurs, c'est à dire entre l'année n et l'année n-1, par espèce. Si le taux d'évolution est positif, cela correspond à une croissance de la valeur de l'indicateur (et donc une potentielle croissance de la population) ; si il est négatif, cela correspond à un déclin de la valeur de l'indicateur (et donc une potentielle décroissance de la population). 
+Nous utilisons la fonction *calcul_taux_evolution* pour obtenir les taux d'évolution. Ces derniers sont enregistrés dans le jeu de données *reg_taux_evol_1990* qui contient les différents taux d'évolution obtenus depuis l'année 1990. 
 
-Nous utilisons la fonction *calcul_taux_evolution* pour obtenir les taux d'évolution. Ces derniers sont enregistrer dans le jeu de données *reg_taux_evol_1990* qui contient les différents taux d'évolution obtenus depuis l'année 1990. 
-
-```{r Calcul des taux evolution}
+```{r Calcul des taux évolution}
 # Calcul des taux d'évolution depuis 1990
 reg_taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
@@ -196,7 +178,6 @@ reg_taux_evol_1990 <- calcul_taux_evol(df = reg_indicateur,
                              stade,
                              indicateur)
 print(reg_taux_evol_1990)
-
 ```
 
 Nous avons donc, à la fin de ce script, un tableau de bord d'indicateurs simples à l'échelle régionale. Nous allons pouvoir analyser les différentes tendances des indicateurs sur la période 1990-2023 dans le prochain script (12_analyse_indicateurs_regionaux). 
@@ -215,3 +196,6 @@ save(reg_taux_occ,
 ```
 
 
+# Référence bibliographique
+  
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/

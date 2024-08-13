@@ -441,7 +441,7 @@ mei_ope_selection <- mei_ope_selection %>% # Remplacement des NA dans mei_id par
 
 # Sauvegarde
 
-Nous sauvegardons dans un fichier .rda le jeu de données *mei_ope_selection* qui nous servira pour des analyses ultérieures.
+Nous sauvegardons dans un fichier .rda le jeu de données *mei_ope_selection* qui nous servira pour des analyses futures.
 
 ```{r sauvegarde}
 save(mei_ope_selection,

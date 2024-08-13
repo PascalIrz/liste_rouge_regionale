@@ -19,9 +19,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 10_calcul_indicateurs_par_ope
 
-Pour rappel, cette étude se divise en plusieurs parties. Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples, à l'échelle de chaque opération de pêche. 
+  Pour rappel, cette étude se divise en plusieurs parties. Dans un premier temps, il s'agit de produire un tableau de bord combinant divers indicateurs simples, à l'échelle de chaque opération de pêche. 
 
-Les pré-traitements nécessaires à la consitution de ce tableau de bord ont été réalisés dans les scripts précédents. Ce script permet donc de constituer le tableau de bord comportant plusieurs indicateurs dits "simples". Ces indicateurs (densités volumiques, de surface, pourcentage de juvéniles, longueurs médianes,...) seront calculés à l'échelle des opérations de pêches retenues pour l'étude. Ces indicateurs sont calculés par espèces et par stade (juvéniles / adultes), mais également pour l'ensemble des stades (indeterminés). 
+  Les pré-traitements nécessaires à la constitution de ce tableau de bord ont été réalisés dans les scripts précédents. Ce script permet donc la création du tableau de bord comportant plusieurs indicateurs dits "simples" afin d'observer les tendances démographiques des espèces. Ces indicateurs (densités volumiques, densités surfaciques, pourcentage de juvéniles, longueurs médianes,...) seront calculés à l'échelle des opérations de pêches retenues pour l'étude. Ces indicateurs sont calculés par espèce et par stade (*juv* / *ad*), mais également pour l'ensemble des individus (*ind*). 
 
 
 # Installation 
@@ -33,7 +33,7 @@ library(tidyverse)
 library(aspe)
 ```
 
-Nous avons donc besoin des jeux de données constitués lors des précédents scripts. 
+Nous avons besoin des jeux de données constitués lors des précédents scripts. 
 
 ```{r Chargement des données}
 load(file = "../processed_data/selection_pop_ope.rda") ## Chargement des données pré-enregistrées ----
@@ -42,7 +42,7 @@ load(file = "../processed_data/analyse_selection_especes.rda")
 load(file = "../processed_data/pre_traitements_donnees_especes.rda")
 ```
 
-```{r Chargement des tables ASPE}
+```{r Chargement des tables aspe}
 rdata_tables <- misc_nom_dernier_fichier(
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
@@ -59,20 +59,20 @@ source(file = "../R/calcul_densite_surface.R")
 ```
 
 
-# Les indicateurs par opération de pêche 
+# Les indicateurs par opérations de pêche 
 
-## Indicateurs généraux par opération de pêche
+## Indicateurs généraux par opérations de pêche
 
-Plusieurs indicateurs simples témoignants de la dynamique de populations des poissons d'eau douce sont calculés dans un premier temps à l'opération. 
+Plusieurs indicateurs simples témoignants de la dynamique de population des poissons d'eau douce sont calculés dans un premier temps à l'opération de pêche. 
 
 
-### Effectif total des espèces par opération de pêche
+### Effectifs totaux
 
-Les effectifs totaux de chacune des espèces sur chaque opération de pêches (*ope_id*) sont calculés à partir du jeu de données *mei_ope_selection*. Dans un premier temps, le calcul s'effectue sur l'ensemble des données (sans distinction de stades). 
+Les effectifs totaux de chacune des espèces sur chaque opération de pêches (*ope_id*) sont calculés à partir du jeu de données *mei_ope_selection*. Dans un premier temps, le calcul s'effectue sur l'ensemble des données (sans distinction de stade). 
 
-NB : Nous considerons les eventuels NA en *mei_id* précédemment repérés dans le script 04_pre_traitements_donnees_ope_especes (et leurs affectons les données d'effectifs du lop_id correspondant).
+*NB* : Nous considerons les éventuels *NA* en *mei_id* précédemment repérés dans le script 04_pre_traitements_donnees_ope_especes (et nous leurs affectons les données d'effectifs du *lop_id* correspondant).
 
-```{r Creation tableau effectif total par ope}
+```{r Création tableau effectif total par ope}
 ope_effectif_ind <- mei_ope_selection %>%
   mutate(valeur_effectif = ifelse(startsWith(mei_id, "na_vigilance"), lop_effectif, 1)) %>%  # Remplace les valeurs commençant par "na_vigilance" par lop_effectif
   group_by(ope_id, esp_code_alternatif) %>%
@@ -88,9 +88,9 @@ ope_effectif_ind <- mei_ope_selection %>%
 ```
 
 
-Dans un second temps, l'indicateur est calculé par stade (juvéniles et adultes). 
+Dans un second temps, l'indicateur est calculé par stade (juvénile et adulte). 
 
-```{r Creation tableau effectif total par ope et stade}
+```{r Création tableau effectif total par ope et stade}
 ope_effectif_stade <- mei_ope_selection %>%
   mutate(valeur_effectif = ifelse(startsWith(mei_id, "na_"), lop_effectif, 1)) %>%  # Remplace les valeurs commençant par "na_" par lop_effectif
   group_by(ope_id,
@@ -109,11 +109,11 @@ ope_effectif <- rbind (ope_effectif_ind,
                        ope_effectif_stade)
 ```
 
-Nous avons donc une première version des effectifs sans avoir inclut les absences. Les absences des espèces sont lorsque une espèce a déjà été dans une station / point de prélèvement lors d'une années mais qu'elle n'y a pas été retrouvée lors des années suivantes. 
+Nous avons donc une première version des effectifs sans avoir inclut les absences. Les absences des espèces correspondent au cas où une espèce a déjà été interceptée sur une station lors d'une année de pêche, mais qu'elle n'y a pas été retrouvée lors des années suivantes. 
 
-# 1. Créer un dataframe avec toutes les combinaisons possibles d'ope_id, esp_code_alternatif et années présentes dans vos données
+Création d'un dataframe avec toutes les combinaisons possibles d'*ope_id*, *esp_code_alternatif* et années présentes dans les données ; et ajout des *NA* :
 
-```{r}
+```{r Création tableau effectif total par ope et stade avec NA}
 ope_effectif_ind <- ope_effectif_ind %>% 
   left_join(ope_selection) %>% 
   select(-sta_id,
@@ -138,14 +138,12 @@ ope_effectif_absences <- ope_full %>%
 ```
 
 
-
-### Biomasse des espèces par opération de pêche
+### Biomasses
 
 Les biomasses de chacune des espèces sur chaque opération de pêches (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. 
 
 ```{r Création tableau biomasse totale par ope}
-# Calcul de la biomasse par opération sans distinction de stades
-ope_biomasse <- mei_ope_selection %>%
+ope_biomasse <- mei_ope_selection %>% # Calcul de la biomasse par opération sans distinction de stade
   group_by(ope_id,
            esp_code_alternatif,
            stade) %>%
@@ -159,7 +157,7 @@ ope_biomasse <- mei_ope_selection %>%
 ```
 
 
-Dans un second temps, l'indicateur de la biomasse est calculé par stade (juvéniles et adultes) et regroupé dans un tableau global : *ope_biomasse*. 
+Dans un second temps, l'indicateur de la biomasse est calculé par stade (*juv*, *ad* et *ind*) et les diffréentes données sont regroupées dans un tableau global relatif à l'indicateur biomasse : *ope_biomasse*.
 
 ```{r Création tableau biomasse totale par ope 2}
 ope_biomasse <- ope_biomasse %>%
@@ -169,14 +167,12 @@ ope_biomasse <- ope_biomasse %>%
                ope_id, 
                esp_code_alternatif) %>%
       summarise(stade = "ind", valeur = sum(valeur)))
-
 ```
 
 
+### Densités surfaciques
 
-### Densité surfacique par opération de pêches
-
-Les densités de surface de chacune des espèces sur chaque opération de pêches (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. Il est nécessaire d'ajouter les données de surfaces prospectées lors de l'opération de pêche afin de calculer les densités de surface : ainsi, nous ajoutons les valeurs d'*ope_surface_calculee*. 
+  Les densités surfaciques de chacune des espèces sur chaque opération de pêche (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. Il est nécessaire d'ajouter les données de surfaces prospectées lors de l'opération de pêche afin de calculer les densités surfaciques : les valeurs d'*ope_surface_calculee* sont ajoutés au dataframe principal. 
 
 ```{r Ajout des données de surfaces calculées}
 mei_ope_selection <- mei_ope_selection %>% 
@@ -186,9 +182,9 @@ mei_ope_selection <- mei_ope_selection %>%
                        passage$pas_numero))
 ```
 
-La fonction *calcul_densite_surface* calcule les densités de surfaces par opérations / espèces et stades : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_densite_surf*. 
+La fonction *calcul_densite_surface* calcule les densités surfaciques par opération, espèce et par stade : les résultats sont renvoyés dans le jeu de données *ope_densite_surf*. 
 
-```{r Calcul densités surfaces}
+```{r Calcul densités surfaciques}
 ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
                                            ope_surface_calculee,
                                            ope_id,
@@ -198,11 +194,9 @@ ope_densite_surf <- calcul_densite_surface(mei_ope_selection,
 ```
 
 
+### Densités volumiques
 
-
-### Densité volumique par opération de pêche
-
-Les densités de volume de chacune des espèces sur chaque opération de pêches (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. Il est nécessaire d'ajouter les données de profondeur liée à l'opération de pêche afin de calculer les densités de volume : ainsi, nous ajoutons les valeurs du dataframe *ope_selection_param_env* issu du script 04_pre_traitement_env. Nous y selectionnons le paramètre de la profondeur et l'incluons dans notre jeu de données *ope_param_profondeur*.  
+  Les densités volumiques de chacune des espèces sur chaque opération de pêche (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Dans un premier temps, l'ensemble des stades sont gardés. Il est nécessaire d'ajouter les données de profondeur liées à l'opération de pêche afin de calculer les densités volumiques : les valeurs du dataframe *ope_selection_param_env* issu du script 04_pre_traitement_env sont ajoutées. Nous y sélectionnons le paramètre de la profondeur et l'incluons dans notre jeu de données *ope_param_profondeur*.  
 
 ```{r Création df profondeur}
 ope_param_profondeur <- ope_selection_param_env %>% # Création d'un df contenant les valeurs de profondeur
@@ -213,10 +207,10 @@ ope_param_profondeur <- ope_selection_param_env %>% # Création d'un df contenan
   distinct()
 ```
 
-Nous réalisons par la suite le calcul des densités de volume par opérations pour chaque espèces ainsi que pour tous les stades (ad / juv et ind). Pour cela, nous utilisons également les valeurs de densités de surface précédemment calculées. 
+Nous réalisons par la suite le calcul des densités volumiques par opération pour chaque espèce ainsi que pour tous les stades (*ad*, *juv* et *ind*). Pour cela, nous utilisons également les valeurs de densités surfaciques précédemment calculées. 
 
 ```{r Calcul densités volumiques}
-densite_surf <- ope_densite_surf %>% # Utilisation des données de densités de surface précédement calculées
+densite_surf <- ope_densite_surf %>% # Utilisation des données de densités surfaciques précédemment calculées
   rename(valeur_ds = valeur)
 
 ope_densite_vol<- left_join(ope_param_profondeur, densite_surf, by = "ope_id") %>% 
@@ -231,17 +225,16 @@ ope_densite_vol<- left_join(ope_param_profondeur, densite_surf, by = "ope_id") %
 ```
 
 
-### Pourcentage de juvéniles par opération de pêches
+### Pourcentage de juvéniles
 
-Les pourcentages de juvénils de chacune des espèces pour chaque opération de pêches (*ope_id*) sont calculées à partir du jeu de données *mei_ope_selection*. Nous utilisons les valeurs d'effectifs précèdemment calculées dans *ope_effectif*. 
+Le pourcentage de juvéniles de chacune des espèces pour chaque opération de pêche (*ope_id*)est calculé à partir du jeu de données *mei_ope_selection*. Nous utilisons les valeurs d'effectifs précèdemment calculées dans *ope_effectif*. 
 
 ```{r Création dataframe pour indicateur pourcentage_juv}
 ope_pc_juv <- ope_effectif %>%
   mutate(indicateur = "pourcentage_juveniles")
 ```
 
-
-Le calcul de pourcentage de juvéniles par opérations est alors effectué. Les résultats sont stockés dans le jeu de données *ope_pc_juv*.
+Le calcul de pourcentage de juvéniles par opération est effectué. Les résultats sont stockés dans le jeu de données *ope_pc_juv*.
 
 ```{r Calcul pourcentage juvéniles}
 ope_pc_juv <- ope_pc_juv %>% 
@@ -259,15 +252,14 @@ ope_pc_juv <- ope_pc_juv %>%
 ```
 
 
-
 ## Indicateurs sur les mesures individuelles par opération de pêche
 
-Il s'agit ici de calculer des indicateurs simples spécifiques aux mesures individuelles des poissons. L'ensemble de ces paramètres tournerons autour de la longueur médiane des poissons. Il est donc nécessaire de garder à l'esprit que ces indicateurs reposeront sur des données de tailles estimées par un modèle (Script 04_pre_traitement_ope_esp). Il est donc nécessaire de rester critique face aux résultats issus de ces indicateurs. 
+  Il s'agit ici de calculer des indicateurs simples spécifiques aux mesures individuelles des poissons. L'ensemble de ces paramètres tournerons autour de la longueur médiane des poissons. Il est donc nécessaire de garder à l'esprit que ces indicateurs reposeront sur des données de tailles estimées par un modèle (cf Script 04_pre_traitement_ope_esp). Il est donc nécessaire de rester critique face aux résultats issus de ces indicateurs. 
 
 
 ### Longueur médiane
 
-Nous réalisons ainsi le calcul des longueurs médianes des individus par opération. La fonction *calcul_50_percentile* a été créée afin de calculer cet indicateur par opérations / espèces et stades : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_lm*. 
+Nous réalisons ainsi le calcul des longueurs médianes des individus par opération. La fonction *calcul_50_percentile* a été créée afin de calculer cet indicateur par opération / espèce et stade : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_lm*. 
 
 ```{r Calcul longueur médiane mei}
 ope_lm <- calcul_50_percentile(mei_ope_selection,
@@ -279,13 +271,13 @@ ope_lm <- calcul_50_percentile(mei_ope_selection,
 
 
 
-### Ecart interquartile des longueurs médianes
+### Ecarts interquartiles des longueurs médianes
 
 Calcul des écarts interquartiles des tailles des individus par opération : Création de la fonction "calcul_ecart_interquartile" :
 
-Le calcul des écarts interquartile des longueurs médianes des individus par opération est effectué. La fonction *calcul_ecart_inter* a été créée afin de calculer cet indicateur par opérations / espèces et stades : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_ecart_inter*. 
+Le calcul des écarts interquartiles des longueurs médianes des individus par opération est effectué. La fonction *calcul_ecart_inter* a été créée afin de calculer cet indicateur par opération / espèce et stade : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_ecart_inter*. 
 
-```{r Calcul Ecart interquartile longueurs médianes}
+```{r Calcul écarts interquartiles longueurs médianes}
 ope_ecart_inter <- calcul_ecart_inter(mei_ope_selection,
                                       mei_taille,
                                       ope_id,
@@ -294,10 +286,9 @@ ope_ecart_inter <- calcul_ecart_inter(mei_ope_selection,
 ```
 
 
-### Percentiles 25 et 75  des longueurs médianes
+### Percentiles 25 et 75 des longueurs médianes
 
-Le calcul des percentiles 25 et 75 des longueurs médianes des individus par opération est effectué. Les fonctions *calcul_p25* et *calcul_p75* ont été créés afin de calculer ces indicateurs par opérations / espèces et stades : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_p25* et *ope_p75*. 
-
+Le calcul des percentiles 25 et 75 des longueurs médianes des individus par opération est effectué. Les fonctions *calcul_p25* et *calcul_p75* ont été créées afin de calculer ces indicateurs par opération / espèce et stade : les résultats de cette fonction sont renvoyés dans le jeu de données *ope_p25* et *ope_p75*. 
 
 ```{r Calcul p25 longueurs médianes}
 ope_p25 <- calcul_p25(mei_ope_selection, # Calcul des percentiles 25 des longueurs médianes
@@ -307,7 +298,6 @@ ope_p25 <- calcul_p25(mei_ope_selection, # Calcul des percentiles 25 des longueu
                       stade)
 ```
 
-
 ```{r Calcul p75 longueurs médianes}
 ope_p75 <- calcul_p75(mei_ope_selection, # Calcul des percentiles 75 des longueurs médianes
                       mei_taille,
@@ -315,7 +305,6 @@ ope_p75 <- calcul_p75(mei_ope_selection, # Calcul des percentiles 75 des longueu
                       esp_code_alternatif, 
                       stade)
 ```
-
 
 
 # Création du tableau final empilé des indicateurs
@@ -332,9 +321,9 @@ ope_indicateur <- rbind(ope_lm,
                         ope_effectif)
 ```
 
-Les années d'opérations ainsi que les identifiants des point de prélèvements sont ajoutés au tableau *ope_indicateur*. 
+Les années d'opérations ainsi que les identifiants des points de prélèvements sont ajoutés au tableau *ope_indicateur*. 
 
-```{r Ajout données année et pop_id}
+```{r Ajout données années et pop_id}
 # Ajout des années d'opération au site et à l'année (pop_id) et (ope_date)
 ope_indicateur <- ope_indicateur %>% 
   ungroup() %>%   
@@ -361,9 +350,9 @@ ope_indicateur%>%
 ```
 
 
-# Sauvegarde
+# Sauvegardes
 
-Nous sauvegardons dans un fichier .rda le jeu de données *ope_indicateur* qui nous servira pour des analyses ultérieures.
+Nous sauvegardons dans un fichier .rda le jeu de données *ope_indicateur* qui nous servira pour des analyses futures.
 
 ```{r Sauvegarde}
 save(ope_indicateur,
@@ -372,7 +361,7 @@ save(ope_indicateur,
      file = "../processed_data/assemblage_tab_par_ope.rda")
 ```
 
-Nous sauvegardons à part les données d'effectifs et de densités de surfaces qui nous servirons ultérieurement : 
+Nous sauvegardons à part les données d'effectifs et de densités surfaciques : 
 
 ```{r Sauvegarde 2}
 save(ope_effectif_absences,
@@ -380,3 +369,7 @@ save(ope_effectif_absences,
      file = "../processed_data/donnees_densite_eff_abs.rda")
 ```
 
+
+# Référence bibliographique
+  
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/

@@ -165,7 +165,7 @@ mutate(valeur = ifelse(very_aberrant,
 
 # Sauvegarde
 
-Nous sauvegardons dans un fichier .rda le jeu de données *ope_selection_param_env* qui nous servira pour des analyses ultérieures.
+Nous sauvegardons dans un fichier .rda le jeu de données *ope_selection_param_env* qui nous servira pour des analyses futures.
 
 ```{r Sauvegarde}
 save(ope_selection_param_env,

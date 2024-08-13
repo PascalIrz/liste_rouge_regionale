@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-07-08" />
+<meta name="date" content="2024-08-13" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -1469,7 +1469,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Liste Rouge Régionale des poissons d’eau douce de Bretagne</h1>
 <h3 class="subtitle">Calcul des indicateurs régionaux</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-07-08</h4>
+<h4 class="date">2024-08-13</h4>
 
 </div>
 
@@ -1477,37 +1477,20 @@ border-radius: 0px;
 <div id="objectif-dynamique-de-population-des-poissons-deau-douce-de-bretagne" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Objectif : Dynamique de population des poissons d’eau douce de Bretagne</h1>
 <p>Script : 11_calcul_indicateurs_regionaux</p>
-<p>Dans le dernier script (10), nous avons produit un tableau de bord combinant divers indicateurs simples à l’échelle de chaque opérations de pêches. Ce premier tableau de bord est représentatif de la dynamique de population des poissons d’eau douce pour une année n à un point de prélèvement donné.</p>
-<p>La seconde étape consiste à réaliser le même travail, mais à une échelle régionale.</p>
-<p>Ce script vise donc à créer un tableau d’indicateurs simples à l’échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons chaque année leurs valeurs à l’échelle régionale en prenant la médiane des valeurs obtenues sur l’ensemble des stations/points de prélèvement à l’année.</p>
-<p>A l’issue de ce script, une approche analytique pourra être réalisée.</p>
+<p>Dans le script précèdent (<em>10_calcul_indicateurs_par_ope</em>), nous avons produit un tableau de bord combinant divers indicateurs simples à l’échelle de chaque opération de pêche. Ce premier tableau de bord est représentatif de la dynamique de population des poissons d’eau douce pour une année <em>n</em> à un point de prélèvement donné. La seconde étape consiste à réaliser le même travail, mais à une échelle régionale.</p>
+<p>Ce script vise donc à créer un tableau d’indicateurs simples à l’échelle régionale. Pour les indicateurs calculés au niveau des points de prélèvement, nous agrègerons les valeurs annuelles des stations à l’échelle régionale en prenant la médiane des valeurs. À l’issue de ce script, une approche analytique pourra être réalisée.</p>
 </div>
 <div id="installation" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Installation</h1>
 <div id="chargement-des-packages-fonctions-et-des-données" class="section level2" number="2.1">
 <h2><span class="header-section-number">2.1</span> Chargement des packages, fonctions et des données</h2>
-<pre class="r"><code>## Chargement des packages ----
-
-library(tidyverse)
-library(aspe)
-# library(wesanderson)
-# library(zoo)
-# library(gt)
-# library(lemon)
-# library(trend)
-# library(ggh4x)
-# library(purrr)
-# library(broom)
-# library(ggforce)
-# library(ggthemes)
-# library (khroma)</code></pre>
-<pre class="r"><code>## Chargement des données ----
-load(file = &quot;../processed_data/selection_pop_ope.rda&quot;)
+<pre class="r"><code>library(tidyverse) # Chargement des packages
+library(aspe)</code></pre>
+<pre class="r"><code>load(file = &quot;../processed_data/selection_pop_ope.rda&quot;) # Chargement des données
 load(file = &quot;../processed_data/pre_traitements_donnees_env.rda&quot;)
 load(file = &quot;../processed_data/assemblage_tab_par_ope.rda&quot;)
 load(file = &quot;../processed_data/analyse_selection_especes.rda&quot;)</code></pre>
-<pre class="r"><code>## Chargement des fonctions ----
-source(file = &quot;../R/mk_st_by_group.R&quot;)
+<pre class="r"><code>source(file = &quot;../R/mk_st_by_group.R&quot;) # Chargement des fonctions
 source(file = &quot;../R/calcul_taux_evolution.R&quot;)
 source(file = &quot;../R/mann_kendall_sen.R&quot;)</code></pre>
 <pre class="r"><code># Définition des couleurs de l&#39;OFB en format RGB
@@ -1518,10 +1501,10 @@ pal &lt;- c(&quot;#007844&quot;, &quot;#92D050&quot;, &quot;#0087C1&quot;, &quot
 <h1><span class="header-section-number">3</span> Les indicateurs régionaux</h1>
 <div id="indicateurs-généraux-à-léchelle-de-la-région" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Indicateurs généraux à l’échelle de la région</h2>
-<p>Deux indicateurs simples peuvent être calculés à l’échelle de la région. Il s’agit du taux d’occurrence de chaque espèce (par années), et du pourcentage de sites prospectés où l’espèce est présente (par périodes et/ou par années).</p>
+<p>Deux indicateurs simples peuvent être calculés à l’échelle de la région. Il s’agit du taux d’occurrence de chaque espèce par années, et du pourcentage de sites prospectés où l’espèce est présente (par périodes et/ou par années).</p>
 <div id="taux-doccurrence-régionaux" class="section level3" number="3.1.1">
 <h3><span class="header-section-number">3.1.1</span> Taux d’occurrence régionaux</h3>
-<p>Les taux d’occurrence des espèces par années (correspondant aux nombres de présence l’année n divisé par le nombre de stations totales échantillonnées l’année n) sont calculés.</p>
+<p>Les taux d’occurrence des espèces par années - correspondant aux nombres de stations enregistrant une présence de l’espèce l’année <em>n</em> divisé par le nombre de stations totales échantillonnées l’année <em>n</em>) sont calculés.</p>
 <pre class="r"><code># Filtre et compte les occurrences distinctes d&#39;opérations pour chaque année et espèce
 occur &lt;- ope_indicateur %&gt;% 
   filter(stade == &quot;ind&quot;,                    # Filtre les lignes où le stade = &quot;ind&quot;
@@ -1538,16 +1521,15 @@ n_ope_par_an &lt;- ope_indicateur %&gt;%
   group_by(annee) %&gt;%                       # Groupe par année
   summarise(n_ope = n_distinct(ope_id))     # Compte le nombre distinct d&#39;ope_id et l&#39;assigne à n_ope</code></pre>
 <p>Les résultats sont empilés dans le jeu de données <em>reg_taux_occ</em>.</p>
-<pre class="r"><code># Calcule les taux d&#39;occurrences
-reg_taux_occ &lt;- occur %&gt;% 
+<pre class="r"><code>reg_taux_occ &lt;- occur %&gt;% 
   left_join(n_ope_par_an) %&gt;%             
-  mutate(valeur = n_occur / n_ope,   # Calcule le taux d&#39;occurrence en divisant n_occur par n_ope
+  mutate(valeur = n_occur / n_ope,   # Calcul des taux d&#39;occurrence en divisant n_occur par n_ope
          indicateur = &quot;taux_occurrence&quot;,  
          stade = &quot;ind&quot;)                   </code></pre>
 </div>
-<div id="pourcentage-de-présence-des-espèces-par-stations" class="section level3" number="3.1.2">
-<h3><span class="header-section-number">3.1.2</span> Pourcentage de présence des espèces par stations</h3>
-<p>Nous souhaitons calculer le pourcentage des sites / stations prospectés où l’espèce a été trouvée (à l’échelle de toute la région). Il s’agit donc d’un seul pourcentage moyen par espèces et par période de temps ou d’années.</p>
+<div id="pourcentage-de-présence-des-espèces-par-station" class="section level3" number="3.1.2">
+<h3><span class="header-section-number">3.1.2</span> Pourcentage de présence des espèces par station</h3>
+<p>Nous souhaitons calculer le pourcentage des sites / stations prospectés où l’espèce a été trouvée (à l’échelle de toute la région). Il s’agit donc d’un seul pourcentage moyen par espèce et par période de temps ou d’années.</p>
 <pre class="r"><code>ope_biomasse &lt;- ope_indicateur %&gt;% 
   filter (indicateur == &quot;biomasse&quot;)
 
@@ -1571,28 +1553,27 @@ reg_pc_site_presence_esp &lt;- combinaisons %&gt;%
 
 # Affichage du résultat
 print(reg_pc_site_presence_esp)</code></pre>
-<pre><code>## # A tibble: 26,275 × 7
-## # Groups:   esp_code_alternatif [25]
+<pre><code>## # A tibble: 13,754 × 7
+## # Groups:   esp_code_alternatif [13]
 ##    esp_code_alternatif ope_id indicateur               valeur stade pop_id annee
 ##    &lt;chr&gt;                &lt;int&gt; &lt;chr&gt;                     &lt;dbl&gt; &lt;chr&gt;  &lt;int&gt; &lt;dbl&gt;
-##  1 ANG                   5131 pourcentage_site_presen…  83.2  ind    44691  1994
-##  2 CHA                   5131 pourcentage_site_presen…  83.3  ind    44691  1994
-##  3 LOF                   5131 pourcentage_site_presen…  91.9  ind    44691  1994
-##  4 TRF                   5131 pourcentage_site_presen…  81.3  ind    44691  1994
-##  5 VAI                   5131 pourcentage_site_presen…  74.7  ind    44691  1994
-##  6 LPP                   5131 pourcentage_site_presen…  53.7  ind       NA    NA
-##  7 SAT                   5131 pourcentage_site_presen…  45.5  ind       NA    NA
-##  8 BRO                   5131 pourcentage_site_presen…  20.5  ind       NA    NA
-##  9 CCO                   5131 pourcentage_site_presen…   1.81 ind       NA    NA
-## 10 EPI                   5131 pourcentage_site_presen…   1.81 ind       NA    NA
-## # ℹ 26,265 more rows</code></pre>
+##  1 ANG                   5131 pourcentage_site_presen…   83.3 ind    44691  1994
+##  2 CHA                   5131 pourcentage_site_presen…   83.4 ind    44691  1994
+##  3 LOF                   5131 pourcentage_site_presen…   91.9 ind    44691  1994
+##  4 TRF                   5131 pourcentage_site_presen…   81.3 ind    44691  1994
+##  5 VAI                   5131 pourcentage_site_presen…   74.8 ind    44691  1994
+##  6 LPP                   5131 pourcentage_site_presen…   53.3 ind       NA    NA
+##  7 SAT                   5131 pourcentage_site_presen…   45.2 ind       NA    NA
+##  8 BRO                   5131 pourcentage_site_presen…   20.3 ind       NA    NA
+##  9 GAR                   5131 pourcentage_site_presen…   40.2 ind       NA    NA
+## 10 GOU                   5131 pourcentage_site_presen…   53.1 ind       NA    NA
+## # ℹ 13,744 more rows</code></pre>
 </div>
 </div>
 <div id="regroupement-des-indicateurs-à-léchelle-régionale" class="section level2" number="3.2">
 <h2><span class="header-section-number">3.2</span> Regroupement des indicateurs à l’échelle régionale</h2>
-<p>Le dataframe reg_indicateur regroupe l’ensemble des indicateurs calculés à l’échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par années et par stades. Une exception est faite pour l’indicateur “pourcentage_juveniles”, qui est agrégé en utilisant la moyenne et non la médiane, étant donné qu’il s’agit d’un pourcentage.</p>
+<p>Le dataframe <em>reg_indicateur</em> regroupe l’ensemble des indicateurs calculés à l’échelle régionale. Les données sont agrégées en fonction des médianes des indicateurs par années et par stades. Une exception est faite pour l’indicateur <em>pourcentage_juveniles</em>, qui est agrégé en utilisant la moyenne et non la médiane, étant donné qu’il s’agit d’un pourcentage.</p>
 <pre class="r"><code># Calcul des indicateurs régionaux en fonction des médianes annuelles et par stade avec une exception pour le pourcentage de juvéniles (utilisant la moyenne)
-
 reg_indicateur &lt;- ope_indicateur %&gt;%
   group_by(esp_code_alternatif,            # Regrouper par code alternatif de l&#39;espèce
            annee,                          # Regrouper par année
@@ -1612,10 +1593,10 @@ reg_indicateur &lt;- reg_indicateur %&gt;%
   rbind(reg_taux_occ) # Ajout des valeurs de taux occurrence dans le df reg_indicateur</code></pre>
 </div>
 </div>
-<div id="les-taux-devolution-des-indicateurs" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Les Taux d’Evolution des indicateurs</h1>
-<p>Nous souhaitons calculer les taux d’évolution inter-annuel des valeurs de chaques indicateurs, c’est à dire entre l’année n et l’année n-1, par espèce. Si le taux d’évolution est positif, cela correspond à une croissance de la valeur de l’indicateur (et donc une potentielle croissance de la population) ; si il est négatif, cela correspond à un déclin de la valeur de l’indicateur (et donc une potentielle décroissance de la population).</p>
-<p>Nous utilisons la fonction <em>calcul_taux_evolution</em> pour obtenir les taux d’évolution. Ces derniers sont enregistrer dans le jeu de données <em>reg_taux_evol_1990</em> qui contient les différents taux d’évolution obtenus depuis l’année 1990.</p>
+<div id="les-taux-dévolution-des-indicateurs" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> Les taux d’évolution des indicateurs</h1>
+<p>Nous souhaitons calculer les taux d’évolution inter-annuels des valeurs de chaque indicateur, c’est-à-dire entre l’année <em>n</em> et l’année <em>n-1</em>, par espèce. Si le taux d’évolution est positif, cela correspond à une croissance de la valeur de l’indicateur (et donc une potentielle croissance de la population) ; si il est négatif, cela correspond à un déclin de la valeur de l’indicateur (et donc une potentielle décroissance de la population).</p>
+<p>Nous utilisons la fonction <em>calcul_taux_evolution</em> pour obtenir les taux d’évolution. Ces derniers sont enregistrés dans le jeu de données <em>reg_taux_evol_1990</em> qui contient les différents taux d’évolution obtenus depuis l’année 1990.</p>
 <pre class="r"><code># Calcul des taux d&#39;évolution depuis 1990
 reg_taux_evol_1990 &lt;- calcul_taux_evol(df = reg_indicateur,
                              var_x = annee,
@@ -1625,21 +1606,21 @@ reg_taux_evol_1990 &lt;- calcul_taux_evol(df = reg_indicateur,
                              stade,
                              indicateur)
 print(reg_taux_evol_1990)</code></pre>
-<pre><code>## # A tibble: 420 × 5
-## # Groups:   esp_code_alternatif, stade [74]
+<pre><code>## # A tibble: 221 × 5
+## # Groups:   esp_code_alternatif, stade [39]
 ##    esp_code_alternatif stade indicateur        mean_geom debut
 ##    &lt;chr&gt;               &lt;chr&gt; &lt;chr&gt;                 &lt;dbl&gt; &lt;dbl&gt;
-##  1 ABL                 ad    biomasse              0.878  1990
-##  2 ABL                 ad    densite_surface       0.893  1990
-##  3 ABL                 ad    densite_volumique     0.851  1990
-##  4 ABL                 ad    effectif_total        0.886  1990
-##  5 ABL                 ad    longueur_mediane      1      1990
-##  6 ABL                 ind   biomasse              0.888  1990
-##  7 ABL                 ind   densite_surface       0.925  1990
-##  8 ABL                 ind   densite_volumique     0.893  1990
-##  9 ABL                 ind   effectif_total        0.923  1990
-## 10 ABL                 ind   longueur_mediane      0.984  1990
-## # ℹ 410 more rows</code></pre>
+##  1 ANG                 ad    biomasse              0.975  1990
+##  2 ANG                 ad    densite_surface       0.966  1990
+##  3 ANG                 ad    densite_volumique     0.951  1990
+##  4 ANG                 ad    effectif_total        0.971  1990
+##  5 ANG                 ad    longueur_mediane      1.00   1990
+##  6 ANG                 ind   biomasse              0.944  1990
+##  7 ANG                 ind   densite_surface       0.951  1990
+##  8 ANG                 ind   densite_volumique     0.949  1990
+##  9 ANG                 ind   effectif_total        0.955  1990
+## 10 ANG                 ind   longueur_mediane      0.989  1990
+## # ℹ 211 more rows</code></pre>
 <p>Nous avons donc, à la fin de ce script, un tableau de bord d’indicateurs simples à l’échelle régionale. Nous allons pouvoir analyser les différentes tendances des indicateurs sur la période 1990-2023 dans le prochain script (12_analyse_indicateurs_regionaux).</p>
 </div>
 <div id="sauvegarde" class="section level1" number="5">
@@ -1650,6 +1631,10 @@ print(reg_taux_evol_1990)</code></pre>
      reg_indicateur,
      ope_indicateur,
      file = &quot;../processed_data/calcul_indicateurs_regionaux.rda&quot;)</code></pre>
+</div>
+<div id="référence-bibliographique" class="section level1" number="6">
+<h1><span class="header-section-number">6</span> Référence bibliographique</h1>
+<p>Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, <a href="https://github.com/PascalIrz/aspe/" class="uri">https://github.com/PascalIrz/aspe/</a></p>
 </div>
 
 
