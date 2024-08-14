@@ -1,6 +1,6 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Pré-traitement pour analyse bayésienne"
+subtitle: "Pré-traitements pour analyse bayésienne"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
@@ -16,9 +16,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne
 
-Script : 15_pre_traitement_modele_bayésien
+Script : 15_pre_traitements_modele_bayésien
 
-Ce script prépare les jeu de données pour une analyse bayésienne (avec le package popdynmodel créer par Mme Emmanuelle Dortel). 
+Ce script prépare les jeux de données pour une analyse bayésienne (avec le package *popdynmodel* d'Emmanuelle Dortel). 
 
 
 # Installation 
@@ -26,27 +26,22 @@ Ce script prépare les jeu de données pour une analyse bayésienne (avec le pac
 ## Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
-library(ggthemes)
+library(ggthemes) # Chargement des packages
 library(tidyverse)
 library(popdynmodel)
 library(aspe)
 library(aspe2)
 ```
 
-
 ```{r Chargement des données}
-## Chargement des données ----
-load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/selection_pop_ope.rda") # Chargement des données
 load(file = "../processed_data/pre_traitements_donnees_env.rda")
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/analyse_selection_especes.rda")
 ```
 
-
-```{r Chargement des tables ASPE}
-#Chargement des tables ASPE ----
-rdata_tables <- misc_nom_dernier_fichier(
+```{r Chargement des tables aspe}
+rdata_tables <- misc_nom_dernier_fichier(               # Chargement des tables aspe
   repertoire = "../../../../projets/ASPE/raw_data/rdata",
   pattern = "^tables")
 load(rdata_tables)
@@ -58,34 +53,36 @@ load(mei_table)
 ```
 
 
-Pour réaliser l'étude bayésienne à l'aide du package popdynmodel, nous suivons le tutorial proposé par Emmanuelle Dortel. En amont, nous selectionnons les espèces et les stations déjà présélectionnées précédemment dans l'étude. Afin de prendre un recul sur ces données, nous souhaitons représenter graphiquement les espèces et leurs fréquences d'apparitions sur les différentes stations pré-selectionnées. Dans l'idéal, il s'agit d'avoir une répartition relativement homogène des espèces, sans trop de données manquantes. Auquel cas le modèle bayésien sera en incapaciter de produire des résultats cohérents. 
+# Pré-traitement analyses bayésiennes
+
+  Pour réaliser l'étude bayésienne à l'aide du package *popdynmodel*, nous suivons le tutorial proposé par Emmanuelle Dortel. En amont, nous selectionnons les espèces et les stations déjà pré-sélectionnées précédemment dans l'étude. Afin de prendre un recul sur ces données, nous souhaitons représenter graphiquement les espèces et leurs fréquences d'apparitions sur les différentes stations pré-selectionnées. Dans l'idéal, il s'agit d'avoir une répartition relativement homogène des espèces, sans trop de données manquantes.
 
 
-# Visualisation des stations par espèces pour le traitement bayésien 
+## Visualisation et sélection des stations et des espèces
 
-## Sélection des stations étudiées 
-Nous selectionnons les stations pré-sélectionnées précédemment dans l'étude. 
+Nous sélectionnons les stations et espèces pré-sélectionnées précédemment dans l'étude. 
 
 ```{r Selection des stations}
 # Nous inscrivons les sta_id retenues dans nos analyses ultérieures
-mes_sta_id <- c("10468", "10502","10546","10565", "10647", "10734", "10844", "10925", "10950","11067",
-                "11158","11224", "11245", "11290", "11302", "11329", "11432","11456", "11539", "11593",
-                "11601","11602","11603","11605", "11735", "11743","11745", "11875", "11913", "12007",
-                "12060", "12118", "12148", "12291", "12316","12325","12371","12402","12436","12447",
-                "12453","12824","13103")
-```
+mes_sta_id <- c("10468", "10502", "10546", "10565", 
+                "10647", "10734", "10844", "10925", 
+                "10950", "11067", "11158", "11224", 
+                "11245", "11290", "11302", "11329", 
+                "11432", "11456", "11539", "11593",
+                "11601", "11602", "11603", "11605", 
+                "11735", "11743", "11745", "11875", 
+                "11913", "12007", "12060", "12118", 
+                "12148", "12291", "12316", "12325",
+                "12371", "12402", "12436", "12447",
+                "12453", "12824", "13103")
 
-
-## Sélection des espèces étudiées
-Nous selectionnons les espèces pré-sélectionnées précédemment dans l'étude, pour lesquelles assez de données seront disponibles pour appliquer une analyse bayésienne. 
-
-```{r Sélection des espèces}
-# Nous sélectionnons les espèces de la liste rouge régionale
 mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
 ```
 
 
-## Représentation des fréquences d'apparition des espèces sur les stations sélectionnées 
+## Représentation des fréquences d'apparition 
+
+  Nous souhaitons observer les fréquences d'apparition des espèces sur les stations sélectionnées afin de vérifier si les données ne contiennent pas une quantité trop importante de valeurs manquantes. 
 
 ```{r Création df combinaisons}
 # Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
@@ -94,10 +91,7 @@ combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
                             stade = unique(ope_indicateur$stade),
                             esp_code_alternatif = unique(ope_indicateur$esp_code_alternatif),
                             pop_id = unique(ope_indicateur$pop_id))
-```
 
-
-```{r Fusion tab combinaison 1}
 # Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
 ope_indicateur_complet <- combinaisons_esp_ope %>%
   left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
@@ -108,21 +102,13 @@ ope_indicateur_complet <- combinaisons_esp_ope %>%
          indicateur, 
          valeur,
          pop_id)
-```
 
-
-On ne sélectionne que les stades adultes et l'indicateur des effectifs totaux pour les espèces de la lrr : 
-
-```{r Fusion tab combinaison 2}
 occur_sta_esp <- ope_indicateur_complet %>% 
-  filter(stade == "ad",
+  filter(stade == "ind",
          indicateur == "effectif_total", 
          esp_code_alternatif == mes_especes_lrr) %>%
   group_by(pop_id, annee, esp_code_alternatif)
-```
 
-
-```{r Filtrage effectif nul}
 # Filtrer les lignes où l'indicateur est "effectif_total" et la valeur de l'indicateur est supérieure à 0
 filtered_df <- occur_sta_esp %>%
   filter(indicateur == "effectif_total" & valeur > 0)
@@ -137,6 +123,7 @@ result_df <- filtered_df %>%
 occur_sta_esp$pop_id <- factor(occur_sta_esp$pop_id)
 ```
 
+Nous réalisons une représentation graphique :
 
 ```{r Représentation graphique sta/esp}
 # Créer le graphique avec ggplot2 et facettes pour chaque espèce
@@ -153,18 +140,16 @@ ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur))
         panel.grid.major = element_line(color = "lightgrey", size = 0.1),
         panel.grid.minor = element_line(color = "lightgrey"),
         axis.text.x = element_text(angle = 45))
-
 ```
 
 
 
 
-# Pré-traitement analyses bayésienne 
+# Mise en place des analyses bayésiennes 
 
-Cette partie de pré-traitement suit le tuto "Tutorial_popdynmodel_V1" réalisé par Mme Emmanuelle Dortel.
-Pour cette partie, la base de données ASPE doit être disponible au préalable sous forme de dataframe enregistrer sur l'environnement R. Cette base de données est traitée à l'aide des packages *aspe*, *aspe2*, *dplyr* et *popdynmodel*. Les packages *aspe* et *aspe2* peuvent être installés à partir de Github à l'aide de : 
+Cette partie de pré-traitement suit le tuto "Tutorial_popdynmodel_V1" réalisé par Mme Emmanuelle Dortel. Pour cette partie, la base de données *aspe* doit être disponible au préalable sous forme de dataframe enregistré sur l'environnement R. Cette base de données est traitée à l'aide des packages *aspe*, *aspe2*, *dplyr* et *popdynmodel*. Les packages *aspe* et *aspe2* peuvent être installés à partir de Github à l'aide de : 
 
-```{r Création dataframe bayésien}
+```{r Installation packages}
 # 1.1 Data processing
 
 #library(devtools)
@@ -173,13 +158,11 @@ Pour cette partie, la base de données ASPE doit être disponible au préalable 
 ```
 
 
-Dans un premier temps, nous sélectionnons toutes les données pour le bassin Loire-Bretagne sur notre période d'étude (ici *1990-2023*). 
-
-Certaines opérations de pêche impliques une pêche à plusieurs passages. Pour notre étude, seul le premier passage nous interesse, nous écartons ainsi les données correspondant aux passages 2/3/4. 
+  Dans un premier temps, nous sélectionnons toutes les données pour le bassin Loire-Bretagne sur notre période d'étude (ici *1990-2023*). Certaines opérations de pêche impliquent une pêche à plusieurs passages. Pour notre étude, seul le premier passage nous intéresse, nous écartons ainsi les données correspondant aux passages 2/3/4. 
 
 
-```{r Création dataframe bayésien 2}
-data_bayesien <- mef_creer_passerelle() %>% # On génère une passerelle
+```{r Création dataframe bayésien}
+data_bayesien <- mef_creer_passerelle() %>% # Génère une passerelle
   mef_ajouter_ope_date_complete() %>% # Ajout de la date, de l'année, du mois et du jour
   mef_ajouter_surf_calc() %>% # Ajout de la surface de pêche
   mef_ajouter_type_protocole() %>% # Ajout d'un protocole de pêche
@@ -201,8 +184,7 @@ Certains points d’échantillonnage (*pop_id*) peuvent être sondés plusieurs 
 (3) fournissent les séries de mois de pêche les plus homogènes.
 
 ```{r Filtre opération}
-# On conserve une seule opération de pêche par points de prélèvement et par an
-data_bayesien <- mef_filtrer_operation(data_bayesien,
+data_bayesien <- mef_filtrer_operation(data_bayesien,# Conserver une seule opération de pêche par points de prélèvement et par an
                               var_id = pop_id,
                               var_tmp = annee,
                               var_surf = ope_surface_calculee,
@@ -211,21 +193,22 @@ data_bayesien <- mef_filtrer_operation(data_bayesien,
                               default = TRUE)
 ```
 
-De nombreux points d’échantillonnage ne sont pas soumis à une surveillance régulière, de sorte que notre ensemble de données peut contenir des années manquantes en raison du manque d’opérations de pêche. Bien que les modèles d’ensembles imputent les états d’occupation manquants, les effectifs et les biomasses, cette imputation est susceptible d’entraîner des biais dans les estimations, surtout si les valeurs manquantes sont fréquentes ou déséquilibrées dans le temps. Ces biais peuvent être limités en ne sélectionnant que les points d’échantillonnage fréquemment étudiés. 
+  De nombreux points d’échantillonnage ne sont pas soumis à une surveillance régulière, de sorte que notre ensemble de données peut contenir des années manquantes en raison du manque d’opérations de pêche. Bien que les modèles d’ensembles imputent les états d’occupation manquants, les effectifs et les biomasses, cette imputation est susceptible d’entraîner des biais dans les estimations, surtout si les valeurs manquantes sont fréquentes ou déséquilibrées dans le temps. Ces biais peuvent être limités en ne sélectionnant que les points d’échantillonnage fréquemment étudiés. 
 
-Pour ce faire, nous définissons, à l’échelle des points d’échantillonnage, le nombre d’années impliquant une opération de pêche, les années consécutives sans pêche, les protocoles de pêche et les changements de protocole pour chaque combinaison de protocoles. Comme nous utiliserons plus tard la fonction mod popgrow qui ne tient pas compte des protocoles de pêche (et les changements de protocole peuvent entraîner des estimations biaisées), nous sélectionnons les points d’échantillonnage et les opérations de manière à obtenir des séries avec 1, 2 ou 3 procotoles maximum, au moins neuf ans de relevés de pêche et au plus trois années consécutives sans pêche.
+  Pour ce faire, nous définissons, à l’échelle des points d’échantillonnage, le nombre d’années impliquant une opération de pêche, les années consécutives sans pêche, les protocoles de pêche et les changements de protocole pour chaque combinaison de protocoles. Comme nous utiliserons plus tard la fonction *mod_popgrow()* qui ne tient pas compte des protocoles de pêche (et les changements de protocole peuvent entraîner des estimations biaisées), nous sélectionnons les points d’échantillonnage et les opérations de manière à obtenir des séries avec 1, 2 ou 3 procotoles maximum, au moins neuf ans de relevés de pêche et au plus trois années consécutives sans pêche.
+  
+  Estimation du nombre d'années de pêche, d'années consécutives sans pêche, de protocoles et de changement de protocoles par points de prélèvement pour chaque combinaison de protocoles : 
 
 ```{r Comptage observation}
-# Estimation du nombre d'années de pêche, d'années consécutives sans pêche, de protocoles et de changement de protocoles par points de prélèvement pour chaque combinaison de protocoles
 def <- def_compter_obs(data_bayesien,
                        var_id = pop_id,
                        var_tmp = annee,
                        var_pro = pro_libelle)
 ```
 
+Sélection des opérations et des points de prélèvements suivis sur une base annuelle, 3 protocoles de pêche, 9 années de pêche minimum et 3 années consécutives sans pêche maximum :
 
 ```{r Filtrage observation}
-# Sélection des opérations et des points de prélèvements suivis sur une base annuelle, 3 protocole de pêche, 9 années de pêche minimum et 3 années consécutives sans pêche maximum
 data_bayesien <- mef_filtrer_obs(data_bayesien,
                         def,
                         var_id = pop_id,
@@ -235,7 +218,7 @@ data_bayesien <- mef_filtrer_obs(data_bayesien,
                         max_pro = 3)
 ```
 
-Au cours d’une opération de pêche, les poissons capturés sont identifiés en espèces, comptés et regroupés en lots. Nous ajoutons des informations sur les lots (effectifs et codes d’espèces) à notre base de données et nous reconstituons la taille des captures par point d’échantillonnage, année, opération de pêche et espèces.
+  Au cours d’une opération de pêche, les poissons capturés sont identifiés en espèces, comptés et regroupés en lots. Nous ajoutons des informations sur les lots (effectifs et codes d’espèces) à notre base de données et nous reconstituons la taille des captures par point d’échantillonnage, année, opération de pêche et espèces.
 
 ```{r Ajout lots}
 data_bayesien <- mef_ajouter_lots(data_bayesien) %>%
@@ -247,8 +230,7 @@ data_bayesien <- mef_ajouter_lots(data_bayesien) %>%
                     ope_surface_calculee))
 ```
 
-La base de données se compose de données sur la présence seulement et, par conséquent, les années manquantes liées à l’absence d’opérations de pêche n'y apparaissent pas. Cependant, les modèles de ce package nécessitent des séries chronologiques complètes par point d’échantillonnage et par taxon. Ils se reposent sur des données de présence-absence pour estimer les états d’occupation des points d’échantillonnage. Il faut donc reconstituer les absences et ajouter les années manquantes. Pour un taxon donné, les absences (c.-à-d. non-observations de ce taxon pendant les opérations de pêche sur les points d’échantillonnage où il est habituellement présent) peuvent être reconstituées à partir des observations disponibles pour d’autres taxons.
-
+  La base de données se compose de données sur la présence seulement et, par conséquent, les années manquantes liées à l’absence d’opérations de pêche n'y apparaissent pas. Cependant, les modèles de ce package nécessitent des séries chronologiques complètes par point d’échantillonnage et par taxon. Ils se reposent sur des données de présence-absence pour estimer les états d’occupation des points d’échantillonnage. Il faut donc reconstituer les absences et ajouter les années manquantes. Pour un taxon donné, les absences (c.-à-d. non-observations de ce taxon pendant les opérations de pêche sur les points d’échantillonnage où il est habituellement présent) peuvent être reconstituées à partir des observations disponibles pour d’autres taxons.
 
 ```{r Ajout absences}
 data_bayesien <- mef_ajouter_absence(data_bayesien,# Fonction pour ajouter les absences dans le jeu de données
@@ -294,3 +276,10 @@ save(data_bayesien,
      data_bayesien_lrr,
      file = "../processed_data/pre_traitement_modele_bayesien.rda")
 ```
+
+
+# Références bibliographiques 
+
+  Dortel, E., Besnard, A., Poulet, N. (2022). Evolution des populations piscicoles et astacicoles de France métropolitaine. Rapport CNRS – EPHE – OFB, Centre d’Ecologie Fonctionnelle et Evolutive, Montpellier. 
+
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/

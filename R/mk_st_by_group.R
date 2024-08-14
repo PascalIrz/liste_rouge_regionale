@@ -50,10 +50,16 @@ mk_st_by_group <- function(df,
     group_modify(~ mann_kendall_sen(.x %>% pull(!!var_y))) %>%
     ungroup() %>%
     mutate(sig = ifelse(mk_pvalue < 0.05, TRUE, FALSE),
-           trend = case_when(
-             sign(sens_slope) == 1 & sig ~ "Increase",
-             sign(sens_slope) == -1 & sig ~ "Decrease",
-             TRUE ~ "No trend"))
+           tendance = case_when(
+             sign(sens_slope) == 1 & sig ~ "Augmentation",
+             sign(sens_slope) == -1 & sig ~ "Diminution",
+             TRUE ~ "Non significative")) %>% 
+    mutate(sig = case_when(
+    mk_pvalue < 0.001 ~ "***",
+    mk_pvalue < 0.01 ~ "**",
+    mk_pvalue < 0.05 ~ "*",
+    TRUE ~ ""
+  ))
   
   return(output)
   

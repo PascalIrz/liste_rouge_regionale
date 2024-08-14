@@ -1,9 +1,14 @@
 ---
-title: "13_mann_kendall_sen_theil"
-author: "Léa Bouchet"
-date: "2024-06-06"
-output: html_document
+title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
+subtitle: "Analyses bivariées des indicateurs régionaux - Mann-Kendall et Sen-Theil"
+author: "OFB Bretagne"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
@@ -15,42 +20,53 @@ knitr::opts_chunk$set(echo = TRUE,
 
 Script : 13_mann_kendall_sen_theil
 
-Ce script a pour objectif de réaliser des tests de Mann-Kendall sur les tendances des indicateurs régionaux. Il a également l'objectif de comparer les données issues des test de M-K avec ceux des modèles linéaires mistes / des régressions linéiares et des analyses bayésiennes afin d'observer les divergences entre l'ensemble de ces modèles. 
+  Ce script a pour objectif de réaliser les tests de Mann-Kendall suivis des régressions de Sen-Theil sur les indicateurs régionaux.
 
+  Le test de Mann-Kendall est efficace pour traiter les tendances non linéaires, et ne nécessite pas de distributions normales (Yue & Wang, 2004). Cette dernière analyse est exécutée, outre sur les données agrégées à l‘échelle régionale, sur les indicateurs annuels relatifs aux points de prélèvements.
+ 
 
 # Installation 
 
 ## Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
-library(ggthemes)
+library(ggthemes) # Chargement des packages
 library(tidyverse)
 library(trend)
 library(ggh4x)
+library(sf)
+library(gt)
+library(COGiter)
 ```
 
 ```{r Chargement des données}
-## Chargement des données 
-load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
+load(file = "../processed_data/calcul_indicateurs_regionaux.rda") # Chargement des données 
 load(file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
+load(file = "../processed_data/selection_pop_ope.rda")
+load(file = "../processed_data/pre_traitements_donnees_env.rda")
+load(file = "../processed_data/assemblage_tab_par_ope.rda")
+load(file = "../processed_data/analyse_selection_especes.rda")
+load(file = "../processed_data/selection_pop_ope_carte.rda")
 ```
 
 ```{r Chargement des fonctions}
-
 source(file = "../R/mk_st_by_group.R") # Fonction développée par Pascal Irz
 source(file = "../R/mann_kendall_sen.R") # Fonction développée par Pascal Irz
-source(file = "../R/mk_st_multi_periodes.R") #Fonction qui utilise des "" donc à corriger mais fait par Léa Bouchet
+source(file = "../R/mk_st_multi_periodes.R") #Fonction développée par Léa Bouchet
+source(file = "../R/calcul_taux_evolution.R")
+```
+
+```{r Selection des espèces}
+mes_especes <- c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")
 ```
 
 
-# Test de Mann-Kendall
+# Analyses bivariées : tests de Mann-Kendall / Sen-Theil
 
 ## Introduction
 
-Le test de tendance de Mann-Kendall est utilisé pour déterminer si une tendance existe ou non dans les données de séries chronologiques. Il s'agit d'un test non paramétrique, ce qui signifie qu'il n'y a pas d'hypothèse sous-jacente concernant la normalité des données.
+Le test de tendance de Mann-Kendall est utilisé pour déterminer si une tendance existe dans les données issues des séries chronologiques. Il s'agit d'un test non paramétrique, ce qui signifie qu'il n'y a pas d'hypothèse sous-jacente concernant la normalité des données. Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
 
-Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
   1. Ho (Accepté) : Il n'y a pas de tendance dans les données (valeur p>0,05).
   2. Ha (Rejeté) : Une tendance est présente dans les données
 
@@ -58,35 +74,22 @@ Il s'agit d'un test d'hypothèses et les deux hypothèses sont les suivantes :
 
 ## Application régionale
 
-On souhaite le faire pour plusieurs périodes (création de la fonction *mk_st_multi_periodes*). Nous sélectionnons les périodes à étudier (qui sera une variable de la fonction) : 
+  Nous souhaitons le faire pour plusieurs périodes (création de la fonction *mk_st_multi_periodes*). Nous sélectionnons les périodes à étudier (en variable de la fonction) : 
 
 
-```{r Mise en place des périodes}
+```{r Mise en place des périodes et indicateurs}
 reg_indicateur_reduit <- reg_indicateur_reduit %>% 
-  filter(indicateur %in% c("densite_surface",
-                           "taux_occurrence",
-                           "pourcentage_juveniles"),
+  filter(indicateur %in% c("densite_surface","taux_occurrence","pourcentage_juveniles"),
          stade == "ind")
-```
 
-
-```{r}
-periodes <- list(c(1990,2023),
+periodes <- list(c(1990, 2023), # Création d'un objet contenant les périodes d'études
                  c(2005, 2023), 
                  c(2008, 2023),
                  c(2011, 2023),
                  c(2013, 2023))
-
-#Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann Kendall et pentes de Sen Theil pour les différentes périodes indiquées ci-avant.
 ```
 
-
-```{r}
-# reg_indicateur_lrr_tendances_lm <- reg_indicateur_lrr_tendances_lm %>% 
-#   rename(stade = stade.x)
-```
-
-
+  Nous exécutons la fonction *mk_st_multi_periodes* qui permet de calculer les différents test de Mann-Kendall et regressions de Sen-Theil pour les différentes périodes indiquées ci-avant.
 
 ```{r Mise en place des périodes 2}
 # Appeler la fonction pour calculer les résultats pour chaque période
@@ -98,121 +101,79 @@ reg_indicateur_lrr_tendances_mk_st <- mk_st_multi_periodes(df = reg_indicateur_r
                                                               indicateur = "indicateur",
                                                               stade = "stade")
 
-# Concaténer tous les résultats en un seul dataframe final
-reg_indicateur_lrr_tendances_mk_st <- bind_rows(reg_indicateur_lrr_tendances_mk_st, 
+
+reg_indicateur_lrr_tendances_mk_st <- bind_rows(reg_indicateur_lrr_tendances_mk_st, # Concaténer tous les résultats en un seul dataframe final
                                                 .id = "periode")
 
-# Filtrer les données selon les critères spécifiés
-reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
-  filter(
-    (esp_code_alternatif == "ANG" & periode == "1990-2023") |
+reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>% # Filtrer les données selon les critères spécifiés
+  filter((esp_code_alternatif == "ANG" & periode == "1990-2023") |
     (esp_code_alternatif %in% c("CHE", "LPP") & periode == "2005-2023") |
     (esp_code_alternatif %in% c("BRO", "LOF") & periode == "2008-2023") |
     (esp_code_alternatif %in% c("VAR", "GAR", "VAI", "PER") & periode == "2011-2023") |
-    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & periode == "2013-2023")
-  )
-
+    (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & periode == "2013-2023"))
 ```
 
 
 ## Synthèse des premiers résultats
 
-Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons dans ce tableau final. Dans notre étude, les valeurs de densité de surface, le pourcentage de juvéniles et le taux d'occurrence semblent être les 3 données les plus parlantes et représentatives de l'état des populations de poissons d'eau douce de Bretagne. Ces informations sont alors synthétisées dans un tableau, sur deux périodes différentes. Les flèches vers le haut indiquent une croissance et celle vers le bas une décroissance de l'indicateur pour l'espèce concernée. 
+  Toujours par soucis de lisibilité, seul les 3 indicateurs retenus apparaîtrons dans ce tableau final. Dans notre étude, les valeurs de densités surfaciques, le pourcentage de juvéniles et le taux d'occurrence semblent être les 3 données les plus informatives sur les tendances des populations de poissons d'eau douce de Bretagne. Ces informations sont alors synthétisées dans un tableau : les flèches vers le haut indiquent une croissance et celle vers le bas une décroissance de l'indicateur pour l'espèce considérée. 
 
 
-```{r}
-# Créer le tableau synthétique avec gt
-# tab_reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
-#   select(esp_code_alternatif,
-#          periode,
-#          indicateur,
-#          trend,
-#          sig) %>% 
-#   arrange(esp_code_alternatif, 
-#           indicateur) %>%   # Ordonner par espèce, indicateur et stade
-#   gt() %>%
-#   tab_header(
-#     title = "Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne"
-#   ) %>%
-#   cols_label(
-#     esp_code_alternatif = "Code Espèce",
-#     indicateur = "Indicateur",
-#     trend = "Tendance Mann-Kendall / Sen Theil",
-#     sig = "Significativité") %>%
-#   tab_options(table.font.size = "small", data_row.padding = px(5))
-# 
-# # Afficher le tableau
-# tab_reg_indicateur_lrr_tendances_mk_st
+```{r Création tableau de synthèse}
+# Définir des palettes de couleurs harmonieuses
+tendance_palette <- c("\U2198" = "#88B04B", # rouge doux pour les tendances descendantes
+                      "\U2197" = "red") # vert doux pour les tendances montantes
 
+significativite_palette <- c(" " = "#D3D3D3",    # gris clair pour non significatif
+                             "*" = "#FFC107",  # jaune pour p < 0.05
+                             "**" = "#92D050", # orange pour p < 0.01
+                             "***" = "#007844") # violet pour p < 0.001
+
+tab_reg_indicateur_lrr_tendances_mk_st <- reg_indicateur_lrr_tendances_mk_st %>%
+  select(esp_code_alternatif,
+         periode,
+         indicateur,
+         trend,
+         sig) %>% 
+  arrange(esp_code_alternatif, 
+          indicateur) %>% 
+  gt() %>%
+  # Ajouter un titre et un sous-titre
+  tab_header(title = md("**Synthèse des tendances des indicateurs des populations de poissons d'eau douce de Bretagne**"),subtitle = "Analyse des tendances régionales pour les périodes spécifiées") %>%
+  cols_label(esp_code_alternatif = "Code Espèce",  # Renommer les colonnes
+    periode = "Période d'Étude",
+    indicateur = "Indicateur",
+    trend = "Tendance",
+    sig = "Significativité") %>%
+  data_color(columns = trend,colors = tendance_palette) %>% 
+  data_color(columns = sig, colors = significativite_palette) %>%
+  cols_align(align = "center",# Ajuster la taille de la police et l'alignement
+    columns = c(esp_code_alternatif, periode, indicateur, trend, sig)) 
+
+tab_reg_indicateur_lrr_tendances_mk_st # Affichage du tableau
 ```
 
 
 
+# Pré-traitement aux analyses spatiales des tendances temporelles
+
+  Afin d’obtenir une exploration plus fine des dynamiques, les tendances temporelles des densités surfaciques sont représentées spatialement à l'échelle des stations, à la fois pour la période d’étude (cf objet *periode*) et sur l’ensemble de la chronologie disponible (1990-2023).
+  
 
 
+## Distribution des espèces 
 
+  Nous souhaitons calculé la significativité des tendances à l'échelle des points de prélèvements avec le test mk_st. Dans un premier temps, un dataframe regroupant toutes les données relatives aux points de prélèvements est construit. 
 
-
-
-## Application aux points de prélèvements 
-
-
-```{r Chargement}
-library(tidyverse)
-library(trend)
-library(sf)
-library(COGiter)
-```
-
-# Chargement des données :
-
-```{r}
-## Chargement de la palette de couleur 
-pal <- c("#007844", "#92D050", "#0087C1", "#A97B30","#FCEE21", "#00AEEF", "#1D1D1B", "#B9D9EB")
-```
-
-
-```{r}
-## Chargement des données ----
-load(file = "../processed_data/selection_pop_ope.rda")
-load(file = "../processed_data/pre_traitements_donnees_env.rda")
-load(file = "../processed_data/assemblage_tab_par_ope.rda")
-load(file = "../processed_data/analyse_selection_especes.rda")
-load(file = "../processed_data/selection_pop_ope_carte.rda")
-```
-
-
-```{r}
-## Chargement des fonctions ----
-source(file = "../R/mk_st_by_group.R")
-source(file = "../R/calcul_taux_evolution.R")
-source(file = "../R/mann_kendall_sen.R")
-```
-
-
-```{r}
-mes_especes <- c("ANG","BRO", "CHA", "CHE","PER", "GAR", "GOU", "LOF", "LPP","SAT", "TRF", "VAI", "VAR")
-```
-
-
-
-
-# Distribution des espèces (significativité avec test mk_st par points de prélèvements)
-
-```{r}
+```{r Création df ope_densite}
 ope_densite <- ope_indicateur %>% 
   filter(esp_code_alternatif %in% mes_especes,
          indicateur == "densite_surface",
          stade == "ind") # Nous avons 7475 observations (sans les absences)
-```
 
-
-On ajoute au dataframe les absences : 
-
-```{r}
-ope_esp_densite <- ope_densite %>% 
+ope_esp_densite <- ope_densite %>% # df regroupant toutes mes opérations
   select(-esp_code_alternatif, -valeur) %>% 
-  distinct() # df regroupant toutes mes opérations
+  distinct() 
 
 # Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
 combinaisons_ope_densite <- expand.grid(esp_code_alternatif = unique(ope_densite$esp_code_alternatif),
@@ -222,108 +183,18 @@ ope_densite_complet <- ope_esp_densite %>%
   left_join(y = combinaisons_ope_densite) %>% 
   left_join(y = ope_densite) %>% 
   mutate(valeur = ifelse(is.na(valeur), 0, valeur)) # Nous avons maintenant 13663 observations (avec les absences : 1051 opérations * 13 espèces)
-
 ```
 
-
-
-## Pour la période LRR
-
 ```{r Filtre ope_densite_periode_lrr}
-# On filtre les périodes d'étude de la Liste Rouge Régionale
-ope_densite_periode_lrr <- ope_densite_complet %>%
+ope_densite_periode_lrr <- ope_densite_complet %>% # Filtrage périodes d'étude de la Liste Rouge Régionale
   filter((esp_code_alternatif == "ANG" & annee >= 1990) |
       (esp_code_alternatif %in% c("CHE", "LPP") & annee >= 2005) |
       (esp_code_alternatif %in% c("BRO", "LOF", "VAR") & annee >= 2008) |
       (esp_code_alternatif %in% c("GAR", "VAI", "PER") & annee >= 2011) |
       (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & annee >= 2013))
-
-
-ope_densite_periode_lrr_sans_abs <- ope_densite %>%
-  filter((esp_code_alternatif == "ANG" & annee >= 1990) |
-      (esp_code_alternatif %in% c("CHE", "LPP") & annee >= 2005) |
-      (esp_code_alternatif %in% c("BRO", "LOF", "VAR") & annee >= 2008) |
-      (esp_code_alternatif %in% c("GAR", "VAI", "PER") & annee >= 2011) |
-      (esp_code_alternatif %in% c("SAT", "GOU", "TRF", "CHA") & annee >= 2013)) %>% 
-  select(esp_code_alternatif,
-         pop_id) %>% 
-  distinct()
-
 ```
 
-
-Calcul des tendances par points de prélèvements sur la période d'étude LRR : 
-
-```{r Calcul tendances lrr avec mk_st}
-ope_densite_tendances_mk_st_lrr <- mk_st_by_group(ope_densite_periode_lrr,
-                                                   valeur,
-                                                   annee,
-                                                   esp_code_alternatif,
-                                                   indicateur,
-                                                   stade,
-                                                   pop_id) # Variable de groupage
-```
-
-
-# Pour la période globale (30 ans)
-
-```{r test mk_st période globale}
-# Calculate results
-ope_densite_tendances_mk_st_globale <- mk_st_by_group(ope_densite_complet,
-                                                      valeur,
-                                                      annee,
-                                                      esp_code_alternatif,
-                                                      indicateur,
-                                                      stade,
-                                                      pop_id) # Variable de groupage
-```
-
-
-
-On renomme les variables en français / 
-
-```{r}
-# Remplacer les valeurs
-ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>%
-  rename(Tendance = trend)
-
-ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
-  mutate(trend = recode(trend, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative")) %>%
-  rename(Tendance = trend)
-```
-
-
-```{r}
-# Pour ope_densite_tendances_mk_st_globale
-ope_densite_tendances_mk_st_globale <- ope_densite_tendances_mk_st_globale %>%
-  mutate(Tendance = recode(Tendance, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
-         Tendance = if_else(is.nan(mk_pvalue), "Abs", Tendance)) %>%
-  mutate(sig = case_when(
-      mk_pvalue < 0.001 ~ "***",
-      mk_pvalue < 0.01 ~ "**",
-      mk_pvalue < 0.05 ~ "*",
-      TRUE ~ ""
-    ))
-```
-
-
-```{r}
-# Pour ope_densite_tendances_mk_st_lrr
-ope_densite_tendances_mk_st_lrr <- ope_densite_tendances_mk_st_lrr %>%
-  mutate(Tendance = recode(Tendance, "Decrease" = "Diminution", "Increase" = "Augmentation", "No trend" = "Non significative"),
-         Tendance = if_else(is.nan(mk_pvalue), "Abs", Tendance)) %>%
-  mutate(sig = case_when(
-      mk_pvalue < 0.001 ~ "***",
-      mk_pvalue < 0.01 ~ "**",
-      mk_pvalue < 0.05 ~ "*",
-      TRUE ~ ""
-    ))
-```
-
-
-## Représentation graphique
-Préparation des données géographiques (carte de fond)
+## Préparation des données géographiques (carte de fond)
 
 ```{r préparation background}
 mes_depts <- departements_metro_geo %>% 
@@ -338,123 +209,97 @@ mes_depts <- departements_metro_geo %>%
 ```
 
 
+# Analyse spatiale des tendances temporelles - période LRR
 
-## Pour la période LRR : 
+Calcul des tendances par points de prélèvements sur la période d'étude LRR : application de la fonction *mk_st_by_group* :
 
-On ne veut faire que apparaitre les points où il y a déjà eu de la présence : 
+```{r Mk_st période LRR}
+ope_densite_tendances_mk_st_lrr <- mk_st_by_group(ope_densite_periode_lrr,
+                                                   valeur,
+                                                   annee,
+                                                   esp_code_alternatif,
+                                                   indicateur,
+                                                   stade,
+                                                   pop_id)
+```
 
-```{r}
+## Représentation graphique
+
+  Nous ne voulons faire apparaitre que les points de prélèvements où les espèces ont déjà été présentes : 
+
+```{r Sélection présence station espèces}
 ope_densite_code_periode_lrr <- ope_densite_periode_lrr %>% 
   select(esp_code_alternatif, 
          pop_id) %>% 
   distinct()
 
-ope_densite_code_complet_periode_lrr <- ope_densite_periode_lrr_sans_abs %>% 
+ope_densite_code_comple_periode_lrr <- ope_densite_periode_lrr %>% 
   left_join(ope_densite_tendances_mk_st_lrr)
 ```
 
 
-```{r, fig.height = 10, fig.width = 11}
-mes_esp_rapport <- c("ANG", "GAR", "SAT", "TRF")
-mes_sta_supp <- c("42207", "44190", "47049")
-```
-
-```{r, fig.height = 9, fig.width = 11}
-
+  Nous représentons une carte régionale avec les tendances démographiques des espèces propres aux stations (où les espèces ont été présentes au moins une fois) - sur les périodes LRR. 
+  
+```{r Cartographie MK_ST période LRR, fig.height = 9, fig.width = 13}
 carte_tendance_lrr <- ggplot(sta_id_ope_selection %>%
-                               left_join(ope_densite_code_complet_periode_lrr, by = "pop_id") %>%
-                               filter(!esp_code_alternatif %in% c("ANG","GAR", "SAT", "TRF"),
-                                      !pop_id %in% mes_sta_supp) %>%
-                               filter(!is.na(Tendance))) +
+                               left_join(ope_densite_code_comple_periode_lrr, 
+                                         by = "pop_id") %>%
+                               filter(!is.na(tendance))) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
-  geom_sf(aes(shape = Tendance, 
-              fill = ifelse(Tendance == "Non significative", 
-                            ifelse(sens_slope > 0, "Positif", "Négatif"), Tendance), 
-              size = factor(ifelse(Tendance == "Non significative", 1, 2))),
+  geom_sf(aes(shape = tendance, 
+              fill = ifelse(tendance == "Non significative", 
+                            ifelse(sens_slope > 0, "Positif", "Négatif"), tendance), 
+              size = factor(ifelse(tendance == "Non significative", 1, 2))),
           stroke = 0.2) +
-  scale_fill_manual(
-    name = "Tendance",
-    values = c(
-      "Diminution" = "red",
-      "Augmentation" = "darkgreen",
-      "Non significative" = "gray",
-      "Positif" = "#92D050",
-      "Négatif" = "#FF6F6F"
-    )
-  ) +
-  scale_shape_manual(
-    name = "Tendance",
-    values = c(
-      "Diminution" = 22, # carré plein
+  scale_fill_manual(name = "Tendance",
+    values = c("Diminution" = "red","Augmentation" = "darkgreen","Non significative" = "gray",
+      "Positif" = "#92D050","Négatif" = "#FF6F6F")) +
+  scale_shape_manual(name = "Tendance",
+    values = c("Diminution" = 22, # carré plein
       "Augmentation" = 24, # triangle plein
-      "Non significative" = 21 # cercle plein
-    )
-  ) +
-  scale_size_manual(
-    values = c("1" = 2, "2" = 4),
-    guide = 'none'
-  ) +
+      "Non significative" = 21)) + # cercle plein
+  scale_size_manual(values = c("1" = 2, "2" = 4), guide = 'none') +
   facet_wrap(~ esp_code_alternatif) +
-  theme(
-    panel.background = element_rect(fill = "lightblue"),
+  theme(panel.background = element_rect(fill = "lightblue"),
     legend.position = "bottom",
     legend.key = element_rect(fill = NA),
     axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5),
     plot.margin = unit(c(1, 1, 1, 1), "cm")) 
-#  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
-
-carte_tendance_lrr <- carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
-
-carte_tendance_lrr
-
-```
-
-
-```{r, fig.height = 10, fig.width = 11}
-# Combine data and plot with facet_wrap
-carte_tendance_lrr <- ggplot(sta_id_ope_selection %>% 
-                            left_join(ope_densite_code_complet_periode_lrr, 
-                                      by = "pop_id") %>% 
-                            filter(
-                              !esp_code_alternatif %in% c("ANG","GAR", "SAT", "TRF"),
-                                   !pop_id %in% mes_sta_supp)%>%
-                            filter(!is.na(Tendance))) +
-  geom_sf(data = mes_depts, fill = "white", color = "black") +
-  geom_sf(data = buffer, fill = NA, color = "grey") +
-  geom_sf(aes(col = Tendance, 
-              size = (Tendance != "Non significative"))) +
-  scale_color_manual(name = "Tendance",
-                     values = c("Diminution" = "red",
-                                "Augmentation" = "darkgreen",
-                                "Non significative" = "gray")) +
-  scale_size_manual(values = c(0.8, 2),
-                    guide = 'none') +
-  facet_wrap(~ esp_code_alternatif) +
-  theme(panel.background = element_rect(fill = "lightblue"),
-        legend.position = "bottom",
-        legend.key = element_rect(fill = NA),
-        axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5), # Ajustements ici
-        plot.margin = unit(c(1, 1, 1, 1), "cm")) +    
   ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
-
 carte_tendance_lrr <- carte_tendance_lrr + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
 
 carte_tendance_lrr
 ```
+ 
+ 
+  Enregistrement de la carte des tendances démographiques : Tendances temporelles des densités surfaciques par espèce à l'échelle des stations sur les périodes d’étude LRR (correspondant à la méthodologie UICN):  
 
-
-```{r Enregistrement carte, fig.height = 10, fig.width = 11}
+```{r Enregistrement carte lrr}
 ggsave(filename = "../assets/carte_tendances_sta_lrr.png", 
        plot = carte_tendance_lrr, width = 10, height = 8, dpi = 300) # Enregistrer l'image
 
 ```
 
 
+# Analyse spatiale des tendances temporelles - période globale (1990-2023)
 
-## Pour la période globale
+```{r Mk_st période globale}
+ope_densite_tendances_mk_st_globale <- mk_st_by_group(ope_densite_complet,
+                                                      valeur,
+                                                      annee,
+                                                      esp_code_alternatif,
+                                                      indicateur,
+                                                      stade,
+                                                      pop_id)
+```
 
-On ne veut faire que apparaitre les points où il y a déjà eu de la présence : 
+
+
+## Représentation graphique
+
+  Nous ne voulons faire apparaitre que les points de prélèvements où les espèces ont déjà été présentes : 
+
 ```{r}
 ope_densite_code <- ope_densite %>% 
   select(esp_code_alternatif, 
@@ -466,81 +311,34 @@ ope_densite_code_complet <- ope_densite_code %>%
 ```
 
 
-Représentation de la carte globale
-
-```{r, fig.height = 10, fig.width = 11}
-# Combine data and plot with facet_wrap
+  Nous représentons une carte régionale avec les tendances démographiques des espèces propres aux stations (où les espèces ont été présentes au moins une fois) - sur la période globale de l'étude. 
+  
+```{r Cartographie MK_ST période globale, fig.height = 10, fig.width = 11}
 carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
-                            left_join(ope_densite_code_complet, by = "pop_id") %>% 
-                            filter(
-                              esp_code_alternatif %in% mes_esp_rapport,
-                                    !pop_id %in% mes_sta_supp)) +
+                            left_join(ope_densite_code_complet, by = "pop_id")) +
   geom_sf(data = mes_depts, fill = "white", color = "black") +
   geom_sf(data = buffer, fill = NA, color = "grey") +
-  geom_sf(aes(col = Tendance, 
-              size = (Tendance != "Non significative"))) +
-  scale_color_manual(name = "Tendance",
-                     values = c("Diminution" = "red",
-                                "Augmentation" = "darkgreen",
-                                "Non significative" = "gray")) +
-  scale_size_manual(values = c(0.8, 2),
-                    guide = 'none') +
+  geom_sf(aes(shape = tendance, 
+              fill = ifelse(tendance == "Non significative", 
+                            ifelse(sens_slope > 0, "Positif", "Négatif"), tendance), 
+              size = factor(ifelse(tendance == "Non significative", 1, 2))),
+          stroke = 0.2) +
+  scale_fill_manual(name = "Tendance",
+                    values = c("Diminution" = "red","Augmentation" = "darkgreen",
+                               "Non significative" = "gray","Positif" = "#92D050",
+                               "Négatif" = "#FF6F6F")) +
+  scale_shape_manual(name = "Tendance",
+    values = c("Diminution" = 22, # carré plein
+      "Augmentation" = 24, # triangle plein
+      "Non significative"= 21)) + # cercle plein
+  scale_size_manual(values = c("1" = 2, "2" = 4), guide = 'none') +
   facet_wrap(~ esp_code_alternatif) +
   theme(panel.background = element_rect(fill = "lightblue"),
-        legend.position = "bottom",
-        legend.key = element_rect(fill = NA),
-        axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5), # Ajustements ici
-        plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-   ggtitle("Tendances temporelles des densités par espèce à l'échelle des points de prélèvement - période globale (30 ans)")
-
-carte_sta_facet_globale <- carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
-```
-
-
-```{r Carte période complète, fig.height = 10, fig.width = 11}
-
-carte_sta_facet_globale <- ggplot(sta_id_ope_selection %>% 
-                            left_join(ope_densite_code_complet, by = "pop_id") %>% 
-                            filter(
-                              !esp_code_alternatif %in% mes_esp_rapport,
-                                    !pop_id %in% mes_sta_supp)) +
-  geom_sf(data = mes_depts, fill = "white", color = "black") +
-  geom_sf(data = buffer, fill = NA, color = "grey") +
-  geom_sf(aes(shape = Tendance, 
-              fill = ifelse(Tendance == "Non significative", 
-                            ifelse(sens_slope > 0, "Positif", "Négatif"), Tendance), 
-              size = factor(ifelse(Tendance == "Non significative", 1, 2))),
-          stroke = 0.2) +
-  scale_fill_manual(
-    name = "Tendance",
-    values = c(
-      "Diminution" = "red",
-      "Augmentation" = "darkgreen",
-      "Non significative" = "gray",
-      "Positif" = "#92D050",
-      "Négatif" = "#FF6F6F"
-    )
-  ) +
-  scale_shape_manual(
-    name = "Tendance",
-    values = c(
-      "Diminution" = 22, # carré plein
-      "Augmentation" = 24, # triangle plein
-      "Non significative" = 21 # cercle plein
-    )
-  ) +
-  scale_size_manual(
-    values = c("1" = 2, "2" = 4),
-    guide = 'none'
-  ) +
-  facet_wrap(~ esp_code_alternatif) +
-  theme(
-    panel.background = element_rect(fill = "lightblue"),
     legend.position = "bottom",
     legend.key = element_rect(fill = NA),
     axis.text.x = element_text(size = 8, angle = 45, hjust = 0.5),
     plot.margin = unit(c(1, 1, 1, 1), "cm")) +
-  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période LRR ")
+  ggtitle("Tendances temporelles des densités par espèces à l'échelle des points de prélèvement - période globale ")
 
 carte_sta_facet_globale <- carte_sta_facet_globale + coord_sf(xlim = c(-5, -1.2), ylim = c(47.45, 48.8), default_crs = 4326)
 
@@ -548,23 +346,36 @@ carte_sta_facet_globale
 
 ```
 
+ 
+  Enregistrement de la carte des tendances démographiques : Tendances temporelles des densités surfaciques par espèce à l'échelle des stations sur les périodes d’étude globale (correspondant ici aux années 1990-2023):  
 
-```{r, fig.height = 10, fig.width = 11}
-# ggsave(filename = "../assets/carte_tendances_sta_globale.png", 
-#        plot = carte_sta_facet_globale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
-
+```{r Enregistrement carte globale}
+ggsave(filename = "../assets/carte_tendances_sta_globale.png",
+       plot = carte_sta_facet_globale, width = 10, height = 8, dpi = 300) # Enregistrer l'image
 ```
-
-
 
 
 # Sauvegarde 
 
+  Nous sauvegardons dans un fichier .rda les jeux de données relatifs aux tests de Mann-Kendall qui nous servira pour des analyses futures.
+  
 ```{r Sauvegarde}
-# save(reg_indicateur_lrr_tendances_mk_st,
-#      reg_indicateur_lrr_tendances_lm,
-#      tab_reg_indicateur_lrr_tendances_mk_st,
-#      tab_reg_indicateur_lrr_tendances_lm,
-#      file = "../processed_data/lm_mann_kendall_tendances.rda")
+save(reg_indicateur_lrr_tendances_mk_st,
+     reg_indicateur_lrr_tendances_lm,
+     tab_reg_indicateur_lrr_tendances_mk_st,
+     tab_reg_indicateur_lrr_tendances_lm,
+     file = "../processed_data/lm_mann_kendall_tendances.rda")
 ```
 
+
+# Références bibliographiques
+  
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/
+  
+  Kendall, M. G. (1975). Rank correlation methods. London: Griffin. Knouft JH, Ficklin DL. 2017. The potential impacts of climate change on biodiversity in flowing freshwater systems. Annual Review of Ecology, Evolution, and Systematics 48, 111–133.
+  
+  Mann, H.B. (1945). Nonparametric tests against trend. Econometrica 13, 1-245.
+  
+  Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall’s Tau. Journal of the American Statistical Association 63, 1379–1389.
+  
+  Theil, H. (1950). A rank-invariant method of linear and polynomial regression analysis. Indagationes Mathematicae 1 (2), 14 p.

@@ -12,10 +12,11 @@ glmm_calcul_modele <- function(data,
   }
   
 
-  model <- try(glmer(valeur ~ (annee| pop_id) +
-                       annee +
+  model <- try(glmer(valeur ~ scale(annee) +
+                       (1 | pop_id) +
+                       scale(annee) +
                        pro_libelle +
-                       ope_surface_calculee +
+                       scale(ope_surface_calculee) +
                        scale(julian) +
                        scale(I(julian^2)),
                      data = filtered_data,

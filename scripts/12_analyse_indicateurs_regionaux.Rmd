@@ -325,7 +325,7 @@ save(reg_indicateur_reduit,
 ```
 
 
-# Référence bibliographique
+# Références bibliographiques
   
   Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/
   
