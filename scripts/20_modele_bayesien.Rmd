@@ -1,12 +1,17 @@
 ---
 title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
-subtitle: "Méthode Bayésien - démographie des espèces de poissons d'eau douce de Bretagne"
+subtitle: "Analyses bayésiennes"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 params:
-  mes_especes: !r c("ANG", "BRO", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "LPP", "SAT", "VAR")
----
+  mes_especes: !r c("ANG", "BRO", "LOF", "CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "LPP", "SAT", "VAR")
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 
+---
+ 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

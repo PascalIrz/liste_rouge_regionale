@@ -228,13 +228,11 @@ print(reg_indicateur_graph_reduit)
 Nous réalisons un dataframe finale compilant les significaticités des tendances (regréssion linéaire) pour les espèces et les périodes d'intérêts :  
 
 ```{r Liste groupes et périodes}
-groups <- list(
-  list(codes = "ANG", start_year = 1990, end_year = 2023),
+groups <- list(list(codes = "ANG", start_year = 1990, end_year = 2023),
   list(codes = c("CHE", "LPP"), start_year = 2005, end_year = 2023),
   list(codes = c("BRO", "LOF"), start_year = 2008, end_year = 2023),
   list(codes = c("VAR", "GAR", "VAI", "PER"), start_year = 2011, end_year = 2023),
-  list(codes = c("SAT", "GOU", "TRF", "CHA"), start_year = 2013, end_year = 2023)
-)
+  list(codes = c("SAT", "GOU", "TRF", "CHA"), start_year = 2013, end_year = 2023))
 ```
 
 ```{r Création df reg_indicateur_pvaues_by_group}

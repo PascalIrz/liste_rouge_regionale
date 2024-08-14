@@ -76,7 +76,7 @@ mes_sta_id <- c("10468", "10502", "10546", "10565",
                 "12371", "12402", "12436", "12447",
                 "12453", "12824", "13103")
 
-mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF")
+mes_especes_lrr <- c("ANG", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "SAT", "LPP", "VAR")
 ```
 
 
@@ -105,34 +105,21 @@ ope_indicateur_complet <- combinaisons_esp_ope %>%
 
 occur_sta_esp <- ope_indicateur_complet %>% 
   filter(stade == "ind",
-         indicateur == "effectif_total", 
-         esp_code_alternatif == mes_especes_lrr) %>%
-  group_by(pop_id, annee, esp_code_alternatif)
+         indicateur == "effectif_total") 
 
-# Filtrer les lignes où l'indicateur est "effectif_total" et la valeur de l'indicateur est supérieure à 0
-filtered_df <- occur_sta_esp %>%
-  filter(indicateur == "effectif_total" & valeur > 0)
-
-# Compter le nombre d'années par espèces et par pop_id
-result_df <- filtered_df %>%
-  group_by(esp_code_alternatif, pop_id) %>%
-  summarise(nb_annees = n_distinct(annee))
-
-
-# Convertir pop_id en facteur
-occur_sta_esp$pop_id <- factor(occur_sta_esp$pop_id)
 ```
+
 
 Nous réalisons une représentation graphique :
 
-```{r Représentation graphique sta/esp}
+```{r Représentation graphique sta/esp, fig.height = 20, fig.width = 10}
 # Créer le graphique avec ggplot2 et facettes pour chaque espèce
 ggplot(occur_sta_esp, aes(x = annee, y = pop_id, size = valeur, color = valeur)) +
   geom_point() +
   scale_size_continuous(range = c(1, 8)) + # Ajuster la plage de taille des points selon vos préférences
   scale_color_gradientn(colors = c("grey", heat.colors(99)), na.value = "grey") + # Utiliser une palette de couleurs personnalisée
   scale_x_continuous(breaks = seq(min(occur_sta_esp$annee), max(occur_sta_esp$annee), by = 1)) +
-  facet_wrap(~ esp_code_alternatif, scales = "free") +
+  facet_wrap(~ esp_code_alternatif, scales = "free", ncol = 2) +
   theme_bw() +
   theme(strip.background = element_rect(color = "black", fill = "#faffff"),
         legend.position = "bottom",
