@@ -9,7 +9,6 @@ output:
   bookdown::html_document2:
     toc: true
     toc_float: true
-
 ---
  
 
@@ -22,35 +21,32 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Script : 20_modele_bayésien
 
-Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel et al. 2022. Ce travail est réalisé avec le package "popdynmodel" : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieurement, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
+  Ce script permet de s'interesser à la croissance démographique des espèces. Il repose sur les modèles réalisés par Dortel *et al.* 2022. Ce travail est réalisé avec le package *popdynmodel()* : il porte sur l'évaluation des tendances démographiques des espèces de poissons d'eau douce de Bretagne, dans le bassin Loire-Bretagne, à partir d'un suivi annuel sur la période 1990-2023. Il porte sur les données de 43 stations pré-sélectionnées ultérieurement, extraite de la base de données ASPE gérée par l'Office Français de la Biodiversité (OFB).
 
 
 # Installation 
 
-Installation du package : 
+## Chargement des packages
 
-```{r}
+Installation des packages nécessaires au fonctionnement du script : 
+
+```{r Installation des packages}
 # install.packages(c("dplyr", "magrittr", "MCMCvis", "nimble", "rlang", "stringr", "tidyr", "tidyverse"))
 # library(devtools)
 # install_github("manue6/popdynmodel")
-
 ```
 
-
-## Chargement des packages
-
 ```{r Chargement des packages}
-## Chargement des packages ----
-library(aspe)
+library(aspe) # Chargement des packages 
 library(aspe2)
 library(nimble)
 library(popdynmodel)
 library(dplyr)
 library(mcmcplots)
+library(stringr)
 ```
 
-
-
+## Nommage des fichiers enregistrés
 
 ```{r Script nom fichier}
 dh <- Sys.time() %>% 
@@ -69,7 +65,6 @@ nom_fichier <- paste("../processed_data/resultat_modele",
 ```
 
 
-
 ## Chargement des données issues du pré-traitement
 (script 15_pre_traitement_modele_bayesien)
 
@@ -81,72 +76,21 @@ load(file = "../processed_data/modele_bay_result_31_05_per.rda")
 
 # Exécution du modèle bayésien
 
-Cette partie nécessite le chargement des packages popdynmodel et nimble.
-
-Utilisons la fonction mod_popgrow pour estimer la croissance de la population des espèces à tester pour la liste rouge régionale sur la période 1990-2023, de l’ajustement du modèle de croissance à l’ensemble de données sur les espèces. Comme nous souhaitons tenir compte des variations annuelles de l’effort d’échantillonnage (ici la surface de pêche), nous devons spécifier l’argument var_surf. Nous souhaitons également les estimations de croissance démographique sur la période 2013-2018 et 2018-2023, nous spécifions donc la période = list(c(2016,2018),c(2018,2023)) (la fonction retournera également des taux de croissance sur toute la période définie par l’ensemble de données sans avoir besoin).
+Cette partie nécessite le chargement des packages *popdynmodel* et *nimble*. Nous utilisons la fonction *mod_popgrow* pour estimer la croissance de la population des espèces à tester pour la liste rouge régionale sur la période 1990-2023, de l’ajustement du modèle de croissance à l’ensemble de données sur les espèces. Comme nous souhaitons tenir compte des variations annuelles de l’effort d’échantillonnage (ici la surface de pêche), nous devons spécifier l’argument *var_surf*. Nous souhaitons également les estimations de croissance démographique sur périodes spécifiques que nous indiquons en variables de la fonction.
 
 Enfin, dans un souci de simplification, nous demandons uniquement le taux de croissance annuel moyen à l’échelle du bassin Loire-Bretagne (i.e. sur tous les points d’échantillonnage) en spécifiant les paramètres save = "N mulambda". Comme un modèle bayésien prend généralement beaucoup de temps, nous conservons les valeurs par défaut, c.-à-d. 3 chaînes MCMC avec 10000 itérations réduites à un tirage à chaque 100e itération ayant éliminé une période de rodage de 2500 itérations. Mais cela pourrait ne pas être suffisant pour fournir des estimations suffisamment précises.
 
-```{r}
-data_per <- data_bayesien %>% 
-  filter(esp_code_alternatif == "PER")
 
-data_ang <- data %>% 
-  filter(esp_code_alternatif =="ANG")
+Nous appliquons donc la fonction sur notre jeu de données *data_bayesien_lrr* : 
 
-
-```
-
-Pour le jeu de données data_lrr : 
-
-```{r}
-# Application fonction mod_popgrow
-
-# result_lrr_12_06 <- mod_popgrow(data_bayesien_lrr,
-#                                 var_id = "pop_id",
-#                                 var_tmp = "annee",
-#                                 var_cnt = "catch_size",
-#                                 var_surf = "ope_surface_calculee",
-#                                 var_tax = "esp_code_alternatif",
-#                                 period = list(c(2000,2013),
-#                                               c(2010,2023)),
-#                                 n_iter = 1005000,
-#                                 n_thin = 100,
-#                                 n_burnin = 5000)
-```
-
-
-
-Pour le jeu de données data_lrr : 
-```{r}
-load("processed_data/modele_bay_result_31_05_per.rda")
-
+```{r Application modèle bayésien, eval= FALSE}
 data <- data %>% 
   mef_ajouter_absence(var_id = pop_id, var_taxon = esp_code_alternatif, var_abs = catch_size) %>%
   mef_ajouter_na(var_id = pop_id, var_taxon = esp_code_alternatif, var_obs = annee, vec_obs = 1990:2023) %>%
   mef_imputevalue(var_id = "pop_id", var_tmp = "annee", var_imp = "ope_surface_calculee")
-```
 
 
-```{r}
-#Pour le cas spécifique de l'anguille
-df <- filter(data, esp_code_alternatif %in% "ANG")  
-mc_ang <- mod_popgrow(df,
-                      var_id = "pop_id",
-                      var_tmp = "annee",
-                      var_cnt = "catch_size",
-                      var_surf = "ope_surface_calculee",
-                      period = list(c(2005,2023),
-                                    c(2008, 2023),
-                                    c(2011, 2023),
-                                    c(2013, 2023)),
-                      n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
-```
-
-
-```{r}
-#Pour l"ensemble des individus
-mc <- mod_popgrow(data,
+mod_popgrow_result <- mod_popgrow(data,
                   var_id = "pop_id",
                   var_tmp = "annee",
                   var_tax = "esp_code_alternatif",
@@ -157,84 +101,34 @@ mc <- mod_popgrow(data,
                                 c(2011, 2023),
                                 c(2013, 2023)),
                   n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
+```
 
+La fonction *mod_popgrow()* retourne une liste avec les résumés des principales statistiques associées à l’estimation des paramètres demandés (mcmc_summary), les chaînes MCMC (mcmc_chain) et la liste des indices de paramètres (subscript). Nous sauvegardons ces résultats :
 
-save(mc_pro,
+```{r Sauvegarde modèle bayésien, eval= FALSE}
+save(mod_popgrow_result,
      file = "../processed_data/bay_final_result_pro.rda")
-
 ```
 
 
+# Analyse des résultats et vérification de la convergence du modèle
 
-On souhaite considérer l'effet du protocole : 
-
-```{r}
-
-mes_especes <- c("ANG", "BRO", "LOF","CHE", "CHA", "GAR", "GOU", "VAI", "PER","TRF", "LPP", "SAT", "VAR")
-data_pro <- data %>% 
-  mef_ajouter_type_protocole() %>% 
-  filter(esp_code_alternatif == mes_especes)
-```
-
-
-```{r}
-mc_pro <- mod_popgrowAlt(data_pro,
-                  var_id = "pop_id",
-                  var_tmp = "annee",
-                  var_tax = "esp_code_alternatif",
-                  var_cnt = "catch_size",
-                  var_surf = "ope_surface_calculee",
-                  var_pro = "pro_libelle",
-                  period = list(c(2005,2023),
-                                c(2008, 2023),
-                                c(2011, 2023),
-                                c(2013, 2023)),
-                  n_iter = 1005000, n_thin = 1000, n_burnin = 5000)
-
-
-save(mc_pro,
-     file = "../processed_data/bay_final_result2.rda")
-
-
-
-```
-
-
-
-
-
-# Analyse des résultats 
-
-```{r,  fig.height = 145, fig.width = 140}
-mc$mcmc_summary
-
-denplot(mc$mcmc_chain)
-
-plot(mc$mcmc_chain$chain2)
+```{r Vérification convergence modèle, eval= FALSE}
+mod_popgrow_result$mcmc_summary
+denplot(mod_popgrow_result$mcmc_chain)
+plot(mod_popgrow_result$mcmc_chain$chain2)
 
 test <- mcmc.out$mcmc_summary
 plot(mcmc.out$mcmc_summary)
 plot(mcmc.out$mcmc_chain$chain1)
 plot(mcmc.out$mcmc_summary)
-
 ```
 
-
-
-
-La fonction mod popgrow retourne une liste avec les résumés des principales statistiques associées à l’estimation des paramètres demandés (mcmc_summary), les chaînes MCMC (mcmc_chain) et la liste des indices de paramètres (subscript) : 
-
-
-
-# Vérification de la convergence du modèle et de la qualité de l’ajustement
 ## Rhat
-
 
 La statistique de Rhat est un indice utile pour évaluer la convergence d’un algorithme MCMC vers une distribution postérieure stationnaire (son estimation nécessite plus d’une chaîne MCMC). Cette statistique, basée sur le rapport entre la variance inter-chaîne et la variance intra-chaîne, doit être proche de 1 et inférieure à 1,1. 
 
 Une valeur de Rhat supérieure à 1 signifie que les chaînes MCMC n’ont pas convergé vers une distribution commune. Cela peut être dû à un nombre insuffisant d’itérations, à une mauvaise spécification du modèle ou à une mauvaise qualité des données. Ici, les valeurs de Rhat signifient que les chaînes MCMC ont suffisamment convergé et peuvent fournir des estimations précises pour N mulambda[1, 1, 1] et N mulambda[1, 1, 3]. Cependant, la valeur obtenue pour N mulambda[1, 1, 2] indique que d’autres itérations sont nécessaires.
-
-
 
 
 ## n. eff.
@@ -242,175 +136,27 @@ Une valeur de Rhat supérieure à 1 signifie que les chaînes MCMC n’ont pas c
 La taille effective de l’échantillon n.eff peut être utilisée pour vérifier l’autocorrélation dans les estimations de paramètres. En fait, les échantillons successifs d’une simulation MCMC sont autocorrélés. Idéalement, les estimations des paramètres devraient être fondées sur des échantillons de MCMC indépendants, de sorte qu’un taux d’amincissement (n mince) est appliqué pour ne conserver que certains échantillons de MCMC pour les estimations des paramètres afin de réduire cette autocorrélation. Le rapport de n.eff à la taille totale de l’échantillon (n chaînes x (n iter - n burnin) / n mince) fournit une mesure du taux d’autocorrélation dans les estimations de paramètres. Plus ce rapport est faible, plus le taux d’autocorrélation est élevé. Des taux d’autocorrélation élevés indiquent que de nombreuses itérations sont nécessaires pour simuler des distributions postérieures précises, même si les chaînes MCMC ont convergé. De manière arbitraire, il est souvent admis que n.eff devrait être supérieur à 10% de la taille totale de l’échantillon. Dans cet exemple, les rapports de n.eff à la taille totale de l’échantillon sont fermés à 1, ce qui suggère un faible degré d’autocorrélation dans les échantillons MCMC utilisés pour les estimations des paramètres. Le paquet coda offre des fonctions pour vérifier l’autocorrélation dans les chaînes MCMC qui peuvent vous aider à déterminer un taux d’amincissement approprié (autocorr et autocorr.plot).
 
 
-# Distributions marginales postérieures
+## Distributions marginales postérieures
 
 Une façon simple de vérifier la qualité de l’ajustement du modèle est de regarder les distributions marginales postérieures des paramètres. Pour un paramètre donné, la distribution marginale postérieure représente l’incertitude autour de l’estimation du paramètre après la mise à jour de la distribution précédente avec les connaissances fournies par les données. La première vérification consiste à rechercher les différences entre les distributions antérieures et postérieures. Les distributions postérieures très similaires aux distributions précédentes signifient que les données n’ont pas fourni suffisamment de connaissances sur les paramètres pour mettre à jour les distributions précédentes. Parfois, cela peut également être dû à un nombre insuffisant d’itérations. Notez que les fonctions de paquet sont conçues pour être appliquées à un large éventail d’espèces et donc elles utilisent des distributions priori peu ou très peu informatives. Les distributions postérieures ne doivent donc jamais être similaires aux distributions précédentes. Une autre vérification consiste à examiner la forme des distributions marginales postérieures. Les distributions postérieures doivent être lisses et unimodales, sinon cela signifie que les chaînes MCMC ne sont pas complètement mélangées et non convergentes et que les statistiques associées aux estimations des paramètres ne sont pas fiables.
 
 Pour tracer les distributions marginales postérieures, vous pouvez utiliser la fonction denplot du paquet mcmcplots:
 
-```{r Représentation graphique, fig.height = 145, fig.width = 140}
-denplot(result$mcmc_chain, collapse = TRUE)
+```{r Représentation graphique, eval= FALSE}
+denplot(mod_popgrow_result$mcmc_chain, collapse = TRUE)
 
-temp <- result[["mcmc_summary"]]
+temp <- mod_popgrow_result[["mcmc_summary"]]
 temp %>% 
   filter(is.na(pop_id)) %>% 
   nrow
   Sys.time()
+
+traplot(mod_popgrow_result$mcmc_chain, parms = c("p.col_id[1, 0 ]"))      
 ```
 
 
+# Références bibliographiques 
 
-Je dispose donc maintenant des résultats du modèle / 
+  Dortel, E., Besnard, A., Poulet, N. (2022). Evolution des populations piscicoles et astacicoles de France métropolitaine. Rapport CNRS – EPHE – OFB, Centre d’Ecologie Fonctionnelle et Evolutive, Montpellier. 
 
-Je regarde les N_PGR au niveau de mes 3 périodes de temps différentes et de mes différentes espèces : 
-
-```{r, fig.height = 26, fig.width = 10}
-
-r <- result$mcmc_summary
-
-r_filtered <- r[!is.na(r$period),]
-r_filtered <- r_filtered %>% 
-  filter(parameter == "N_PGR")
-
-r_PGR_graph <- 
-  ggplot(gg, aes(x = period, y = mean, fill = period)) +
-  geom_point(stat = "identity") +
-  facet_wrap(~ esp_code_alternatif, ncol = 1) +
-  theme_bw()+
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill="#faf0e0"),
-        panel.grid.major = element_line(color="lightgrey", size = 0.1),
-        panel.grid.minor = element_line(color = "lightgrey"),
-        axis.text.x = element_text(angle = 45))
-
-print(r_PGR_graph)
-
-```
-
-
-```{r}
-traplot(result$mcmc_chain, parms = c("p.col_id[1, 0 ]"))        
-
-
-gg <- r %>%
-  filter(period == "2010-2023") %>% 
-  filter(parameter == "N_PGR") %>% 
-  select(mean,
-         esp_code_alternatif)
-```
-
-
-
-```{r}
-gg <- gg %>%
-  ggplot(aes(x = mean, 
-             y = esp_code_alternatif, 
-             fill = factor(sign(mean)))) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = esp_code_alternatif),
-            fontface = "bold") +
-  theme_bw() +
-  theme(strip.background = element_rect(color = "black", fill = "#faffff"),
-        legend.position = "bottom",
-        panel.background = element_rect(fill = "#faf0e0"),
-        panel.grid.major = element_line(color = "lightgrey"),
-        panel.grid.minor = element_line(color = "lightgrey")) + 
-  scale_y_discrete(labels = NULL, breaks = NULL) +
-  scale_fill_manual(values = c("#ed0000", "#92D050"), 
-                     labels = c("Diminution","Augmentation"), 
-                     name = "Taux de croissance")
-
-print(gg)
-
-```
-
-
-
-```{r}
-traplot(result$mcmc_chain, parms = c("N_mulambda[1, 1, 1]"))
-```
-
-
-
-```{r}
-denplot(result$mcmc_chain, parms = c("N_mulambda[3, 1, 3]"))
-```
-
-
-Plot des résultats : 
-
-```{r, fig.height = 1, fig.width = 5}
-traplot(result$mcmc_chain)
-denplot(r[r$parameter %in% "N_lambda",])
-
-r <- result$mcmc_summary
-a <- result$mcmc_chain
-rr <- r[r$parameter %in% "N_lambda",]
-
-# ANG : taux de croissance régional anuel moyen
-r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N"),]
-a <- r[(r$esp_code_alternatif %in% "ANG" & r$parameter %in% "N_mulambda"),]
-
-
-denplot(result$mcmc_chain)
-
-
-traplot(result$mcmc_chain, parms = c("N_mulambda [2,1,1]"))
-  
-```
-
-```{r Représentation graphique, fig.height = 145, fig.width = 140}
-denplot(result$mcmc_chain, collapse = TRUE)
-
-temp <- result[["mcmc_summary"]]
-temp %>% 
-  filter(is.na(pop_id)) %>% 
-  nrow
-  Sys.time()
-```
-
-
-# Test pop_growalt (effet prtocole)
-
-```{r}
-# Ajout des protocoles dans le jeu de données data_esp_1
-data_lrr <- left_join(data_lrr, def, by = "pop_id")
-# Sélectionner uniquement les colonnes nécessaires
-data_lrr <- data_lrr %>% 
-  select(pop_id,
-         annee,
-         esp_code_alternatif,
-         ope_id, 
-         ope_surface_calculee,
-         catch_size,
-         pro_libelle)
-```
-
-
-```{r}
-result_popgrowAlt <- mod_popgrowAlt(data_lrr,
-                                    var_id = "pop_id",
-                                    var_tax = "esp_code_alternatif",
-                                    var_tmp = "annee",
-                                    var_cnt = "catch_size",
-                                    var_surf = "ope_surface_calculee",
-                                    var_pro = "pro_libelle",
-                                         period = list(c(1990,2023)),
-                                         n_iter = 502000,
-                                         n_thin = 500,
-                                         n_burnin = 2000)
-```
-
-
-# Sauvegarde
-
-```{r}
-# save(data,
-#      data_per,
-#      result_per_31_05,
-#      file = "processed_data/modele_bay_result_31_05_per.rda")
-
-save(result_lrr_12_06,
-     file = "../processed_data/modele_bayesien_result_lrr_12_06.rda")
-```
+  Irz, P., Mondy, C., Richard, B. Bonnafoux, L. (2024). aspe: An R package to analyse and visualise river fish data in France. R package version 0.4.1, https://github.com/PascalIrz/aspe/
