@@ -3,7 +3,10 @@ title: "Liste Rouge Régionale des poissons d'eau douce de Bretagne"
 subtitle: "Pré-traitement application des critères de la liste rouge régionale UICN - sélection des espèces"
 author: "OFB Bretagne"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
-output: html_document
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -15,56 +18,38 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Script : 25_pre_traitement_criteres_lrr_uicn
 
+  Ce script a pour objectif de réaliser des pré-traitements avant l'application de la méthodologie de la liste rouge régionale (UICN France, 2012) sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer et l'observation des espèces au sein des stations sélectionnées - selon le déroulement de la méthodologie UICN. 
 
-Ce script à pour objectif de réaliser des pré-traitement avant l'appliquation de la méthodologie de la liste rouge régionale - UICN 2012 sur les données. Ce script contient 1 grande étape : la sélection des espèces à évaluer et l'observation des espèces au sein des stations sélectionnées. 
 
+# Installation 
 
-# Chargement des packages
+## Chargement des packages, des fonctions et des données
 
 ```{r Chargement des packages}
-library(aspe)
 library(tidyverse)
-library(ggplot2)
 library(readxl)
-library(dplyr)
-library(ggh4x)
-library(kableExtra)
-library(ggthemes)
-library (khroma)
-library(dplyr)
-library(zoo)
-library(gt)
-library(lemon)
-library(trend)
-library(ggh4x)
-library(purrr)
 ```
-
-
-# Chargement des données
 
 ```{r chargement des données}
 load(file = "../processed_data/assemblage_tab_par_ope.rda")
 load(file = "../processed_data/calcul_indicateurs_regionaux.rda")
 ```
 
-# Chargement excel "selection_taxon_lrr"
-
 ```{r Chargement Excel}
 ## Fichier Excel contenant les différentes espèces de la région ainsi que leurs temps de générations, leurs statuts d'endémisme à la région
 reg_espece <- read_excel("../raw_data/selection_taxon_lrr.xlsx")
 ```
 
-
-# Chargement d'une palette de couleur
-
-```{r}
+```{r Chargement palette de couleur}
 # Définir une palette de couleurs personnalisée
 my_palette <- c("grey", heat.colors(99))
 ```
 
+# Application méthodologie UICN
+## Sélection des espèces - cas de la Bretagne 
 
-Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données insufisantes : 
+
+En Bretagne, 8 espèces indigènes présentes des données insufisantes : 
 
 - Alose feinte : données manquantes; présence côtière, peu ou pas d'observation en eau douce, hybridation possible avec la grande alose;
 
@@ -79,15 +64,11 @@ Cas de la Bretagne : En Bretagne, 8 espèces indigènes présentes des données 
 - Vandoise rostrée :parasitisme laissant supposé un impact sur les populations, mais peu documenté et pas chiffré; le domaine typoloigique de la vandoise est assez réduit en Bretagne (épipotamon et hyporhithron); occurence de 26 % sur réseau de contrôle de surveillance (env 100 stations); les chronologies RHP montrent des résultats très fluctuants (variabilité naturelle des reproduction des cyprinidés ???); cependant on observe des effectifs non négligeables dans des milieux assez dégradés; l'impact du parasitisme a probablement peu de chance de menacer l'espèce à court terme; la menace principale est l'étagement présent en BZH mais depuis longtemps et pas suceptible d'évoluer dans le mauvais sens (tendance plutôt à la suppression de seuils);
 
 
-- Epinoche : trop peu de données renseignées sur elle durant les pêches.?.
-- Grande Alose : trop peu de données renseignées sur elle durant les pêches .?.
-- La carpe commune
-
+- Epinoche, Grande Alose et carpes communes : trop peu de données renseignées sur ces espèces durant les pêches.
 
 Ces espèces sont donc renseignées comme "DD" dans la colonne "statut_lrr" du dataframe :
 
 ```{r Mise en place DD}
-
 esp_DD <- c("ALF", "BRB", "BRE", "CCO", "EPI", "EPT", "FLE","MUP", "LPR", "LPM","TAN", "ALA", "GRE","ABL", "ROT")
 reg_espece$statut_lrr <- NA # Création d'une colonne statut_lrr
 reg_espece$statut_lrr <- ifelse(reg_espece$esp_code_alternatif %in% esp_DD, "DD", NA)
@@ -97,53 +78,41 @@ reg_espece$statut_lrr <- ifelse(is.na(reg_espece$statut_lrr), "Applicable", reg_
 ```
 
 
-# Bilan des espèces évaluées 
+### Bilan des espèces évaluées 
 
-On réalise une liste bilan des espèces qui vont être évaluées
+On réalise une liste bilan des espèces qui vont donc être évaluées :
 
 ```{r Liste espèce à traiter}
-# Définir la liste des espèces indigènes à traiter pour l'évaluation du critère A
+# Définir la liste des espèces indigènes à traiter pour l'évaluation des critères UICN
 mes_especes <- reg_espece %>% 
   filter (statut_esp == "indigene",
           statut_lrr == "Applicable") %>% 
   pull(esp_code_alternatif)
-
 ```
 
 
+## Temps de génération des espèces évaluées
 
-# Temps de génération des espèces évaluées
+  Les critères de classification de l’UICN nécessitent l’utilisation d’un temps de génération spécifique à chacun des taxons étudiés. La durée d’une génération correspond à l’âge moyen des parents de la cohorte actuelle, c’est-à-dire des parents des nouveau-nés dans la population (UICN, 2012). D’après l’UICN (2012), le risque de disparition « à court terme » d’une espèce fait référence à une période de dix ans ou à trois générations pour les espèces dont la durée de trois générations dépasse les dix ans. L’utilisation de cette période de référence comme standard méthodologique permet d’assurer une comparaison jugée comme « sereine » entre échelles ou territoires (Vigneron et al., 2017). Les temps de génération des espèces étudiées ainsi que leur temps d’étude pour ce travail sont établi dans la colone *periode_etude_lrr* pour chaque espèce évaluée à partir des temps de générations : 
 
-Utilisation des temps de générations de chaque espèce afin de connaitre la période sur laquelle le taxon va être étudié pour l'évaluation de la liste rouge. Les critères de classification de l'UICN nécessitent l'utilisation d'un temps de génération spécifique à chacun des taxons étudiés. Le risque de disparition à court terme d'une espèce fait référence à une période de 10 ans ou à 3 générations pour les espèces dont la durée de 3 générations dépasse les 10 ans. 
-
-On établi ainsi une colone "periode_etude_lrr" pour chaque espèce évaluée à partir des temps de générations : 
-
- 
 ```{r Tableau liste espece a traiter}
 reg_espece <- reg_espece %>% 
   filter(statut_lrr == "Applicable")
-```
 
-
-```{r Tableau liste espece a traiter}
 reg_espece <- reg_espece %>%
   mutate(periode_etude_lrr = ifelse(3 * temps_generation >= 10, 3 * temps_generation, 10)) %>% 
   mutate(annee_debut = 2023 - periode_etude_lrr) %>%
   mutate(periode_etude = paste(annee_debut, "2023", sep = "-"))
 ```
 
-
-```{r Tableau liste espece a traiter}
+```{r Tableau liste espece a traiter 2}
 tab_reg_espece <- dplyr::select(reg_espece, 
                                 esp_nom_commun, 
                                 esp_code_alternatif, 
                                 temps_generation, 
                                 periode_etude_lrr, 
                                 periode_etude)
-```
 
-
-```{r Tableau liste espece a traiter}
 colnames(tab_reg_espece) <- c("Nom commun", "Nom de code", "Temps de génération","Durée d'étude LRR","Période d'étude LRR")
 
 tab_reg_espece %>% 
@@ -153,18 +122,21 @@ tab_reg_espece %>%
 
 ```
 
-### Dataframe reg_indicateur
+
+## Occurrences des espèces par station
+
+### Mise en forme des données
+
+Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif, à l'échelle régionale :
 
 ```{r Ajout des Présences / Absences reg_indicateur}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
 combinaisons_esp_sta <- expand.grid(annee = unique(reg_indicateur$annee),
                             indicateur = unique(reg_indicateur$indicateur),
                             stade = unique(reg_indicateur$stade),
                             esp_code_alternatif = unique(reg_indicateur$esp_code_alternatif))
 ```
 
-
-```{r Ajout des Présences / Absences reg_indicateur}
+```{r Fusion combinaison}
 # Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
 reg_indicateur_complet <- combinaisons_esp_sta %>%
   left_join(reg_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif")) %>%
@@ -173,10 +145,9 @@ reg_indicateur_complet <- combinaisons_esp_sta %>%
 ```
 
 
-### Dataframe ope_selection  
+Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif, à l'échelles des opérations :
 
 ```{r Ajout des Présences / Absences ope_indicateur}
-# Création d'un dataframe avec toutes les combinaisons possibles d'années, indicateurs, stades et esp_code_alternatif
 combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
                             indicateur = unique(ope_indicateur$indicateur),
                             stade = unique(ope_indicateur$stade),
@@ -185,7 +156,7 @@ combinaisons_esp_ope <- expand.grid(annee = unique(ope_indicateur$annee),
 ```
 
 
-```{r Ajout des Présences / Absences ope_indicateur}
+```{r Fusion combinaisons ope}
 # Fusionner le tableau des combinaisons avec le tableau original en ajoutant des valeurs manquantes avec valeur 0
 ope_indicateur_complet <- combinaisons_esp_ope %>%
   left_join(ope_indicateur, by = c("annee", "indicateur", "stade", "esp_code_alternatif", "pop_id"))%>%
@@ -194,7 +165,7 @@ ope_indicateur_complet <- combinaisons_esp_ope %>%
 ```
 
 
-```{r Liste espèce à traiter}
+```{r Filtrage et mise en forme}
 # Construction d'un df avec espèce applicable et leurs temps de génération
 reg_periode_etude_lrr <- reg_espece %>%
   select(esp_code_alternatif,
@@ -227,8 +198,9 @@ reg_indicateur_complet_effectif <- reg_indicateur_complet %>%
 
 
 
+### Observation des occurrences par station 
 
-On observe plus en détail l'allure de l'occurrence des espèces par station (les espèces au stade adulte) : 
+On observe plus en détail l'allure de l'occurrence des espèces par station : 
 
 ```{r Calcul taux occurrence, fig.height = 25, fig.width = 25}
 

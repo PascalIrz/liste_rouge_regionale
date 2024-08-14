@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Objectif : Dynamique de population des poissons d'eau douce de Bretagne 
 
-Script : 23_tendances_temporelles
+Script : 23_tableau_tendances_temporelles
 
   Ce script permet de construire un tableau récapitulatif des différentes analyses exécutées sur les tendances populationnelles des poissons d'eau douce de Bretagne. 
 
