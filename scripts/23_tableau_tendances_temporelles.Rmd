@@ -15,59 +15,72 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE)
 ```
 
+# Objectif : Dynamique de population des poissons d'eau douce de Bretagne 
+
+Script : 23_tendances_temporelles
+
+  Ce script permet de construire un tableau récapitulatif des différentes analyses exécutées sur les tendances populationnelles des poissons d'eau douce de Bretagne. 
+
 
 # Installation 
 
 ## Chargement des packages, fonctions et des données 
 
 ```{r Chargement des packages}
-## Chargement des packages ----
-library(ggthemes)
+library(ggthemes) # Chargement des packages
 library(tidyverse)
 library(kableExtra)
 library(readxl)
 ```
 
-```{r}
+## Chargement des précédents résultats d'analyses
+
+```{r Chargement résultats analyses}
 load(file = "../processed_data/mk_glmm_lm_tendances.rda")
+load(file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
 mod_bay <- read_excel("../raw_data/mod_bay.xlsx")
 ```
 
 
-## Pour les données indifférenciées
+# Tableau final des tendances temporelles
 
-```{r}
+## Pré-traitement
+
+Nous souhaitons construire le tableau de synthèse regroupant les résultats des différentes analyses : analyses bivariées (script 10_11_12_ et 13_), des modèles GLMM (script 14) et du modèle bayésien (script 15_ et 20_). Pour ce faire, nous mettons en forme les différents résultats obtenues :
+
+```{r Mise en forme résultats}
 rownames(glmm_resultats_format) <- seq_len(nrow(glmm_resultats_format))
-```
 
-
-```{r, fig.height = 8, fig.width = 10}
 # Joindre les DataFrames sur les colonnes communes
-df_combined <- reg_indicateur_lrr_tendances_lm %>%
-  filter(indicateur == "densite_surface") %>% 
+tab_reg_indicateur_lrr <- reg_indicateur_lrr_pvalues_lm %>%
   rename(trend_lm = trend, 
-         sig_lm = sig) %>%
+         sig_lm = sig) %>% 
+  filter(indicateur == "densite_surface")
+
+
+tab_reg_indicateur_lrr <- tab_reg_indicateur_lrr %>% 
   left_join(glmm_resultats_format %>% 
               select(esp_code_alternatif,
-                     indicateur,
                      trend,
                      sig) %>% 
               rename(trend_glmm = trend, 
                      sig_glmm = sig), 
-            by = c("esp_code_alternatif", "indicateur")) %>%
-  left_join(reg_indicateur_lrr_tendances_mk_st %>% 
+            by = c("esp_code_alternatif"))
+
+
+tab_reg_indicateur_lrr <- tab_reg_indicateur_lrr %>% 
+  left_join(reg_indicateur_lrr_tendances_mk_st %>%
+              filter(indicateur == "densite_surface") %>%  
               select(esp_code_alternatif,
-                     indicateur,
                      trend,
                      sig) %>% 
               rename(trend_mk_st = trend, sig_mk_st = sig), 
-            by = c("esp_code_alternatif", "indicateur"))
+            by = c("esp_code_alternatif"))
 ```
 
-
-```{r, fig.height = 8, fig.width = 10}
-# Sélectionner les colonnes à afficher
-df_final <- df_combined %>%
+Nous sélectionnons les informations que nous souhaitons communiquer dans le tableau de synthèse : 
+```{r Sélection des informations tab}
+tab_reg_indicateur_lrr_final <- tab_reg_indicateur_lrr %>%
   select(esp_code_alternatif, 
          periode, 
          trend_lm, 
@@ -79,21 +92,23 @@ df_final <- df_combined %>%
          ) %>% 
   arrange(periode,
           esp_code_alternatif)
-```
 
 
-```{r, fig.height = 8, fig.width = 10}
-df_final1 <- df_final %>% 
+tab_reg_indicateur_lrr_final2 <- tab_reg_indicateur_lrr_final %>% 
+  filter(indicateur == "densite_surface") %>% 
   left_join(mod_bay) %>% 
-  mutate_all(~ replace_na(., " ")) %>% 
-  select(-indicateur)
+  mutate_all(~ replace_na(., " ")) %>%
+  ungroup() %>% 
+  select(-indicateur, 
+         -stade)
 ```
 
+## Construction du tableau de synthèse des tendances 
 
-```{r, fig.height = 8, fig.width = 10}
-colnames(df_final1)[1:10] <- c("Code espèce", "Période","Linéaire", " ", "MK / ST", " ", "GLMM", " ", "Bayésien", "")
+```{r Construction tableau de synthèse, fig.height = 8, fig.width = 10}
+colnames(tab_reg_indicateur_lrr_final2)[1:10] <- c("Code espèce", "Période","Linéaire", " ", "MK / ST", " ", "GLMM", " ", "Bayésien", "")
 
-d <- kable(df_final1,
+kable(tab_reg_indicateur_lrr_final2,
       booktabs = TRUE,
       escape = FALSE,
       align = c("l", "l", "c", "l", "c", "l", "c", "l", "c", "l")) %>%
@@ -101,20 +116,4 @@ d <- kable(df_final1,
   column_spec(3, italic = TRUE) %>% 
   kable_styling(full_width = FALSE, position = "left") %>% 
   collapse_rows(columns = 1:2)
-
-d
 ```
-
-
-
-
-
-
-
-## Pour les données qui ne concernent que les adultes : 
-
-
-
-
-
-

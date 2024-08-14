@@ -11,7 +11,7 @@
 
 <meta name="author" content="OFB Bretagne" />
 
-<meta name="date" content="2024-07-23" />
+<meta name="date" content="2024-08-14" />
 
 <title>Liste Rouge Régionale des poissons d’eau douce de Bretagne</title>
 
@@ -1693,48 +1693,66 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Liste Rouge Régionale des poissons d’eau douce de Bretagne</h1>
 <h3 class="subtitle">Tableau Tendances Temporelles</h3>
 <h4 class="author">OFB Bretagne</h4>
-<h4 class="date">2024-07-23</h4>
+<h4 class="date">2024-08-14</h4>
 
 </div>
 
 
-<div id="installation" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Installation</h1>
-<div id="chargement-des-packages-fonctions-et-des-données" class="section level2" number="1.1">
-<h2><span class="header-section-number">1.1</span> Chargement des packages, fonctions et des données</h2>
-<pre class="r"><code>## Chargement des packages ----
-library(ggthemes)
+<div id="objectif-dynamique-de-population-des-poissons-deau-douce-de-bretagne" class="section level1" number="1">
+<h1><span class="header-section-number">1</span> Objectif : Dynamique de population des poissons d’eau douce de Bretagne</h1>
+<p>Script : 23_tendances_temporelles</p>
+<p>Ce script permet de construire un tableau récapitulatif des différentes analyses exécutées sur les tendances populationnelles des poissons d’eau douce de Bretagne.</p>
+</div>
+<div id="installation" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> Installation</h1>
+<div id="chargement-des-packages-fonctions-et-des-données" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Chargement des packages, fonctions et des données</h2>
+<pre class="r"><code>library(ggthemes) # Chargement des packages
 library(tidyverse)
 library(kableExtra)
 library(readxl)</code></pre>
+</div>
+<div id="chargement-des-précédents-résultats-danalyses" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> Chargement des précédents résultats d’analyses</h2>
 <pre class="r"><code>load(file = &quot;../processed_data/mk_glmm_lm_tendances.rda&quot;)
+load(file = &quot;../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda&quot;)
 mod_bay &lt;- read_excel(&quot;../raw_data/mod_bay.xlsx&quot;)</code></pre>
 </div>
-<div id="pour-les-données-indifférenciées" class="section level2" number="1.2">
-<h2><span class="header-section-number">1.2</span> Pour les données indifférenciées</h2>
-<pre class="r"><code>rownames(glmm_resultats_format) &lt;- seq_len(nrow(glmm_resultats_format))</code></pre>
-<pre class="r"><code># Joindre les DataFrames sur les colonnes communes
-df_combined &lt;- reg_indicateur_lrr_tendances_lm %&gt;%
-  filter(indicateur == &quot;densite_surface&quot;) %&gt;% 
+</div>
+<div id="tableau-final-des-tendances-temporelles" class="section level1" number="3">
+<h1><span class="header-section-number">3</span> Tableau final des tendances temporelles</h1>
+<div id="pré-traitement" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Pré-traitement</h2>
+<p>Nous souhaitons construire le tableau de synthèse regroupant les résultats des différentes analyses : analyses bivariées (script 10_11_12_ et 13_), des modèles GLMM (script 14) et du modèle bayésien (script 15_ et 20_). Pour ce faire, nous mettons en forme les différents résultats obtenues :</p>
+<pre class="r"><code>rownames(glmm_resultats_format) &lt;- seq_len(nrow(glmm_resultats_format))
+
+# Joindre les DataFrames sur les colonnes communes
+tab_reg_indicateur_lrr &lt;- reg_indicateur_lrr_pvalues_lm %&gt;%
   rename(trend_lm = trend, 
-         sig_lm = sig) %&gt;%
+         sig_lm = sig) %&gt;% 
+  filter(indicateur == &quot;densite_surface&quot;)
+
+
+tab_reg_indicateur_lrr &lt;- tab_reg_indicateur_lrr %&gt;% 
   left_join(glmm_resultats_format %&gt;% 
               select(esp_code_alternatif,
-                     indicateur,
                      trend,
                      sig) %&gt;% 
               rename(trend_glmm = trend, 
                      sig_glmm = sig), 
-            by = c(&quot;esp_code_alternatif&quot;, &quot;indicateur&quot;)) %&gt;%
-  left_join(reg_indicateur_lrr_tendances_mk_st %&gt;% 
+            by = c(&quot;esp_code_alternatif&quot;))
+
+
+tab_reg_indicateur_lrr &lt;- tab_reg_indicateur_lrr %&gt;% 
+  left_join(reg_indicateur_lrr_tendances_mk_st %&gt;%
+              filter(indicateur == &quot;densite_surface&quot;) %&gt;%  
               select(esp_code_alternatif,
-                     indicateur,
                      trend,
                      sig) %&gt;% 
               rename(trend_mk_st = trend, sig_mk_st = sig), 
-            by = c(&quot;esp_code_alternatif&quot;, &quot;indicateur&quot;))</code></pre>
-<pre class="r"><code># Sélectionner les colonnes à afficher
-df_final &lt;- df_combined %&gt;%
+            by = c(&quot;esp_code_alternatif&quot;))</code></pre>
+<p>Nous sélectionnons les informations que nous souhaitons communiquer dans le tableau de synthèse :</p>
+<pre class="r"><code>tab_reg_indicateur_lrr_final &lt;- tab_reg_indicateur_lrr %&gt;%
   select(esp_code_alternatif, 
          periode, 
          trend_lm, 
@@ -1745,23 +1763,29 @@ df_final &lt;- df_combined %&gt;%
          sig_glmm
          ) %&gt;% 
   arrange(periode,
-          esp_code_alternatif)</code></pre>
-<pre class="r"><code>df_final1 &lt;- df_final %&gt;% 
-  left_join(mod_bay) %&gt;% 
-  mutate_all(~ replace_na(., &quot; &quot;)) %&gt;% 
-  select(-indicateur)</code></pre>
-<pre class="r"><code>colnames(df_final1)[1:10] &lt;- c(&quot;Code espèce&quot;, &quot;Période&quot;,&quot;Linéaire&quot;, &quot; &quot;, &quot;MK / ST&quot;, &quot; &quot;, &quot;GLMM&quot;, &quot; &quot;, &quot;Bayésien&quot;, &quot;&quot;)
+          esp_code_alternatif)
 
-d &lt;- kable(df_final1,
+
+tab_reg_indicateur_lrr_final2 &lt;- tab_reg_indicateur_lrr_final %&gt;% 
+  filter(indicateur == &quot;densite_surface&quot;) %&gt;% 
+  left_join(mod_bay) %&gt;% 
+  mutate_all(~ replace_na(., &quot; &quot;)) %&gt;%
+  ungroup() %&gt;% 
+  select(-indicateur, 
+         -stade)</code></pre>
+</div>
+<div id="construction-du-tableau-de-synthèse-des-tendances" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Construction du tableau de synthèse des tendances</h2>
+<pre class="r"><code>colnames(tab_reg_indicateur_lrr_final2)[1:10] &lt;- c(&quot;Code espèce&quot;, &quot;Période&quot;,&quot;Linéaire&quot;, &quot; &quot;, &quot;MK / ST&quot;, &quot; &quot;, &quot;GLMM&quot;, &quot; &quot;, &quot;Bayésien&quot;, &quot;&quot;)
+
+kable(tab_reg_indicateur_lrr_final2,
       booktabs = TRUE,
       escape = FALSE,
       align = c(&quot;l&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;, &quot;c&quot;, &quot;l&quot;)) %&gt;%
   add_header_above(c(&quot; &quot; = 2, &quot;Tendances temporelles&quot; = 8)) %&gt;%
   column_spec(3, italic = TRUE) %&gt;% 
   kable_styling(full_width = FALSE, position = &quot;left&quot;) %&gt;% 
-  collapse_rows(columns = 1:2)
-
-d</code></pre>
+  collapse_rows(columns = 1:2)</code></pre>
 <table class="table" style="color: black; width: auto !important; ">
 <thead>
 <tr>
@@ -1856,6 +1880,7 @@ CHE
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -1881,6 +1906,7 @@ LPP
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -1906,9 +1932,10 @@ BRO
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↗
+↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -1921,12 +1948,12 @@ BRO
 LOF
 </td>
 <td style="text-align:center;font-style: italic;">
-↘
+↗
 </td>
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↘
+↗
 </td>
 <td style="text-align:left;">
 </td>
@@ -1961,9 +1988,10 @@ GAR
 <ul>
 <li></td>
 <td style="text-align:center;">
-↘
+↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -1990,6 +2018,7 @@ PER
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2013,10 +2042,10 @@ VAI
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↗
+↘
 </td>
 <td style="text-align:left;">
-**
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2040,9 +2069,10 @@ VAR
 <td style="text-align:left;">
 </td>
 <td style="text-align:center;">
-↘
+↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↘
@@ -2072,6 +2102,7 @@ CHA
 ↘
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2099,6 +2130,7 @@ GOU
 ↗
 </td>
 <td style="text-align:left;">
+***
 </td>
 <td style="text-align:center;">
 ↗
@@ -2153,8 +2185,8 @@ TRF
 ↘
 </td>
 <td style="text-align:left;">
-<ul>
-<li></td>
+***
+</td>
 <td style="text-align:center;">
 ↘
 </td>
@@ -2163,11 +2195,7 @@ TRF
 </tr>
 </tbody>
 </table></li>
-</ul></li>
 </ul>
-</div>
-<div id="pour-les-données-qui-ne-concernent-que-les-adultes" class="section level2" number="1.3">
-<h2><span class="header-section-number">1.3</span> Pour les données qui ne concernent que les adultes :</h2>
 </div>
 </div>
 

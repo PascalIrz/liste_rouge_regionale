@@ -237,7 +237,7 @@ groups <- list(list(codes = "ANG", start_year = 1990, end_year = 2023),
 
 ```{r Création df reg_indicateur_pvaues_by_group}
 # Fonction pour appliquer lm_get_pvalues à chaque groupe
-reg_indicateur_pvalues_by_group <- map_dfr(groups, function(group) {
+reg_indicateur_lrr_pvalues_lm <- map_dfr(groups, function(group) {
   
   # Filtrage des données par les codes du groupe
   data_filtered <- reg_indicateur %>%
@@ -249,14 +249,14 @@ reg_indicateur_pvalues_by_group <- map_dfr(groups, function(group) {
               end_year = group$end_year, 
               significativite = 0.05)})
 
-reg_indicateur_pvalues_by_group <- reg_indicateur_pvalues_by_group %>% 
+reg_indicateur_lrr_pvalues_lm <- reg_indicateur_lrr_pvalues_lm %>% 
   filter(indicateur %in% c("densite_surface",
                            "pourcentage_juveniles",
                            "taux_occurrence"),
          stade == "ind")
 
 # Visualisation des résultats
-print(reg_indicateur_pvalues_by_group)
+print(reg_indicateur_lrr_pvalues_lm)
 ```
 
 
@@ -275,7 +275,7 @@ significativite_palette <- c(" " = "#D3D3D3",    # gris clair pour non significa
                              "**" = "#92D050", # orange pour p < 0.01
                              "***" = "#007844") # violet pour p < 0.001
 
-tab_reg_indicateur_lrr_tendances_lm <- reg_indicateur_pvalues_by_group %>%
+tab_reg_indicateur_lrr_pvalues_lm <- reg_indicateur_lrr_pvalues_lm %>%
   select(esp_code_alternatif,
          periode,
          indicateur,
@@ -300,7 +300,7 @@ tab_reg_indicateur_lrr_tendances_lm <- reg_indicateur_pvalues_by_group %>%
     heading.title.font.size = "medium",
     heading.subtitle.font.size = "small")
 
-tab_reg_indicateur_lrr_tendances_lm # Affichage du tableau
+tab_reg_indicateur_lrr_pvalues_lm # Affichage du tableau
 ```
 
 
@@ -318,7 +318,7 @@ save(reg_taux_occ,
 
 save(reg_indicateur_reduit,
      reg_indicateur_lrr_tendances_lm,
-     tab_reg_indicateur_lrr_tendances_lm,
+     reg_indicateur_lrr_pvalues_lm,
      file = "../processed_data/analyse_indicateurs_regionaux_pour_mk_glm.rda")
 ```
 
