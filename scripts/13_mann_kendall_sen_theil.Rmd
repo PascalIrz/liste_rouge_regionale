@@ -362,8 +362,8 @@ ggsave(filename = "../assets/carte_tendances_sta_globale.png",
 ```{r Sauvegarde}
 save(reg_indicateur_lrr_tendances_mk_st,
      reg_indicateur_lrr_tendances_lm,
-     tab_reg_indicateur_lrr_tendances_mk_st,
-     tab_reg_indicateur_lrr_tendances_lm,
+      tab_reg_indicateur_lrr_tendances_mk_st,
+     # tab_reg_indicateur_lrr_tendances_lm,
      file = "../processed_data/lm_mann_kendall_tendances.rda")
 ```
 

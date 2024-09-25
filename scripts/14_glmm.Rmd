@@ -119,7 +119,7 @@ ope_effectif_glm <- ope_effectif_glm %>% # Ajout de la date de pêche codée de 
 
 ## Application du modèle GLMM 
 
-  Afin d'exécuter l'analyse, deux fonctions ont été créer : *glmm_calcul_modele* (en charge de calculer les valeurs des modèles GLMM) et *glmm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Les analyses prennent en considération les données à l'échelle de l'opération. 
+  Afin d'exécuter l'analyse, deux fonctions ont été créées : *glmm_calcul_modele* (en charge de calculer les valeurs des modèles GLMM) et *glmm_application_modele* (le but étant d'excécuter la fonction *glm_calcul_modele* pour l'ensemble des combinaisons *periodes-especes-stade-indicateur*). Les analyses prennent en considération les données à l'échelle de l'opération. 
 
 
 ```{r Exécution fonction GLMM}
@@ -188,6 +188,9 @@ save(glmm_resultats_format,
     # tab_reg_indicateur_lrr_tendances_lm,
      tab_reg_indicateur_lrr_tendances_mk_st,
      file = "../processed_data/mk_glmm_lm_tendances.rda")
+
+save(ope_effectif_glm,
+     file = "processed_data/14_ope_effectif_glm.rda")
 ```
 
 
