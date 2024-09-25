@@ -28,8 +28,8 @@ Script : 14_GLMM
 
 ```{r Chargement des packages}
 library(lme4)
-library(popdynmodel)
-library(aspe2)
+#library(popdynmodel)
+# library(aspe2)
 library(tidyverse)
 library(aspe)
 library(sjstats)
@@ -185,7 +185,7 @@ save(glmm_resultats_format,
      reg_indicateur_lrr_tendances_lm,
      reg_indicateur_lrr_tendances_mk_st,
      tab_glmm_resultats,
-     tab_reg_indicateur_lrr_tendances_lm,
+    # tab_reg_indicateur_lrr_tendances_lm,
      tab_reg_indicateur_lrr_tendances_mk_st,
      file = "../processed_data/mk_glmm_lm_tendances.rda")
 ```
