@@ -1,8 +1,10 @@
+load(file = "processed_data/14_ope_effectif_glm.rda")
+
 mon_espece <- "TRF"
 mon_stade <- "ind"
 nb_annees <- 10
 
-debut <- 2023-nb_annees
+debut <- 2023 - nb_annees
 
 
 library(tidyverse)
@@ -18,9 +20,12 @@ ope_sp_ind <- ope_effectif_glm %>%
   mutate(pop_id = as.character(pop_id),
          annee_cr = scale(annee),
          ope_surface_calculee_cr = scale(ope_surface_calculee)
-       #  valeur = log10(valeur)
-         ) %>% 
-  filter(pop_id != "41893")
+         )
+
+# Sur le Guyoult à mont-Dol, l'anguille avait disparu à cause de pollution dans les années 90
+# Ca ne concerne pas les autres espèces car la durée de l'évaluation LRR fait que cette période n'est pas couverte
+if(mon_espece == "ANG") {ope_sp_ind <- ope_sp_ind %>% filter(pop_id != "41893")}
+  
 
 ggplot(data = ope_sp_ind,
        aes(x = valeur)) +
@@ -45,7 +50,7 @@ ggplot(data = ope_sp_ind,
   geom_smooth() +
   scale_y_log10()
 
-mod <- lmerTest::lmer(valeur ~ annee + (1|pop_id) + ope_surface_calculee +
+mod <- lmerTest::lmer(valeur ~ annee_cr + (1|pop_id) + ope_surface_calculee_cr +
                        pro_libelle #+
                         #poly(julian, 2)
                         ,
@@ -96,15 +101,66 @@ ggplot(data = ope_sp_ind,
 #######################################
 
 # On veut calculer les valeurs prédites sur l'ensemble des stations en début et fin de période
+# On le fait slt sur les sites où l'espèce a été contactée mini sur 50% des pêches
+
+# calcul du taux d'occurrence sur chaque station
+n_ope_par_pop <- ope_effectif_glm %>% 
+  filter(annee >= debut) %>% 
+  group_by(pop_id) %>% 
+  summarise(n_ope = n_distinct(ope_id))
+
+pc_contact <- ope_sp_ind %>% 
+  filter(valeur > 0) %>% 
+  group_by(pop_id) %>% 
+  summarise(n_pres = n_distinct(ope_id))  %>% 
+  left_join(n_ope_par_pop) %>% 
+  mutate(pc_pres = n_pres / n_ope)
+
+# identifiants des points avec pourcentage d'occurrence au-dessus de 50%
+pop_id_select <- pc_contact %>% 
+  filter(pc_pres >= 0.5) %>% 
+  pull(pop_id)
+
+# calcul des effectifs prédits en première et en dernière année
 effectifs_debut_fin <- ope_sp_ind %>% 
+  filter(pop_id %in% pop_id_select) %>% 
   group_by(pop_id) %>% 
   filter(annee == max(annee) | annee == min(annee)) %>% 
-  mutate(debut = (annee == min(annee))) %>% 
-  group_by(debut) %>% 
-  summarise(effectif_moy = mean(valeur),
-            effectif_median = median(valeur))
+  mutate(periode = ifelse(annee == min(annee),
+                         "Début",
+                         "Fin")) %>% 
+  ungroup() %>% 
+  mutate(annee_cr2 = ifelse(periode == "Début", min(annee_cr), max(annee_cr))) 
+
+# vérification années de début et de fin pour points échantillonnés une année sur deux
+effectifs_debut_fin %>% filter(annee_cr2 != annee_cr) %>% View()
+
+# modification du tableau de données afin de prédire, quel que soit le point, l'effectif pour la première et 
+# la dernière des années de l'étude, yc pour les points qui n'ont pas été pêchés ces années-là (pb de la prospection bi-annuelle)
+effectifs_debut_fin <- effectifs_debut_fin %>% 
+  mutate(annee_cr = annee_cr2) %>% 
+  select(-annee_cr2)
+  
+predicted2 <- predict(mod, newdata = effectifs_debut_fin)
+
+effectifs_debut_fin <- effectifs_debut_fin %>% 
+  select(-predicted) %>% 
+  cbind(predicted = predicted2)
+
+stats_effectifs_debut_fin <- effectifs_debut_fin %>% 
+  group_by(periode) %>% 
+  summarise(effectif_moy = mean(predicted),
+            effectif_median = median(predicted))
 
 
-taux_evol_effectif_moy_lrr <- ()
+# calcul des taux d'évolution
+# sur l'effectif moyen
+taux_evol_effectif_moy_lrr <- (stats_effectifs_debut_fin[2, 2] - 
+                                 stats_effectifs_debut_fin[1, 2]) /
+                                 stats_effectifs_debut_fin[1, 2]
 
+# sur l'effectif médian
+taux_evol_effectif_med_lrr <- (stats_effectifs_debut_fin[2, 3] -
+                                 stats_effectifs_debut_fin[1, 3]) /
+                                 stats_effectifs_debut_fin[1, 3]
 
