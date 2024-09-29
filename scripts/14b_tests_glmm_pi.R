@@ -3,9 +3,9 @@ library(lme4)
 
 load(file = "processed_data/14_ope_effectif_glm.rda")
 
-mon_espece <- "VAR"
+mon_espece <- "BRO"
 mon_stade <- "ind"
-nb_annees <- 12
+nb_annees <- 15
 pc_occ_mini <- 0.5
 
 debut <- 2023 - nb_annees
@@ -74,9 +74,9 @@ ope_sp_ind <- ope_sp_ind %>%
   filter(pc_pres >= pc_occ_mini)
 
 ##########################
-mod <- lmerTest::lmer(valeur ~ annee_cr + (1|pop_id) + ope_surface_calculee_cr #+
-                 #     pro_libelle #+
-                     # poly(julian, 2)
+mod <- lmerTest::lmer(valeur ~ annee_cr + (1|pop_id) + ope_surface_calculee_cr +
+                      pro_libelle +
+                      poly(julian, 2)
                         ,
   data = ope_sp_ind)
 
@@ -121,7 +121,8 @@ ope_sp_ind <- ope_sp_ind %>%
 
 ggplot(data = ope_sp_ind,
        aes(x = valeur,
-           y = predicted)) +
+           y = predicted,
+           col = pop_id)) +
   geom_point() +
  # geom_smooth(method = "lm") +
   geom_abline(linetype = "dashed",

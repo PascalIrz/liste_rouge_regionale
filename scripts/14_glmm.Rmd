@@ -190,7 +190,7 @@ save(glmm_resultats_format,
      file = "../processed_data/mk_glmm_lm_tendances.rda")
 
 save(ope_effectif_glm,
-     file = "processed_data/14_ope_effectif_glm.rda")
+     file = "../processed_data/14_ope_effectif_glm.rda")
 ```
 
 
